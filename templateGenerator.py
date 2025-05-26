@@ -67,36 +67,38 @@ import pickle
 
 
 import random
+import colorsys
+
+def hsl_to_rgb(h, s, l):
+    """Convert HSL (Hue 0-1, Sat 0-1, Light 0-1) to RGB (0-255)"""
+    r, g, b = colorsys.hls_to_rgb(h, l, s)
+    return tuple(int(x * 255) for x in (r, g, b))
 
 def generate_color_in_range(color_type):
     """
-    Generate a random color based on predefined color ranges.
-    :param color_type: Type of color ('primary', 'secondary', 'tertiary')
-    :return: A tuple of RGB values representing a color
+    Generate realistic newsletter-appropriate colors:
+    - Primary: Light/pastel (backgrounds, headers)
+    - Secondary: Dark/muted (text or emphasis)
+    - Tertiary: Neutral (grays, subtle accents)
     """
+    base_hue = random.random()  # Shared base hue for harmony
+
     if color_type == 'primary':
-        # Primary colors can range from soft blues, reds, greens
-        return (
-            random.randint(50, 200),  # Red channel (Soft)
-            random.randint(50, 150),  # Green channel (Soft)
-            random.randint(100, 255)  # Blue channel (More prominent)
-        )
+        # Light, desaturated colors (near-white pastels)
+        return hsl_to_rgb(base_hue, random.uniform(0.2, 0.4), random.uniform(0.85, 0.95))
+
     elif color_type == 'secondary':
-        # Secondary colors can be neutral tones or softer complementary shades
-        return (
-            random.randint(100, 180),  # Red channel (Muted)
-            random.randint(50, 180),   # Green channel (Muted)
-            random.randint(100, 180)   # Blue channel (Muted)
-        )
+        # Dark, desaturated/muted for text
+        return hsl_to_rgb(base_hue, random.uniform(0.2, 0.4), random.uniform(0.2, 0.4))
+
     elif color_type == 'tertiary':
-        # Tertiary colors can be light neutrals or complementary accents
-        return (
-            random.randint(180, 255),  # Red channel (Light)
-            random.randint(180, 255),  # Green channel (Light)
-            random.randint(180, 255)   # Blue channel (Light)
-        )
+        # Neutral, low-saturation light grays or beiges
+        gray_base = random.uniform(0, 1)
+        return hsl_to_rgb(0, 0, random.uniform(0.7, 0.9))  # Gray tones
+
     else:
         raise ValueError("Invalid color type")
+
 
 def generate_templates(num_templates=100000):
     templates = {}
