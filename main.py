@@ -102,7 +102,7 @@ def show_palettes(user, match):
 with open('template.pkl','rb') as f:
     templates = pickle.load(f)
 
-user_colors = extract_palette_kmeans("./images/component.jpg",num_colors=6)
+user_colors = extract_palette_kmeans("/home/joel/Documents/Newsletter-Generator/images/Company-newsletter-2-web-712x984-1.jpeg",num_colors=6)
 
 closestTemplate = find_closest_template(user_colors, templates)
 print(f"User:{user_colors}")
