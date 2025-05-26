@@ -65,9 +65,9 @@ import pickle
 #     # Save the index to a file
 #     save_index(index, "template_index.pkl")
 
-
 import random
 import colorsys
+import pickle
 
 def hsl_to_rgb(h, s, l):
     """Convert HSL (Hue 0-1, Sat 0-1, Light 0-1) to RGB (0-255)"""
@@ -77,24 +77,23 @@ def hsl_to_rgb(h, s, l):
 def generate_color_in_range(color_type):
     """
     Generate realistic newsletter-appropriate colors:
-    - Primary: Light/pastel (backgrounds, headers)
-    - Secondary: Dark/muted (text or emphasis)
-    - Tertiary: Neutral (grays, subtle accents)
+    - Primary: Lighter/pastel colors (backgrounds, headers)
+    - Secondary: A full range of shades for each primary color (darker and more varied)
     """
     base_hue = random.random()  # Shared base hue for harmony
-
+    
     if color_type == 'primary':
-        # Light, desaturated colors (near-white pastels)
+        # Lighter colors (pastels) with high lightness (close to white)
         return hsl_to_rgb(base_hue, random.uniform(0.2, 0.4), random.uniform(0.85, 0.95))
 
     elif color_type == 'secondary':
-        # Dark, desaturated/muted for text
-        return hsl_to_rgb(base_hue, random.uniform(0.2, 0.4), random.uniform(0.2, 0.4))
-
-    elif color_type == 'tertiary':
-        # Neutral, low-saturation light grays or beiges
-        gray_base = random.uniform(0, 1)
-        return hsl_to_rgb(0, 0, random.uniform(0.7, 0.9))  # Gray tones
+        # A full range of hues for the secondary color, varying saturation and lightness
+        # This will create multiple shades, both dark and bright, for each primary hue
+        return hsl_to_rgb(
+            base_hue,  # Same hue as the primary for color consistency
+            random.uniform(0.4, 1.0),  # Varying saturation (lower for muted, higher for vivid)
+            random.uniform(0.2, 0.75)  # Varying lightness from darker to lighter shades
+        )
 
     else:
         raise ValueError("Invalid color type")
@@ -107,12 +106,10 @@ def generate_templates(num_templates=100000):
         template_name = f"template_{i}"
         primary = generate_color_in_range('primary')
         secondary = generate_color_in_range('secondary')
-        tertiary = generate_color_in_range('tertiary')
 
         templates[template_name] = {
             "primary": primary,
-            "secondary": secondary,
-            "tertiary": tertiary
+            "secondary": secondary
         }
 
     return templates
@@ -120,6 +117,5 @@ def generate_templates(num_templates=100000):
 if __name__ == "__main__":
     templates = generate_templates()
     
-    with open('template.pkl','wb') as f:
-        pickle.dump(templates,f)
-    
+    with open('template.pkl', 'wb') as f:
+        pickle.dump(templates, f)
