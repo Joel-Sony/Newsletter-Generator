@@ -22,7 +22,7 @@ def convert_pdf_to_html(pdf_path, output_path=None):
         print(e.stderr.decode())
         return None
 
-html_file = convert_pdf_to_html("./pdfs/Christmas.pdf")
+html_file = convert_pdf_to_html("./pdfs/Architecture newsletter.pdf")
 
 end = perf_counter()
 print(f"Time: {end - start:.4f} seconds")

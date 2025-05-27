@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 # Load the HTML file
-with open("input.html", "r", encoding="utf-8") as f:
+with open("./pdfs/html/College.html", "r", encoding="utf-8") as f:
     html = f.read()
 
 soup = BeautifulSoup(html, "lxml")
