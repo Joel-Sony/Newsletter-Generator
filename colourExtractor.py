@@ -32,3 +32,4 @@ def extract_palette_kmeans(image_path, num_colors=6):
 
 
 
+su
