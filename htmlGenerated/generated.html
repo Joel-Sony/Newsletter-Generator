@@ -1,0 +1,363 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monthly Newsletter</title>
+    <style type="text/css">
+        /* Reset styles */
+        body, p, h1, h2, h3, h4, h5, h6, table, td, div, span {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
+        
+        /* Base styles */
+        body {
+            background-color: #f6f9fc;
+            color: #333333;
+            line-height: 1.6;
+        }
+        
+        /* Layout container */
+        .container {
+            width: 100%;
+            max-width: 790px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        
+        /* Header styles */
+        .header {
+            background-color: #4a6fdc;
+            color: white;
+            padding: 30px 25px;
+            text-align: center;
+        }
+        
+        .logo {
+            margin-bottom: 15px;
+            font-family: 'Georgia', serif;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .tagline {
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        /* Navigation */
+        .nav {
+            background-color: #2a4eb5;
+            padding: 15px 0;
+        }
+        
+        .nav table {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .nav td {
+            padding: 8px 0;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 15px;
+        }
+        
+        /* Hero section */
+        .hero {
+            background-color: #e8f0fe;
+            padding: 50px 30px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 36px;
+            color: #1a3a9c;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .hero p {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background-color: #ff6b4a;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        /* Card section */
+        .card {
+            background-color: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin: 20px;
+            overflow: hidden;
+        }
+        
+        .card-image img {
+            width: 100%;
+            height: auto;
+        }
+        
+        .card-content {
+            padding: 25px;
+        }
+        
+        .card-content h3 {
+            font-size: 22px;
+            color: #1a3a9c;
+            margin-bottom: 15px;
+        }
+        
+        /* Two column section */
+        .two-column {
+            width: 100%;
+        }
+        
+        .two-column table {
+            width: 100%;
+        }
+        
+        .two-column td {
+            width: 50%;
+            vertical-align: top;
+            padding: 20px;
+        }
+        
+        /* Feature block */
+        .feature {
+            background-color: #f8fafa;
+            padding: 40px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        
+        .feature h2 {
+            font-size: 28px;
+            color: #1a3a9c;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        /* Quote section */
+        .quote {
+            background-color: #4a6fdc;
+            color: white;
+            padding: 40px 30px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .quote-text {
+            font-size: 24px;
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        
+        .quote-author {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        /* Footer */
+        .footer {
+            background-color: #1a3a9c;
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .social-icons a {
+            display: inline-block;
+            margin: 0 10px;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .footer-links {
+            margin: 25px 0;
+        }
+        
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 12px;
+        }
+        
+        .copyright {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+        
+        /* Responsive styles */
+        @media only screen and (max-width: 600px) {
+            .two-column td {
+                display: block;
+                width: 100% !important;
+            }
+            
+            .hero h1 {
+                font-size: 28px;
+            }
+            
+            .hero p {
+                font-size: 16px;
+            }
+            
+            .nav td {
+                display: block;
+                padding: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">BrandCo</div>
+            <div class="tagline">Innovation at every step</div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav">
+            <table cellpadding="0" cellspacing="0">
+                <tr>
+                    <td><a href="#">Home</a></td>
+                    <td><a href="#">Services</a></td>
+                    <td><a href="#">Products</a></td>
+                    <td><a href="#">About</a></td>
+                    <td><a href="#">Contact</a></td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Hero section -->
+        <div class="hero">
+            <h1>Welcome to Our Monthly Update</h1>
+            <p>Discover the latest trends, insights, and company news that matter to you and your business growth.</p>
+            <a href="#" class="cta-button">Explore Now</a>
+        </div>
+        
+        <!-- Two column section -->
+        <div class="two-column">
+            <table cellpadding="0" cellspacing="0">
+                <tr>
+                    <td>
+                        <div class="card">
+                            <div class="card-image">
+                                <img src="https://via.placeholder.com/350x200/4a6fdc/ffffff?text=Innovation" alt="Innovation" />
+                            </div>
+                            <div class="card-content">
+                                <h3>Breaking New Ground</h3>
+                                <p>Our research team has developed breakthrough technology that will revolutionize the industry. Learn how these advancements can benefit your organization.</p>
+                                <p><a href="#">Read more →</a></p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="card">
+                            <div class="card-image">
+                                <img src="https://via.placeholder.com/350x200/2a4eb5/ffffff?text=Strategy" alt="Strategy" />
+                            </div>
+                            <div class="card-content">
+                                <h3>Future Planning Guide</h3>
+                                <p>With changing market conditions, we've compiled essential planning strategies to help your business stay resilient in the coming year.</p>
+                                <p><a href="#">Download guide →</a></p>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Feature block -->
+        <div class="feature">
+            <h2>Quarterly Highlights</h2>
+            <div class="two-column">
+                <table cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td>
+                            <h3>Expanded Services</h3>
+                            <p>We've added three new consulting services to our portfolio, designed to help businesses scale efficiently while maintaining quality standards across operations.</p>
+                        </td>
+                        <td>
+                            <h3>Awards & Recognition</h3>
+                            <p>For the third consecutive year, we've been named among the top 100 innovative companies by Business Today magazine.</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Quote section -->
+        <div class="quote">
+            <div class="quote-text">"The only way to do great work is to love what you do. If you haven't found it yet, keep looking."</div>
+            <div class="quote-author">- Steve Jobs</div>
+        </div>
+        
+        <!-- Last card -->
+        <div class="card">
+            <div class="card-image">
+                <img src="https://via.placeholder.com/700x300/e8f0fe/1a3a9c?text=Upcoming+Events" alt="Events" />
+            </div>
+            <div class="card-content">
+                <h3>Mark Your Calendar</h3>
+                <p>Don't miss our annual industry conference happening next month. Early bird registration is now open with special discounts for newsletter subscribers.</p>
+                <a href="#" class="cta-button" style="display: inline-block; margin-top: 15px;">Register Now</a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="social-icons">
+                <a href="#">Facebook</a>
+                <a href="#">Twitter</a>
+                <a href="#">LinkedIn</a>
+                <a href="#">Instagram</a>
+            </div>
+            
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Contact Us</a>
+                <a href="#">Unsubscribe</a>
+            </div>
+            
+            <div class="copyright">
+                &copy; 2023 BrandCo. All rights reserved.<br />
+                123 Business Avenue, Suite 100, City, State 12345
+            </div>
+        </div>
+    </div>
+</body>
+</html>
