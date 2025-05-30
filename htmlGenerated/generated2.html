@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Newsletter</title>
+    <style>
+        /* Base Styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', 'Roboto', 'Lato', sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 790px;
+            margin: 0 auto;
+            background-color: #fff;
+        }
+        
+        /* Header Styles */
+        .header {
+            background-color: #f5f7fa;
+            padding: 30px 40px;
+            text-align: center;
+            border-bottom: 1px solid #e0e4eb;
+        }
+        
+        .header-title {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: #2c3e50;
+            margin: 0 0 10px;
+        }
+        
+        .header-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        /* Main Content Layout */
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 30px 40px;
+        }
+        
+        .sidebar {
+            flex: 0 0 35%;
+            padding-right: 30px;
+            box-sizing: border-box;
+        }
+        
+        .main-content {
+            flex: 0 0 65%;
+            box-sizing: border-box;
+            border-left: 1px solid #e0e4eb;
+            padding-left: 30px;
+        }
+        
+        /* Section Titles */
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        /* Articles in Sidebar */
+        .article {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e4eb;
+        }
+        
+        .article:last-child {
+            border-bottom: none;
+        }
+        
+        .article-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .article-color-bar {
+            width: 5px;
+            height: 30px;
+            background-color: #3498db;
+            margin-right: 12px;
+        }
+        
+        .article-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .article-text {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        /* Sidebar Image */
+        .sidebar-image {
+            margin-top: 30px;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        
+        .sidebar-image img {
+            width: 100%;
+            height: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-image:hover img {
+            transform: scale(1.02);
+        }
+        
+        /* Main Content Sections */
+        .main-headline {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-top: 0;
+            line-height: 1.3;
+        }
+        
+        .main-image {
+            margin: 20px 0;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        
+        .main-image img {
+            width: 100%;
+            height: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .main-image:hover img {
+            transform: scale(1.02);
+        }
+        
+        .columns {
+            display: flex;
+            margin-top: 20px;
+        }
+        
+        .column {
+            flex: 1;
+            padding-right: 20px;
+        }
+        
+        .column:last-child {
+            padding-right: 0;
+        }
+        
+        .column p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        /* Footer Styles */
+        .footer {
+            background-color: #2c3e50;
+            padding: 20px 0;
+            text-align: center;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer a:hover {
+            color: #2980b9;
+        }
+        
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .sidebar, .main-content {
+                flex: 0 0 100%;
+                padding: 0;
+            }
+            
+            .main-content {
+                border-left: none;
+                border-top: 1px solid #e0e4eb;
+                padding-top: 30px;
+                margin-top: 30px;
+            }
+            
+            .columns {
+                flex-direction: column;
+            }
+            
+            .column {
+                padding-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1 class="header-title">Newsletter</h1>
+            <div class="header-meta">
+                <span>Monday 14th January, 2030</span>
+                <span>Vol.1</span>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Left Sidebar -->
+            <div class="sidebar">
+                <h2 class="section-title">TOP NEWS</h2>
+                
+                <div class="article">
+                    <div class="article-header">
+                        <div class="article-color-bar" style="background-color: #3498db;"></div>
+                        <h3 class="article-title">Market Trends Analysis</h3>
+                    </div>
+                    <div class="article-text">
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus.
+                    </div>
+                </div>
+                
+                <div class="article">
+                    <div class="article-header">
+                        <div class="article-color-bar" style="background-color: #e74c3c;"></div>
+                        <h3 class="article-title">Quarterly Growth Report</h3>
+                    </div>
+                    <div class="article-text">
+                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis.
+                    </div>
+                </div>
+                
+                <div class="article">
+                    <div class="article-header">
+                        <div class="article-color-bar" style="background-color: #2ecc71;"></div>
+                        <h3 class="article-title">New Strategic Partnerships</h3>
+                    </div>
+                    <div class="article-text">
+                        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+                    </div>
+                </div>
+                
+                <h2 class="section-title" style="margin-top: 40px;">LEADING SOLUTIONS FOR A BETTER FUTURE</h2>
+                <div class="article-text">
+                    <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
+                    <p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
+                </div>
+                
+                <div class="sidebar-image">
+                    <img src="https://via.placeholder.com/300x200/2c3e50/ffffff?text=Corporate+Image" alt="Corporate Meeting">
+                </div>
+            </div>
+            
+            <!-- Right Main Content -->
+            <div class="main-content">
+                <h3 class="section-title">Innovation at Work</h3>
+                <h2 class="main-headline">TRANSFORMING BUSINESS TODAY</h2>
+                
+                <div class="main-image">
+                    <img src="https://via.placeholder.com/500x300/3498db/ffffff?text=Business+Innovation" alt="Business Innovation">
+                </div>
+                
+                <div class="columns">
+                    <div class="column">
+                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.</p>
+                        <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus. Mauris iaculis porttitor posuere.</p>
+                    </div>
+                    <div class="column">
+                        <p>Praesent id metus massa, ut blandit odio. Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet.</p>
+                        <p>Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus. In pellentesque faucibus vestibulum.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>© 2030 ReallyGreatSite.com | <a href="https://www.reallygreatsite.com" target="_blank">www.reallygreatsite.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
