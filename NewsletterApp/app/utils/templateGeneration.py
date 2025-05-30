@@ -25,9 +25,16 @@ User prompt is: {user_prompt} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHIN
 
   polished_prompt = polish_response.choices[0].message.content 
   print("Polished prompt: ",polished_prompt)
-  generate_template=f"""Generate a fully responsive and visually appealing HTML newsletter template approximately 790px wide and 1250px tall, using a balanced, professional layout with clear visual hierarchy and consistent spacing. Randomly choose one layout archetype from: hero-first, column-grid, card-style, sidebar-left, sidebar-right, or stacked-content. The layout must include a company logo and name (top-left or centered), a navigation bar with 3 to 5 links, a hero section with a large heading, subtitle, and call-to-action button, alternating image and text blocks, a motivational quote or announcement section, an optional sidebar (left, right, or omitted), and a footer with social media icons and legal/disclaimer text. Use a randomized yet cohesive color palette and a consistent font style (modern serif or sans-serif). Ensure all design elements follow strict rules: use table-based layout for email client compatibility, maintain uniform padding, margin, and alignment, use appropriate text/background contrast, and avoid floating, overlapping, or misaligned elements. Include all CSS within a single <style> tag in the <head>, and use placeholder images from https://via.placeholder.com/ along with filler text where needed. Insert and integrate the following user-provided content naturally into the appropriate sections of the layout: 
-  {polished_prompt}. Output only the complete, production-ready HTML file with no explanations, comments, or markdown."""
-
+  generate_template=f"""Generate a visually appealing, responsive HTML newsletter layout approximately 790px wide and 1250px tall, using a professional design 
+  with clear structure and consistent spacing. Randomly choose one layout style from: hero-first, card-style, stacked-content, column-grid, sidebar-left, or 
+  sidebar-right. Include the following: a company logo and name (top-left or centered), a navigation bar with 3-5 links, a hero section with heading, subtitle, 
+  and CTA button, alternating image-text blocks, a motivational quote or announcement, an optional sidebar (left, right, or omitted), and a footer with social 
+  media icons and legal text. Use a randomized but cohesive color scheme and font pairing (serif/sans-serif). Apply a single <style> tag at the top, no <html>, 
+  <head>, or <body> tags. Ensure layout is clean, well-aligned, and compatible with GrapesJS editor — avoid floating or overlapping elements. Use div-based 
+  layout (not table-based) and insert placeholder images from https://via.placeholder.com/ and dummy text where content is missing. Incorporate and display 
+  his user-provided content where appropriate: {polished_prompt}. Output only the clean HTML, with embedded CSS in a single <style> tag, no explanations or c
+  omments."""
+  
   html_response = client.chat.completions.create(
     model="deepseek/deepseek-chat-v3-0324:free",
     messages=[
@@ -37,8 +44,9 @@ User prompt is: {user_prompt} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHIN
       }
     ]
   )
-
-  if not os.path.exists("./generatedHTMLs"): os.mkdir("./generatedHTMLs")
-  with open("./generatedHTMLs/generated_output.html","w") as f:
+  pathToSaveHtml = "/home/joel/Documents/Newsletter-Generator/NewsletterApp/app/utils/generatedHTMLs"
+  if not os.path.exists(pathToSaveHtml): os.mkdir(pathToSaveHtml)
+  with open(f"{pathToSaveHtml}/generated_output.html", "w") as f:
     f.write(html_response.choices[0].message.content)
+
 
