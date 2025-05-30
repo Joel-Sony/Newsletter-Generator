@@ -4,7 +4,7 @@ import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { layoutSidebarButtons } from '@grapesjs/studio-sdk-plugins';
 
-const GrapesEditor = () => {
+const GrapeEditor = () => {
   useEffect(() => {
     fetch('/generated')
       .then(res => res.text())
@@ -85,4 +85,4 @@ const GrapesEditor = () => {
   );
 };
 
-export default GrapesEditor;
+export default GrapeEditor;

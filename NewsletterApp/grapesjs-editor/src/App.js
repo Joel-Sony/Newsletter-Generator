@@ -1,14 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import GrapesEditor from './components/GrapesEditor';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import GrapeEditor from './components/GrapeEditor.jsx';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/editor" element={<GrapesEditor />} />
-      </Routes>
-    </Router>
+    <GrapeEditor />
   );
 }
 
