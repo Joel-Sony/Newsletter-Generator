@@ -1,9 +1,0 @@
-venv/
-# Ignore Python bytecode files
-*.pyc
-__pycache__/
-
-# Ignore IDE folders (e.g., VSCode)
-.vscode/
-
-.env/
