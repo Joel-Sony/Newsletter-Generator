@@ -17,16 +17,32 @@ def index():
             return f"<h1>Error:</h1><pre>{error_msg}</pre>"
 
     elif request.method == "POST" and not request.files.get("pdf_file"):
-        
         user_prompt = request.form.get("user_prompt")
-        no_template_generation(user_prompt,"/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs")
-        return redirect(url_for('main.editor'))
-
+        no_template_generation(user_prompt, GENERATED_DIR)
+        
+        # Redirect to the editor page where React app will load
+        return redirect('/editor')
 
     return render_template("index.html")
 
 
-@main_bp.route('/generated')
-def serve_generated_html():
-    return send_from_directory('/home/joel/Documents/Newsletter-Generator/NewsletterApp/app/utils/generatedHTMLs', 'generated_output.html')
+#serving the generated template for react app to retrieve it 
+GENERATED_DIR = "/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs"
+
+@main_bp.route('/generated_output.html')
+def serve_generated():
+    return send_from_directory(GENERATED_DIR, 'generated_output.html')
+
+
+#dist is folder thats created after running npm run build when using vite, if using create-react-app then it wont work
+BUILD_DIR = os.path.abspath('/home/joel/Documents/Newsletter-Generator/frontend/newsletter-frontend/dist/') # adjust as needed
+
+@main_bp.route('/editor', defaults={'path': ""})
+@main_bp.route('/editor/<path:path>')
+def serve_editor(path):
+    file_path = os.path.join(BUILD_DIR, path)
+    if path != "" and os.path.exists(file_path):
+        return send_from_directory(BUILD_DIR, path)
+    # Fallback to index.html for React Router
+    return send_from_directory(BUILD_DIR, 'index.html')
 
