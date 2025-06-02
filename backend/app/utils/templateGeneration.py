@@ -4,7 +4,7 @@ import re
 from app.config import OPENROUTER_API_KEY
 
 
-def no_template_generation(user_prompt):
+def no_template_generation(user_prompt, pathToSaveHtml):
   pro_prompt = f"""You are an expert copywriter and HTML email designer. First, take the user's raw prompt that contains newsletter content (such as company information, announcements, goals, etc.) and rewrite it in a more professional, polished, and newsletter-appropriate tone. Maintain the original intent, meaning, and key points, but enhance clarity, tone, and grammar to match corporate or marketing communication standards. Do not remove any meaningful user-provided information—only reword it to sound better.
 User prompt is: {user_prompt} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHING ELSE. """
 
@@ -44,7 +44,7 @@ User prompt is: {user_prompt} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHIN
       }
     ]
   )
-  pathToSaveHtml = "/home/joel/Documents/Newsletter-Generator/NewsletterApp/app/utils/generatedHTMLs"
+
   if not os.path.exists(pathToSaveHtml): os.mkdir(pathToSaveHtml)
   with open(f"{pathToSaveHtml}/generated_output.html", "w") as f:
     f.write(html_response.choices[0].message.content)
