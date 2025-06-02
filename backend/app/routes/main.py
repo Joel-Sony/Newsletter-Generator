@@ -3,7 +3,7 @@ from app.utils.convertApi import convert_pdf_to_html
 from app.utils.templateGeneration import no_template_generation
 import os
 
-main_bp = Blueprint('main', __name__,template_folder=te)
+main_bp = Blueprint('main', __name__,template_folder="/home/joel/Documents/Newsletter-Generator/backend/app/templates")
 
 @main_bp.route('/', methods=["GET", "POST"])
 def index():
@@ -19,29 +19,11 @@ def index():
     elif request.method == "POST" and not request.files.get("pdf_file"):
         
         user_prompt = request.form.get("user_prompt")
-        no_template_generation(user_prompt)
+        no_template_generation(user_prompt,"/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs")
         return redirect(url_for('main.editor'))
 
 
-    return render_template('base.html')
-    
-
-
-main_bp = Blueprint('main', __name__)
-BUILD_DIR = os.path.abspath('../grapesjs-editor/build')
-
-@main_bp.route('/editor', defaults={'path': ''})
-@main_bp.route('/editor/<path:path>')
-def editor(path):
-    # full path to the requested file in your build folder
-    full_path = os.path.join(BUILD_DIR, path)
-
-    # If this file exists, serve it
-    if path and os.path.exists(full_path):
-        return send_from_directory(BUILD_DIR, path)
-
-    # Otherwise, serve index.html (so React Router can handle the route)
-    return send_from_directory(BUILD_DIR, 'index.html')
+    return render_template("index.html")
 
 
 @main_bp.route('/generated')
