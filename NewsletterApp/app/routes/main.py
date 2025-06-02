@@ -1,8 +1,9 @@
 from flask import Blueprint, request, render_template, send_from_directory, redirect, url_for
 from app.utils.convertApi import convert_pdf_to_html
 from app.utils.templateGeneration import no_template_generation
+import os
 
-main_bp = Blueprint('main', __name__)
+main_bp = Blueprint('main', __name__,template_folder=te)
 
 @main_bp.route('/', methods=["GET", "POST"])
 def index():
@@ -10,7 +11,7 @@ def index():
         file = request.files.get("pdf_file")
         success, error_msg = convert_pdf_to_html(file)
 
-        if success:
+        if success: 
             return "<h1>PDF converted to HTML successfully!</h1>"
         else:
             return f"<h1>Error:</h1><pre>{error_msg}</pre>"
@@ -22,11 +23,9 @@ def index():
         return redirect(url_for('main.editor'))
 
 
-    return render_template("index.html")
+    return render_template('base.html')
+    
 
-
-import os
-from flask import Blueprint, send_from_directory
 
 main_bp = Blueprint('main', __name__)
 BUILD_DIR = os.path.abspath('../grapesjs-editor/build')
