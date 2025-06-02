@@ -6,4 +6,4 @@ __pycache__/
 # Ignore IDE folders (e.g., VSCode)
 .vscode/
 
-app/.env
+.env
