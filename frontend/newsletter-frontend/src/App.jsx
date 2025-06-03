@@ -11,7 +11,6 @@ function App() {
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [tone, setTone] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
- 
 
   // Image modal state
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -58,83 +57,172 @@ function App() {
   };
 
   const handleTransform = async () => {
-  if (!selectedComponent) return;
+    if (!selectedComponent) return;
 
-  const originalText = selectedComponent.view?.el?.innerText || '';
-  if (!originalText.trim()) {
-    alert('No text to transform.');
-    return;
-  }
+    const originalText = selectedComponent.view?.el?.innerText || '';
+    if (!originalText.trim()) {
+      alert('No text to transform.');
+      return;
+    }
 
-  if (!tone) {
-    alert('Please select a tone.');
-    return;
-  }
+    if (!tone) {
+      alert('Please select a tone.');
+      return;
+    }
 
-  if (tone === 'Custom Tone' && !customPrompt.trim()) {
-    alert('Please enter a custom prompt.');
-    return;
-  }
+    if (tone === 'Custom Tone' && !customPrompt.trim()) {
+      alert('Please enter a custom prompt.');
+      return;
+    }
 
-  try {
-    setLoading(true); // start loading
+    try {
+      setLoading(true); // start loading
 
-    const response = await fetch('http://localhost:5000/transformText', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: originalText,
-        tone: tone === 'Custom Tone' ? 'Custom' : tone,
-        prompt: customPrompt,
-      }),
+      const response = await fetch('http://localhost:5000/transformText', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: originalText,
+          tone: tone === 'Custom Tone' ? 'Custom' : tone,
+          prompt: customPrompt,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Server error');
+
+      const data = await response.json();
+      const newText = data.transformed || '[Error: Empty response]';
+
+      selectedComponent.components([{ type: 'text', content: newText }]);
+      closeModal();
+    } catch (err) {
+      alert('Failed to transform text: ' + err.message);
+    } finally {
+      setLoading(false); // stop loading
+    }
+  };
+
+  const handleImageGeneration = async () => {
+    if (!imagePrompt.trim()) {
+      alert('Please enter an image prompt.');
+      return;
+    }
+
+    try {
+      setLoading(true); // start loading
+
+      const response = await fetch('http://localhost:5000/generateImage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: imagePrompt }),
+      });
+
+      if (!response.ok) throw new Error('Image generation failed');
+
+      const { image_base64, mime_type } = await response.json();
+      const dataUrl = `data:${mime_type};base64,${image_base64}`;
+
+      selectedImageComponent.addAttributes({ src: dataUrl });
+      closeImageModal();
+    } catch (err) {
+      alert('Image generation error: ' + err.message);
+    } finally {
+      setLoading(false); // stop loading
+    }
+  };
+
+  // Function to export the HTML from GrapesJS and send to server for PDF conversion
+  const exportToPDF = (editor) => {
+  // Get HTML and CSS content from GrapesJS
+  const htmlContent = editor.getHtml();
+  const cssContent = editor.getCss();
+
+  // Combine HTML and CSS into one self-contained HTML file
+  const fullHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>${cssContent}</style>
+    </head>
+    <body>
+      ${htmlContent}
+    </body>
+    </html>
+  `;
+
+  // Create a Blob from the combined HTML
+  const blob = new Blob([fullHtml], { type: 'text/html' });
+
+  // Prepare the form data to send to the backend
+  const formData = new FormData();
+  formData.append('file', blob, 'combined.html');  // Attach the HTML blob
+
+  // Send the HTML content to the server
+  fetch('/convertToPdf', {
+    method: 'POST',
+    body: formData
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.pdf_path) {
+        alert(`PDF converted successfully! You can download it from: ${data.pdf_path}`);
+        // Optional: auto-download
+        window.open(data.pdf_path, '_blank');
+      } else {
+        alert('Error converting to PDF');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while converting to PDF');
     });
-
-    if (!response.ok) throw new Error('Server error');
-
-    const data = await response.json();
-    const newText = data.transformed || '[Error: Empty response]';
-
-    selectedComponent.components([{ type: 'text', content: newText }]);
-    closeModal();
-  } catch (err) {
-    alert('Failed to transform text: ' + err.message);
-  } finally {
-    setLoading(false); // stop loading
-  }
 };
 
 
-  const handleImageGeneration = async () => {
-  if (!imagePrompt.trim()) {
-    alert('Please enter an image prompt.');
-    return;
-  }
+  useEffect(() => {
+    if (editorReady) {
+      // Add custom button to the editor's top toolbar
+      editorReady.Panels.addButton('options', {
+        id: 'export-pdf', // Button ID
+        className: 'fa fa-download', // Use any icon you like
+        label: 'Export to PDF',
+        command: 'export-pdf', // Custom command
+        attributes: { title: 'Export the current design to PDF' },
+      });
 
-  try {
-    setLoading(true); // start loading
-
-    const response = await fetch('http://localhost:5000/generateImage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: imagePrompt }),
-    });
-
-    if (!response.ok) throw new Error('Image generation failed');
-
-    const { image_base64, mime_type } = await response.json();
-    const dataUrl = `data:${mime_type};base64,${image_base64}`;
-
-    selectedImageComponent.addAttributes({ src: dataUrl });
-    closeImageModal();
-  } catch (err) {
-    alert('Image generation error: ' + err.message);
-  } finally {
-    setLoading(false); // stop loading
-  }
-  };
+      // Register the custom command to trigger exportToPDF
+      editorReady.Commands.add('export-pdf', {
+        run: function(editor) {
+          // Call the exportToPDF function
+          exportToPDF(editor);
+        },
+      });
+    }
+  }, [editorReady]);
 
   return (
     <div style={{ height: '100vh' }}>
+      <div style={{ position: 'fixed', top: 10, left: 10, zIndex: 9999 }}>
+        {/* Export to PDF Button */}
+        <button
+          onClick={() => editorReady && exportToPDF(editorReady)}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            zIndex: 9999
+          }}
+        >
+          Export to PDF
+        </button>
+      </div>
+
       <StudioEditor
         onReady={editor => setEditorReady(editor)}
         options={{
@@ -252,20 +340,19 @@ function App() {
                 Cancel
               </button>
               <button
-                  onClick={handleTransform}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: loading ? '#999' : '#4CAF50',
-                    border: 'none',
-                    color: 'white',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    borderRadius: 4,
-                  }}
-                >
-                  {loading ? 'Generating...' : 'Transform'}
+                onClick={handleTransform}
+                disabled={loading}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: loading ? '#999' : '#4CAF50',
+                  border: 'none',
+                  color: 'white',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  borderRadius: 4,
+                }}
+              >
+                {loading ? 'Generating...' : 'Transform'}
               </button>
-
             </div>
           </div>
         </div>
@@ -298,7 +385,7 @@ function App() {
               gap: 12,
             }}
           >
-            <h3 style={{ margin: 0 }}>Generate Image (AI)</h3>
+            <h3 style={{ margin: 0 }}>Enter Image Prompt</h3>
             <textarea
               rows={4}
               value={imagePrompt}
@@ -306,27 +393,24 @@ function App() {
               style={{ padding: 8, fontSize: 14, resize: 'vertical' }}
               placeholder="Describe the image you want to generate"
             />
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
               <button onClick={closeImageModal} style={{ padding: '6px 12px' }}>
                 Cancel
               </button>
               <button
                 onClick={handleImageGeneration}
+                disabled={loading}
                 style={{
                   padding: '6px 12px',
-                  backgroundColor: '#2196F3',
+                  backgroundColor: loading ? '#999' : '#4CAF50',
                   border: 'none',
                   color: 'white',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   borderRadius: 4,
-                  opacity: loading ? 0.7 : 1,
                 }}
-                disabled={loading}
               >
-                {loading ? 'Generating...' : 'Generate'}
-            </button>
-
+                {loading ? 'Generating...' : 'Generate Image'}
+              </button>
             </div>
           </div>
         </div>
