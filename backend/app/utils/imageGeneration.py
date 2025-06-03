@@ -9,39 +9,40 @@ API_KEY = IMAGEROUTER_API_KEY
 
 
 def generate_image(user_prompt):
-    # Build the full prompt
-    full_prompt = f"{user_prompt}"
-
-    # Prepare headers and body
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "prompt": full_prompt,
+        "prompt": user_prompt,
         "model": "stabilityai/sdxl-turbo:free",
         "quality": "auto"
     }
 
-    # Send the request
     response = requests.post(API_URL, headers=headers, json=payload)
     response.raise_for_status()
     data = response.json()
 
-    # Handle possible result types
     result = data.get("data", [])[0]
+    image = None
 
     if "b64_json" in result:
-        # Decode base64 string to image
         image_data = base64.b64decode(result["b64_json"])
         image = Image.open(BytesIO(image_data))
     elif "url" in result:
-        # Download image from URL
         image_response = requests.get(result["url"])
+        image_response.raise_for_status()
         image = Image.open(BytesIO(image_response.content))
     else:
         raise ValueError("No image data found in response.")
 
-    return image
-
+    # Always return base64-encoded PNG
+    output_buffer = BytesIO()
+    image.convert("RGB").save(output_buffer, format="PNG")
+    base64_str = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
+    
+    return {
+        "image_base64": base64_str,
+        "mime_type": "image/png"
+    }
