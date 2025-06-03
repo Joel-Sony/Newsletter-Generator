@@ -43,15 +43,18 @@ User prompt is: {user_prompt} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHIN
   print("Polished prompt: ",polished_prompt)
   html_string = ""
   while(not isHTML(html_string)):
-    generate_template=f"""Generate a visually appealing, responsive HTML newsletter layout approximately 790px wide and 1250px tall, using a professional design 
-    with clear structure and consistent spacing. Randomly choose one layout style from: hero-first, card-style, stacked-content, column-grid, sidebar-left, or 
-    sidebar-right. Include the following: a company logo and name (top-left or centered), a navigation bar with 3-5 links, a hero section with heading, subtitle, 
-    and CTA button, alternating image-text blocks, a motivational quote or announcement, an optional sidebar (left, right, or omitted), and a footer with social 
-    media icons and legal text. Use a randomized but cohesive color scheme and font pairing (serif/sans-serif). Apply a single <style> tag at the top, no <html>, 
-    <head>, or <body> tags. Ensure layout is clean, well-aligned, and compatible with GrapesJS editor — avoid floating or overlapping elements. Use div-based 
-    layout (not table-based) and insert placeholder images from https://via.placeholder.com/ and dummy text where content is missing. Incorporate and display 
-    his user-provided content where appropriate: {polished_prompt}. Output only the clean HTML, with embedded CSS in a single <style> tag, no explanations or c
-    omments."""
+    generate_template=f"""Generate a visually appealing, responsive HTML newsletter layout approximately 790px wide and 1250px tall, using a professional
+    design with clear structure and consistent spacing. Randomly choose one layout style from: hero-first, card-style, stacked-content, column-grid, 
+    sidebar-left, or sidebar-right. Include the following: a company logo and name (top-left or centered), a navigation bar with 3–5 links, a hero section
+    with heading, subtitle, and CTA button, alternating image-text blocks, a motivational quote or announcement, an optional sidebar (left, right, or 
+    omitted), and a footer with social media icons and legal text. Use a randomly generated but cohesive color scheme and font pairing (serif/sans-serif) 
+    to ensure visual appeal and contrast. Apply a single <style> tag at the top, no <html>, <head>, or <body> tags. Ensure layout is clean, well-aligned, 
+    and compatible with the GrapesJS editor — avoid floating or overlapping elements. Use div-based layout (not table-based) and insert placeholder images
+    from https://via.placeholder.com/. Do **not** use placeholder or filler text like “Lorem Ipsum”; leave text sections empty or insert meaningful user-
+    provided content where relevant. Incorporate and display this user-provided content where appropriate: {polished_prompt}. Output only the clean HTML,
+    with embedded CSS in a single <style> tag, no explanations or comments.
+
+"""
     
     html_response = client.chat.completions.create(
       model="deepseek/deepseek-chat-v3-0324:free",
