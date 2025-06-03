@@ -1,14 +1,58 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Newsletter Generator</title>
+  <style>
+    #loading {
+      display: none;
+      font-weight: bold;
+      font-size: 1.2em;
+      margin-top: 20px;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
 
-{% block title %}
-    Newsletter AI
-{% endblock %}
+  <form id="prompt-form" method="POST" enctype="multipart/form-data">
+    <textarea name="user_prompt" placeholder="Enter prompt here"></textarea>
+    <input type="file" name="pdf_file" />
+    <button type="submit">Generate Template</button>
+  </form>
 
-{% block body %}
-    <form id="promptBox" action="" method="POST" enctype="multipart/form-data">
-        <input type="text" name="user_prompt" placeholder="Enter content" required><br><br>
-        <label for="pdf_file">Upload template as PDF</label><br>
-        <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf" ><br><br>
-        <input type="submit" value="Create template">
-    </form>
-{% endblock %}
+  <div id="loading">Generating template, please wait...</div>
+
+  <script>
+    const form = document.getElementById('prompt-form');
+    const loadingDiv = document.getElementById('loading');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loadingDiv.style.display = 'block';
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch('/', {
+          method: 'POST',
+          body: formData,
+          redirect: 'follow'  // FOLLOW the redirect automatically
+        });
+
+        if (response.redirected) {
+          // Redirected by server → go there
+          window.location.href = response.url;
+        } else {
+          loadingDiv.style.display = 'none';
+          alert("Unexpected response. Template might not have been generated.");
+        }
+      } catch (error) {
+        loadingDiv.style.display = 'none';
+        alert("Network error: " + error.message);
+      }
+    });
+  </script>
+
+</body>
+</html>
