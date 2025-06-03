@@ -6,6 +6,12 @@ function App() {
   const [htmlContent, setHtmlContent] = useState(null);
   const [editorReady, setEditorReady] = useState(null);
 
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedComponent, setSelectedComponent] = useState(null);
+  const [tone, setTone] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+
   useEffect(() => {
     fetch('http://localhost:5000/generated_output.html')
       .then(res => res.text())
@@ -21,42 +27,35 @@ function App() {
     }
   }, [htmlContent, editorReady]);
 
-  // Helper: show a prompt to select tone (simplified)
-  const askForTone = () => {
-    const tones = ['Formal', 'Humorous', 'Authoritative', 'Inspirational', 'Custom Tone'];
-    let toneChoice = prompt(
-      `Select tone by entering number:\n${tones
-        .map((t, i) => `${i + 1}. ${t}`)
-        .join('\n')}`
-    );
-    if (!toneChoice) return null;
-
-    const index = parseInt(toneChoice, 10) - 1;
-    if (index < 0 || index >= tones.length) return null;
-    return tones[index];
+  const openModal = (component) => {
+    setSelectedComponent(component);
+    setTone('');
+    setCustomPrompt('');
+    setModalOpen(true);
   };
 
-  // Main transform function
-  const handleTransform = async (component) => {
-    const originalText = component.view?.el?.innerText || '';
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedComponent(null);
+  };
+
+  const handleTransform = async () => {
+    if (!selectedComponent) return;
+
+    const originalText = selectedComponent.view?.el?.innerText || '';
     if (!originalText.trim()) {
       alert('No text to transform.');
       return;
     }
 
-    const selectedTone = askForTone();
-    if (!selectedTone) {
-      alert('No valid tone selected.');
+    if (!tone) {
+      alert('Please select a tone.');
       return;
     }
 
-    let customPrompt = '';
-    if (selectedTone === 'Custom Tone') {
-      customPrompt = prompt('Describe how you want the text to be transformed:') || '';
-      if (!customPrompt.trim()) {
-        alert('Custom prompt is empty. Aborting.');
-        return;
-      }
+    if (tone === 'Custom Tone' && !customPrompt.trim()) {
+      alert('Please enter a custom prompt.');
+      return;
     }
 
     try {
@@ -65,7 +64,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: originalText,
-          tone: selectedTone === 'Custom Tone' ? 'Custom' : selectedTone,
+          tone: tone === 'Custom Tone' ? 'Custom' : tone,
           prompt: customPrompt,
         }),
       });
@@ -75,7 +74,8 @@ function App() {
       const data = await response.json();
       const newText = data.transformed || '[Error: Empty response]';
 
-      component.components([{ type: 'text', content: newText }]);
+      selectedComponent.components([{ type: 'text', content: newText }]);
+      closeModal();
     } catch (err) {
       alert('Failed to transform text: ' + err.message);
     }
@@ -113,7 +113,7 @@ function App() {
                         id: 'transformTextAI',
                         label: 'Transform Text (AI)',
                         icon: 'sparkles',
-                        onClick: () => handleTransform(component),
+                        onClick: () => openModal(component),
                       },
                     ],
                   },
@@ -123,6 +123,85 @@ function App() {
           ],
         }}
       />
+
+      {/* Modal Overlay */}
+      {modalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+          }}
+          onClick={closeModal}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: 20,
+              width: 320,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>Select Tone</h3>
+            <select
+              value={tone}
+              onChange={e => setTone(e.target.value)}
+              style={{ padding: 8, fontSize: 16 }}
+            >
+              <option value="" disabled>
+                -- Choose a tone --
+              </option>
+              <option value="Formal">Formal</option>
+              <option value="Humorous">Humorous</option>
+              <option value="Authoritative">Authoritative</option>
+              <option value="Inspirational">Inspirational</option>
+              <option value="Custom Tone">Custom Tone</option>
+            </select>
+
+            {tone === 'Custom Tone' && (
+              <>
+                <label htmlFor="customPrompt">Describe how to transform:</label>
+                <textarea
+                  id="customPrompt"
+                  rows={4}
+                  value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value)}
+                  style={{ padding: 8, fontSize: 14, resize: 'vertical' }}
+                  placeholder="Enter your custom transformation instructions"
+                />
+              </>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+              <button onClick={closeModal} style={{ padding: '6px 12px' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleTransform}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#4CAF50',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                }}
+              >
+                Transform
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
