@@ -6,11 +6,18 @@ function App() {
   const [htmlContent, setHtmlContent] = useState(null);
   const [editorReady, setEditorReady] = useState(null);
 
-  // Modal state
+  // Text modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [tone, setTone] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
+ 
+
+  // Image modal state
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImageComponent, setSelectedImageComponent] = useState(null);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:5000/generated_output.html')
@@ -39,46 +46,91 @@ function App() {
     setSelectedComponent(null);
   };
 
+  const openImageModal = (component) => {
+    setSelectedImageComponent(component);
+    setImagePrompt('');
+    setImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedImageComponent(null);
+  };
+
   const handleTransform = async () => {
-    if (!selectedComponent) return;
+  if (!selectedComponent) return;
 
-    const originalText = selectedComponent.view?.el?.innerText || '';
-    if (!originalText.trim()) {
-      alert('No text to transform.');
-      return;
-    }
+  const originalText = selectedComponent.view?.el?.innerText || '';
+  if (!originalText.trim()) {
+    alert('No text to transform.');
+    return;
+  }
 
-    if (!tone) {
-      alert('Please select a tone.');
-      return;
-    }
+  if (!tone) {
+    alert('Please select a tone.');
+    return;
+  }
 
-    if (tone === 'Custom Tone' && !customPrompt.trim()) {
-      alert('Please enter a custom prompt.');
-      return;
-    }
+  if (tone === 'Custom Tone' && !customPrompt.trim()) {
+    alert('Please enter a custom prompt.');
+    return;
+  }
 
-    try {
-      const response = await fetch('http://localhost:5000/transformText', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: originalText,
-          tone: tone === 'Custom Tone' ? 'Custom' : tone,
-          prompt: customPrompt,
-        }),
-      });
+  try {
+    setLoading(true); // start loading
 
-      if (!response.ok) throw new Error('Server error');
+    const response = await fetch('http://localhost:5000/transformText', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: originalText,
+        tone: tone === 'Custom Tone' ? 'Custom' : tone,
+        prompt: customPrompt,
+      }),
+    });
 
-      const data = await response.json();
-      const newText = data.transformed || '[Error: Empty response]';
+    if (!response.ok) throw new Error('Server error');
 
-      selectedComponent.components([{ type: 'text', content: newText }]);
-      closeModal();
-    } catch (err) {
-      alert('Failed to transform text: ' + err.message);
-    }
+    const data = await response.json();
+    const newText = data.transformed || '[Error: Empty response]';
+
+    selectedComponent.components([{ type: 'text', content: newText }]);
+    closeModal();
+  } catch (err) {
+    alert('Failed to transform text: ' + err.message);
+  } finally {
+    setLoading(false); // stop loading
+  }
+};
+
+
+  const handleImageGeneration = async () => {
+  if (!imagePrompt.trim()) {
+    alert('Please enter an image prompt.');
+    return;
+  }
+
+  try {
+    setLoading(true); // start loading
+
+    const response = await fetch('http://localhost:5000/generateImage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: imagePrompt }),
+    });
+
+    if (!response.ok) throw new Error('Image generation failed');
+
+    const { image_base64, mime_type } = await response.json();
+    const dataUrl = `data:${mime_type};base64,${image_base64}`;
+
+    selectedImageComponent.addAttributes({ src: dataUrl });
+    closeImageModal();
+  } catch (err) {
+    alert('Image generation error: ' + err.message);
+  } finally {
+    setLoading(false); // stop loading
+  }
   };
 
   return (
@@ -119,26 +171,7 @@ function App() {
                   },
                 },
               });
-            },
-            editor => {
-              // TEXT component transformation
-              editor.Components.addType('text', {
-                model: {
-                  defaults: {
-                    contextMenu: ({ items, component }) => [
-                      ...items,
-                      {
-                        id: 'transformTextAI',
-                        label: 'Transform Text (AI)',
-                        icon: 'sparkles',
-                        onClick: () => openModal(component),
-                      },
-                    ],
-                  },
-                },
-              });
 
-              // IMAGE component right-click actions
               editor.Components.addType('image', {
                 model: {
                   defaults: {
@@ -148,10 +181,7 @@ function App() {
                         id: 'replaceImageAI',
                         label: 'Replace Image (AI)',
                         icon: 'image',
-                        onClick: () => {
-                          alert('This is where your AI image replacement/modal can go.');
-                          // TODO: Trigger image picker or modal
-                        },
+                        onClick: () => openImageModal(component),
                       },
                     ],
                   },
@@ -162,7 +192,7 @@ function App() {
         }}
       />
 
-      {/* Modal Overlay */}
+      {/* TEXT MODAL */}
       {modalOpen && (
         <div
           style={{
@@ -195,9 +225,7 @@ function App() {
               onChange={e => setTone(e.target.value)}
               style={{ padding: 8, fontSize: 16 }}
             >
-              <option value="" disabled>
-                -- Choose a tone --
-              </option>
+              <option value="" disabled>-- Choose a tone --</option>
               <option value="Formal">Formal</option>
               <option value="Humorous">Humorous</option>
               <option value="Authoritative">Authoritative</option>
@@ -224,18 +252,81 @@ function App() {
                 Cancel
               </button>
               <button
-                onClick={handleTransform}
+                  onClick={handleTransform}
+                  disabled={loading}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: loading ? '#999' : '#4CAF50',
+                    border: 'none',
+                    color: 'white',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    borderRadius: 4,
+                  }}
+                >
+                  {loading ? 'Generating...' : 'Transform'}
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IMAGE MODAL */}
+      {imageModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+          }}
+          onClick={closeImageModal}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: 20,
+              width: 320,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>Generate Image (AI)</h3>
+            <textarea
+              rows={4}
+              value={imagePrompt}
+              onChange={e => setImagePrompt(e.target.value)}
+              style={{ padding: 8, fontSize: 14, resize: 'vertical' }}
+              placeholder="Describe the image you want to generate"
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+              <button onClick={closeImageModal} style={{ padding: '6px 12px' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleImageGeneration}
                 style={{
                   padding: '6px 12px',
-                  backgroundColor: '#4CAF50',
+                  backgroundColor: '#2196F3',
                   border: 'none',
                   color: 'white',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   borderRadius: 4,
+                  opacity: loading ? 0.7 : 1,
                 }}
+                disabled={loading}
               >
-                Transform
-              </button>
+                {loading ? 'Generating...' : 'Generate'}
+            </button>
+
             </div>
           </div>
         </div>
