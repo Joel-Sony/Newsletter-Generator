@@ -120,6 +120,44 @@ function App() {
                 },
               });
             },
+            editor => {
+              // TEXT component transformation
+              editor.Components.addType('text', {
+                model: {
+                  defaults: {
+                    contextMenu: ({ items, component }) => [
+                      ...items,
+                      {
+                        id: 'transformTextAI',
+                        label: 'Transform Text (AI)',
+                        icon: 'sparkles',
+                        onClick: () => openModal(component),
+                      },
+                    ],
+                  },
+                },
+              });
+
+              // IMAGE component right-click actions
+              editor.Components.addType('image', {
+                model: {
+                  defaults: {
+                    contextMenu: ({ items, component }) => [
+                      ...items,
+                      {
+                        id: 'replaceImageAI',
+                        label: 'Replace Image (AI)',
+                        icon: 'image',
+                        onClick: () => {
+                          alert('This is where your AI image replacement/modal can go.');
+                          // TODO: Trigger image picker or modal
+                        },
+                      },
+                    ],
+                  },
+                },
+              });
+            },
           ],
         }}
       />
