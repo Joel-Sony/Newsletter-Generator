@@ -70,6 +70,10 @@ def convert_html_to_pdf(file_path, output_dir='uploads/converted_pdfs'):
             {
                 "Name": "StoreFile",
                 "Value": True
+            },
+            {
+                "Name":"PageSize",
+                "Value":"A4"
             }
         ]
     }
