@@ -8,6 +8,7 @@ from flask import (
     jsonify,
     send_file,
 )
+
 from app.utils.convertApi import convert_pdf_to_html
 from app.utils.templateGeneration import no_template_generation
 from app.utils.transformText import transformText
