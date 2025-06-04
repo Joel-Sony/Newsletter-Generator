@@ -203,25 +203,27 @@ function App() {
 
   return (
     <div style={{ height: '100vh' }}>
-      <div style={{ position: 'fixed', top: 10, left: 10, zIndex: 9999 }}>
-        {/* Export to PDF Button */}
-        <button
-          onClick={() => editorReady && exportToPDF(editorReady)}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            zIndex: 9999
-          }}
-        >
-          Export to PDF
-        </button>
-      </div>
+        <div style={{ position: 'fixed', top: 12, left: 300, zIndex: 9999 }}>
+          {/* Export to PDF Button */}
+          <button
+            onClick={() => editorReady && exportToPDF(editorReady)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '14px',
+              backgroundColor: '#7E57C2', // Purple
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              zIndex: 9999
+            }}
+          >
+            Export to PDF
+          </button>
+        </div>
+
+
 
       <StudioEditor
         onReady={editor => setEditorReady(editor)}
