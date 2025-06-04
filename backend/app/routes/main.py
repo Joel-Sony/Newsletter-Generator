@@ -40,7 +40,7 @@ def index():
     elif request.method == "POST" and not request.files.get("pdf_file"):
         user_prompt = request.form.get("user_prompt")
         no_template_generation(
-            user_prompt,
+            user_prompt,    
             "/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs",
         )
         return redirect("/editor")  # Go to editor after AI template is ready
