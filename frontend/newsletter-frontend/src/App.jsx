@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
+import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 
 function App() {
   const [htmlContent, setHtmlContent] = useState(null);
@@ -111,7 +112,7 @@ function App() {
     try {
       setLoading(true); // start loading
 
-      const response = await fetch('http://localhost:5000/generateImage', {
+      const response = await fetch('http://localhost:5000 /generateImage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: imagePrompt }),
@@ -203,7 +204,7 @@ function App() {
 
   return (
     <div style={{ height: '100vh' }}>
-        <div style={{ position: 'fixed', top: 12, left: 300, zIndex: 9999 }}>
+        <div style={{ position: 'absolute', top: 12, left: 300, zIndex: 9999 }}>
           {/* Export to PDF Button */}
           <button
             onClick={() => editorReady && exportToPDF(editorReady)}
@@ -245,6 +246,7 @@ function App() {
             },
           },
           plugins: [
+            canvasAbsoluteMode,
             editor => {
               editor.Components.addType('text', {
                 model: {
@@ -276,6 +278,22 @@ function App() {
                     ],
                   },
                 },
+              });
+              editor.Components.addType('imageBox', {
+                model: {
+                  defaults: {
+                    // Add custom context menu for image-box
+                    contextMenu: ({ items, component }) => [
+                      ...items,
+                      {
+                        id: 'replaceImageBoxAI',
+                        label: 'Replace Image (AI)',
+                        icon: 'image',
+                        onClick: () => openImageModal(component),
+                      },
+                    ],
+                  },
+                }
               });
             },
           ],
