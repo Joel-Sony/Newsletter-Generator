@@ -5,133 +5,454 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Newsletter Generator</title>
   <style>
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* CSS Variables */
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --glass-bg: rgba(255, 255, 255, 0.25);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --shadow-soft: 0 8px 32px rgba(31, 38, 135, 0.37);
+      --shadow-hover: 0 15px 35px rgba(31, 38, 135, 0.5);
+      --border-radius: 20px;
+      --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
     /* Global Styles */
-    body {
-      font-family: 'Arial', sans-serif;
+    * {
       margin: 0;
       padding: 0;
-      background-color: #f4f7fc;
-      color: #333;
+      box-sizing: border-box;
     }
-    h1 {
-      font-size: 2rem;
-      color: #3b82f6;
-      text-align: center;
-      margin-bottom: 30px;
-      animation: fadeIn 1s ease-out;
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow-x: hidden;
     }
-    /* Form Container */
+
+    /* Animated Background Elements */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+      animation: backgroundMove 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundMove {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(1deg); }
+      66% { transform: translate(-20px, 20px) rotate(-1deg); }
+    }
+
+    /* Main Container */
     .form-container {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      animation: slideIn 0.6s ease-out;
+      max-width: 500px;
+      width: 90%;
+      position: relative;
+      z-index: 10;
+      animation: containerEntry 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    /* Input Field */
-    textarea, input[type="file"], button {
+
+    @keyframes containerEntry {
+      0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Glassmorphism Card */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--border-radius);
+      padding: 40px 35px;
+      box-shadow: var(--shadow-soft);
+      transition: var(--transition);
+    }
+
+    .glass-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* Title */
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 35px;
+      letter-spacing: -0.02em;
+      animation: titleGlow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes titleGlow {
+      0% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
+      100% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)); }
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 8px;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+    }
+
+    /* Input Styles */
+    input, textarea {
       width: 100%;
-      padding: 15px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 15px;
+      color: white;
       font-size: 1rem;
-      transition: all 0.3s ease-in-out;
+      font-family: inherit;
+      transition: var(--transition);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
+
+    input::placeholder, textarea::placeholder {
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
     textarea {
       resize: vertical;
-      min-height: 150px;
-      max-height: 300px;
+      min-height: 120px;
+      max-height: 200px;
     }
-    input[type="file"] {
-      font-size: 0.9rem;
-    }
-    button {
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      font-size: 1.1rem;
-      font-weight: bold;
+
+    /* File Upload */
+    .file-upload {
+      position: relative;
+      overflow: hidden;
       cursor: pointer;
-      transition: background-color 0.3s ease;
     }
-    button:hover {
-      background-color: #2563eb;
+
+    .file-upload input[type="file"] {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
     }
-    button:active {
-      background-color: #1d4ed8;
+
+    .file-upload-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+      transition: var(--transition);
+      cursor: pointer;
     }
+
+    .file-upload-label:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .file-upload-icon {
+      width: 20px;
+      height: 20px;
+      opacity: 0.7;
+    }
+
+    /* Submit Button */
+    .submit-btn {
+      width: 100%;
+      padding: 18px;
+      background: var(--primary-gradient);
+      border: none;
+      border-radius: 15px;
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .submit-btn:hover::before {
+      left: 100%;
+    }
+
+    .submit-btn:active {
+      transform: translateY(-1px);
+    }
+
     /* Loading Indicator */
     #loading {
       display: none;
-      font-weight: bold;
-      font-size: 1.2em;
-      margin-top: 20px;
-      color: #3b82f6;
       text-align: center;
-      animation: fadeIn 1s ease-out;
+      margin-top: 25px;
+      animation: fadeIn 0.5s ease-out;
     }
-    /* Animation Keyframes */
-    @keyframes fadeIn {
-      0% { opacity: 0; }
-      100% { opacity: 1; }
+
+    .loader {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 15px;
     }
-    @keyframes slideIn {
-      0% { transform: translateY(-30px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
-    /* Responsive Styles */
+
+    .loading-text {
+      color: white;
+      font-weight: 500;
+      font-size: 1.1rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Floating Elements */
+    .floating-element {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      animation: float 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .floating-element:nth-child(1) {
+      width: 60px;
+      height: 60px;
+      top: 10%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .floating-element:nth-child(2) {
+      width: 40px;
+      height: 40px;
+      top: 70%;
+      right: 10%;
+      animation-delay: 2s;
+    }
+
+    .floating-element:nth-child(3) {
+      width: 80px;
+      height: 80px;
+      bottom: 20%;
+      left: 5%;
+      animation-delay: 4s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+
+    /* Responsive Design */
     @media (max-width: 768px) {
       .form-container {
-        padding: 15px;
+        width: 95%;
+        margin: 20px auto;
       }
-      textarea {
-        font-size: 0.9rem;
+      
+      .glass-card {
+        padding: 30px 25px;
       }
-      button {
-        font-size: 1rem;
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .form-row {
+        flex-direction: column;
+        gap: 0;
+      }
+      
+      input, textarea {
+        padding: 14px 16px;
+        font-size: 0.95rem;
       }
     }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
   </style>
 </head>
 <body>
+  <!-- Floating Background Elements -->
+  <div class="floating-element"></div>
+  <div class="floating-element"></div>
+  <div class="floating-element"></div>
 
   <!-- Main Container -->
   <div class="form-container">
-    
-    <!-- Title -->
-    <h1>Newsletter Template Generator</h1>
+    <div class="glass-card">
+      
+      <!-- Title -->
+      <h1>Newsletter Generator</h1>
 
-    <!-- Form -->
-    <form id="prompt-form" method="POST" enctype="multipart/form-data">
-      
-      <!-- Textarea -->
-      <textarea name="user_prompt" placeholder="Enter your prompt here"></textarea>
-      
-      <!-- File Upload -->
-      <div>
-        <label for="pdf_file">Upload your PDF:</label>
-        <input type="file" name="pdf_file" id="pdf_file" />
+      <!-- Form -->
+      <form id="prompt-form" method="POST" enctype="multipart/form-data">
+        
+        <!-- Topic and Tone Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="topic">Topic</label>
+            <input type="text" name="topic" id="topic" placeholder="Enter your topic" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="tone">Tone</label>
+            <input type="text" name="tone" id="tone" placeholder="Professional, casual...">
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="form-group">
+          <label for="user_prompt">Content</label>
+          <textarea name="user_prompt" id="user_prompt" placeholder="Enter your newsletter content here..." required></textarea>
+        </div>
+
+        <!-- File Upload -->
+        <div class="form-group">
+          <label>PDF Upload (Optional)</label>
+          <div class="file-upload">
+            <input type="file" name="pdf_file" id="pdf_file" accept=".pdf">
+            <label for="pdf_file" class="file-upload-label">
+              <svg class="file-upload-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              <span id="file-text">Choose PDF file or drag here</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="submit-btn">
+          Generate Newsletter
+        </button>
+      </form>
+
+      <!-- Loading Indicator -->
+      <div id="loading">
+        <div class="loader"></div>
+        <div class="loading-text">Crafting your newsletter...</div>
       </div>
-      
-      <!-- Submit Button -->
-      <button type="submit">Generate Template</button>
-    </form>
 
-    <!-- Loading Indicator -->
-    <div id="loading">Generating template, please wait...</div>
-
+    </div>
   </div>
 
   <script>
     const form = document.getElementById('prompt-form');
     const loadingDiv = document.getElementById('loading');
+    const fileInput = document.getElementById('pdf_file');
+    const fileText = document.getElementById('file-text');
 
+    // File upload feedback
+    fileInput.addEventListener('change', function(e) {
+      if (e.target.files.length > 0) {
+        fileText.textContent = `Selected: ${e.target.files[0].name}`;
+      } else {
+        fileText.textContent = 'Choose PDF file or drag here';
+      }
+    });
+
+    // Form submission
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // Show loading with animation
       loadingDiv.style.display = 'block';
+      
+      // Add subtle shake animation to form during processing
+      form.style.pointerEvents = 'none';
+      form.style.opacity = '0.7';
 
       const formData = new FormData(form);
 
@@ -139,20 +460,69 @@
         const response = await fetch('/', {
           method: 'POST',
           body: formData,
-          redirect: 'follow'  // FOLLOW the redirect automatically
+          redirect: 'follow'
         });
 
         if (response.redirected) {
-          // Redirected by server → go there
           window.location.href = response.url;
         } else {
+          // Reset form state
           loadingDiv.style.display = 'none';
-          alert("Unexpected response. Template might not have been generated.");
+          form.style.pointerEvents = 'auto';
+          form.style.opacity = '1';
+          
+          // Show error with better UX
+          const errorMsg = document.createElement('div');
+          errorMsg.textContent = 'Unexpected response. Please try again.';
+          errorMsg.style.cssText = `
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 59, 48, 0.2);
+          `;
+          form.appendChild(errorMsg);
+          
+          setTimeout(() => errorMsg.remove(), 5000);
         }
       } catch (error) {
+        // Reset form state
         loadingDiv.style.display = 'none';
-        alert("Network error: " + error.message);
+        form.style.pointerEvents = 'auto';
+        form.style.opacity = '1';
+        
+        console.error('Network error:', error);
+        
+        // Show error with better UX
+        const errorMsg = document.createElement('div');
+        errorMsg.textContent = `Network error: ${error.message}`;
+        errorMsg.style.cssText = `
+          background: rgba(255, 59, 48, 0.1);
+          color: #ff3b30;
+          padding: 15px;
+          border-radius: 10px;
+          text-align: center;
+          margin-top: 20px;
+          border: 1px solid rgba(255, 59, 48, 0.2);
+        `;
+        form.appendChild(errorMsg);
+        
+        setTimeout(() => errorMsg.remove(), 5000);
       }
+    });
+
+    // Add input animation effects
+    const inputs = document.querySelectorAll('input, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'translateY(-2px)';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'translateY(0)';
+      });
     });
   </script>
 
