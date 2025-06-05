@@ -12,7 +12,7 @@ from app.config import (
     OUTPUT_PATH,
     INPUT_PATH,
 )
-
+import asyncio
 
 async def convert_pdf_to_html(fileBytes, filename):
 
@@ -119,7 +119,7 @@ def clean_raw_html(html: str) -> str:
 
 
 def clean_html(filename):
-    html_path = os.path.join(INPUT_PATH, f"{filename}.html")
+    html_path = os.path.join(INPUT_PATH, "converted_output.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             raw_html = f.read()
@@ -128,8 +128,8 @@ def clean_html(filename):
             raw_html = f.read()
 
     cleaned_html = clean_raw_html(raw_html)
-    cleaned_file = f"{filename}_cleaned"
-    cleaned_path = os.path.join(INPUT_PATH, f"{cleaned_file}.html")
+    cleaned_file = "cleaned_output"
+    cleaned_path = os.path.join(INPUT_PATH, "cleaned_output.html")
 
     with open(cleaned_path, "w", encoding="utf-8") as f:
         f.write(cleaned_html)
@@ -175,9 +175,23 @@ Ensure the content is original, factually accurate, and engaging. Add examples o
 
 
 def get_content(template, formalised_content):
+    
+    prompt = f"""
+You are a professional HTML editor and newsletter copywriter. Your task is to replace placeholder tokens in an HTML template with relevant newsletter content.
 
-    prompt = f"{formalised_content}\nReplace the template text with the newsletter ONLY REPLACE THE TEMPLATE STRINGS DO NOT ADD OR REMOVE STYLES OR TAGS " + str(template.body)
+The placeholders in the HTML template are:
+- {{title}} → for the newsletter's main title
+- {{heading}} → for section headings
+- {{body}} → for paragraph content
 
+Your job:
+1. Replace only the placeholder text (e.g., {{ title }}, {{ heading }}, {{ body }}) with well-written, contextually appropriate content based on the newsletter provided.
+2. DO NOT change, remove, or add any HTML tags, inline styles, or structural attributes.
+3. DO NOT add extra paragraphs, headings, or sections.
+4. DO NOT reformat or beautify the HTML — preserve its structure as-is.
+HTML Template with Placeholders:
+{str(template.body)}
+"""
     client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
@@ -254,7 +268,7 @@ def write_output(template):
 async def generate(topic,content,pdf_template,tone):
         print("Inside generate")
         
-        time.sleep(1)
+        await asyncio.sleep(1)
         print("Received topic:", topic)
         print("Received content:", content)
         print("Received tone:", tone if tone else "None")
@@ -262,9 +276,9 @@ async def generate(topic,content,pdf_template,tone):
         if not pdf_template:
             print("No PDF template uploaded.")
             
-            time.sleep(1)
+            await asyncio.sleep(1)
             
-            time.sleep(1)
+            await asyncio.sleep(1)
             return
 
         else:
@@ -273,33 +287,34 @@ async def generate(topic,content,pdf_template,tone):
 
             print("STARTING WITH", pdf_template.filename)
            
-            time.sleep(1)
+            await asyncio.sleep(1)
 
-            data = convert_pdf_to_html(pdf_bytes, pdf_template.filename)
+            data = await convert_pdf_to_html(pdf_bytes, pdf_template.filename)
             if not data:
        
                 return
 
             print("Step One: Converted pdf to html")
            
-            time.sleep(1)
+            await asyncio.sleep(1)
 
             cleaned_file = clean_html(file_name)
 
             print("Step Two: Converted html to template")
             
-            time.sleep(1)
+            await asyncio.sleep(1)
 
             template, img_srcs, all_styles = remove_images_and_styles(cleaned_file)
 
             print("Step Three: Preprocessed template for prompting")
             
-            time.sleep(1)
+            await asyncio.sleep(1)
 
-            final_prompt = (topic, content, tone)
+            final_prompt = build_prompt(topic, content, tone)
+
             print("Step Four: Built prompt from from inputs")
             
-            time.sleep(1)
+            await asyncio.sleep(1)
 
             attempts = 0
             llm_output = None
@@ -309,20 +324,20 @@ async def generate(topic,content,pdf_template,tone):
                 if check_output(llm_output, len(all_styles)):
                     print("Step Five: Recieved content from llm")
                     
-                    time.sleep(1)
+                    await asyncio.sleep(1)
                     break
                 else:
                     attempts += 1
                     if attempts < 3:
                         print("Step Five: Improper Output, Trying Again...")
                         
-                        time.sleep(1)
+                        await asyncio.sleep(1)
 
             if attempts == 3:
                
-                time.sleep(1)
+                await asyncio.sleep(1)
          
-                time.sleep(1)
+                await asyncio.sleep(1)
                 return
 
             else:
@@ -331,14 +346,14 @@ async def generate(topic,content,pdf_template,tone):
                 )
                 print("Step Six: Readded removed images and styles")
                
-                time.sleep(1)
+                await asyncio.sleep(1)
 
                 write_output(template)
 
                 print("Step Seven: Created Output File")
             
-                time.sleep(1)
+                await asyncio.sleep(1)
                
-                time.sleep(1)
+                await asyncio.sleep(1)
                 return
             

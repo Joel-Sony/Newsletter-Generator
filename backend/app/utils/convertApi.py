@@ -1,7 +1,7 @@
 import base64
 import requests
 import os
-from app.config import CONVERT_API_SECRET
+from app.config import CONVERT_API_SECRET,INPUT_PATH
 
 
 
@@ -35,8 +35,7 @@ def convert_pdf_to_html(file):
         download_url = response.json()["Files"][0]["Url"]
         html_response = requests.get(download_url)
 
-        os.makedirs("convertedHTMLs", exist_ok=True)
-        with open("convertedHTMLs/converted_output.html", "wb") as f:
+        with open(f"{INPUT_PATH}/converted_output.html", "wb") as f:
             f.write(html_response.content)
 
         return True, None
