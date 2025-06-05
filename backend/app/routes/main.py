@@ -4,22 +4,27 @@ from flask import (
     render_template,
     send_from_directory,
     redirect,
-    url_for,
     jsonify,
-    send_file,
+    current_app
 )
-
-from app.utils.convertApi import convert_pdf_to_html
-from app.utils.templateGeneration import no_template_generation
-from app.utils.transformText import transformText
-from app.utils.imageGeneration import generate_image
 import os
+import traceback
+import time
+from werkzeug.utils import secure_filename
 from PIL import Image
 import base64
 from io import BytesIO
-from werkzeug.utils import secure_filename
-from app.utils.convertApi import convert_html_to_pdf
-import traceback
+from app.utils.convertApi import convert_pdf_to_html, convert_html_to_pdf
+from app.utils.templateGeneration import (
+    no_template_generation,
+)
+from app.utils.transformText import transformText
+from app.utils.imageGeneration import generate_image
+from app.utils.templateUpload import (
+    generate,
+)
+from app.config import OUTPUT_PATH
+
 
 main_bp = Blueprint(
     "main",
@@ -29,19 +34,31 @@ main_bp = Blueprint(
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-def index():
+async def index():
     if request.method == "POST" and request.files.get("pdf_file"):
+        tone = request.form.get("tone", "Professional")
+        tone = "Professional"
+        topic = request.form.get("topic")
         file = request.files.get("pdf_file")
         success, error_msg = convert_pdf_to_html(file)
+        user_prompt = request.form.get("user_prompt")
         if success:
-            return redirect("/editor")  # Go to editor after PDF is processed
-        else:
-            return f"<h1>Error:</h1><pre>{error_msg}</pre>"
+            await generate(tone=tone,
+                     topic=topic,
+                     pdf_template=file,
+                     content=user_prompt)   
+            return redirect("/editor")
     elif request.method == "POST" and not request.files.get("pdf_file"):
+        
+        if request.form.get("tone"): tone = request.form.get("tone")
+        else: tone = "Professional"
+        topic = request.form.get("topic")
         user_prompt = request.form.get("user_prompt")
         no_template_generation(
-            user_prompt,    
-            "/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs",
+            user_prompt,
+            OUTPUT_PATH,
+            tone,
+            topic
         )
         return redirect("/editor")  # Go to editor after AI template is ready
     return render_template("index.html")
@@ -49,7 +66,7 @@ def index():
 
 # serving the generated template for react app to retrieve it
 GENERATED_DIR = (
-    "/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs"
+  OUTPUT_PATH
 )
 
 
@@ -94,7 +111,6 @@ def transform_text():
 @main_bp.route("/generateImage", methods=["POST"])
 def generateImage():
     user_prompt = request.json.get("prompt")
-
     try:
         result = generate_image(user_prompt)
         image_base64 = result["image_base64"]
@@ -110,18 +126,14 @@ def convert_to_pdf():
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
     file = request.files["file"]
-
     # If no file is selected or file is empty
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
-
         # Secure the filename and save the file locally
     filename = secure_filename(file.filename)
     file_path = os.path.join("UPLOAD_FOLDER", filename)
-
     # Create the upload folder if it doesn't exist
     os.makedirs("UPLOAD_FOLDER", exist_ok=True)
-
     # Save the uploaded file
     file.save(file_path)
     try:
@@ -134,3 +146,4 @@ def convert_to_pdf():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+

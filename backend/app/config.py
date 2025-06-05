@@ -4,3 +4,5 @@ load_dotenv()
 OPENROUTER_API_KEY=os.getenv("OPENROUTER_API_KEY")
 CONVERT_API_SECRET=os.getenv("CONVERT_API_SECRET")
 IMAGEROUTER_API_KEY=os.getenv("IMAGEROUTER_API_KEY")
+OUTPUT_PATH="/home/joel/Documents/Newsletter-Generator/backend/app/utils/generatedHTMLs"
+INPUT_PATH="/home/joel/Documents/Newsletter-Generator/backend/pdfs"
