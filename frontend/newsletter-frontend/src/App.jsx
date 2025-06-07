@@ -361,45 +361,99 @@ function App() {
     const doc = iframe.contentDocument;
 
     const handleMouseDown = () => {
-      const selection = doc.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        if (range && range.toString().trim()) {
-          window._cachedTextSelection = {
-            text: range.toString(),
-            range: range.cloneRange(),
-            startContainer: range.startContainer,
-            endContainer: range.endContainer,
-            startOffset: range.startOffset,
-            endOffset: range.endOffset
-          };
-        } else {
-          window._cachedTextSelection = null;
+      // Clear previous selection cache
+      window._cachedTextSelection = null;
+      
+      // Small delay to ensure selection is properly registered
+      setTimeout(() => {
+        const selection = doc.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (range && range.toString().trim()) {
+            window._cachedTextSelection = {
+              text: range.toString(),
+              range: range.cloneRange(),
+              startContainer: range.startContainer,
+              endContainer: range.endContainer,
+              startOffset: range.startOffset,
+              endOffset: range.endOffset
+            };
+          }
         }
-      }
+      }, 10);
+    };
+
+    const handleMouseUp = () => {
+      // Also capture selection on mouseup as a fallback
+      setTimeout(() => {
+        const selection = doc.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (range && range.toString().trim()) {
+            window._cachedTextSelection = {
+              text: range.toString(),
+              range: range.cloneRange(),
+              startContainer: range.startContainer,
+              endContainer: range.endContainer,
+              startOffset: range.startOffset,
+              endOffset: range.endOffset
+            };
+          }
+        }
+      }, 10);
     };
 
     doc.addEventListener('mousedown', handleMouseDown);
+    doc.addEventListener('mouseup', handleMouseUp);
+    
     return () => {
       doc.removeEventListener('mousedown', handleMouseDown);
+      doc.removeEventListener('mouseup', handleMouseUp);
     };
   }, [editorReady]);
 
-
   // Function to get current text selection
   const getTextSelection = () => {
-    return window._cachedTextSelection || null;
-  };
+    // First try to get from cache
+    if (window._cachedTextSelection) {
+      return window._cachedTextSelection;
+    }
 
+    // Fallback: try to get current selection
+    if (!editorReady) return null;
+    
+    const iframe = editorReady.Canvas.getFrameEl();
+    if (!iframe) return null;
+    
+    const doc = iframe.contentDocument;
+    const selection = doc.getSelection();
+    
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (range && range.toString().trim()) {
+        return {
+          text: range.toString(),
+          range: range.cloneRange(),
+          startContainer: range.startContainer,
+          endContainer: range.endContainer,
+          startOffset: range.startOffset,
+          endOffset: range.endOffset
+        };
+      }
+    }
+    
+    return null;
+  };
 
   const openModal = (component) => {
     // Get current selection before opening modal
     const selection = getTextSelection();
     
-    // if (!selection) {
-    //   alert('Please select some text first before using AI transformation.');
-    //   return;
-    // }
+    // Check if selection exists and has text
+    if (!selection || !selection.text || !selection.text.trim()) {
+      alert('Please select some text first before using AI transformation.');
+      return;
+    }
 
     setSelectedComponent(component);
     setSelectedText(selection.text);
@@ -414,6 +468,8 @@ function App() {
     setSelectedComponent(null);
     setSelectedText('');
     setSelectionInfo(null);
+    // Clear cached selection when modal closes
+    window._cachedTextSelection = null;
   };
 
   const openImageModal = (component) => {
@@ -492,6 +548,9 @@ function App() {
         const currentHTML = componentEl.innerHTML;
         const updatedHTML = currentHTML.replace(selectedText, newText);
         componentEl.innerHTML = updatedHTML;
+        
+        // Update GrapesJS component content
+        selectedComponent.components(updatedHTML);
         return;
       }
 
@@ -511,8 +570,12 @@ function App() {
       const updatedContent = componentEl.innerHTML;
       selectedComponent.components(updatedContent);
 
-      // Clear the selection
-      window.getSelection().removeAllRanges();
+      // Clear the selection and cache
+      const iframe = editorReady.Canvas.getFrameEl();
+      if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.getSelection().removeAllRanges();
+      }
+      window._cachedTextSelection = null;
       
     } catch (error) {
       console.error('Error replacing selected text:', error);
