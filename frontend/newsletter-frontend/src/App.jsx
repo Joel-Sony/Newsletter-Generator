@@ -352,35 +352,54 @@ function App() {
     }
   }, [htmlContent, editorReady]);
 
+  useEffect(() => {
+    if (!editorReady) return;
+
+    const iframe = editorReady.Canvas.getFrameEl();
+    if (!iframe) return;
+
+    const doc = iframe.contentDocument;
+
+    const handleMouseDown = () => {
+      const selection = doc.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (range && range.toString().trim()) {
+          window._cachedTextSelection = {
+            text: range.toString(),
+            range: range.cloneRange(),
+            startContainer: range.startContainer,
+            endContainer: range.endContainer,
+            startOffset: range.startOffset,
+            endOffset: range.endOffset
+          };
+        } else {
+          window._cachedTextSelection = null;
+        }
+      }
+    };
+
+    doc.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      doc.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [editorReady]);
+
+
   // Function to get current text selection
   const getTextSelection = () => {
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const selectedText = range.toString();
-      
-      if (selectedText.trim()) {
-        return {
-          text: selectedText,
-          range: range.cloneRange(), // Clone the range to preserve it
-          startContainer: range.startContainer,
-          endContainer: range.endContainer,
-          startOffset: range.startOffset,
-          endOffset: range.endOffset
-        };
-      }
-    }
-    return null;
+    return window._cachedTextSelection || null;
   };
+
 
   const openModal = (component) => {
     // Get current selection before opening modal
     const selection = getTextSelection();
     
-    if (!selection) {
-      alert('Please select some text first before using AI transformation.');
-      return;
-    }
+    // if (!selection) {
+    //   alert('Please select some text first before using AI transformation.');
+    //   return;
+    // }
 
     setSelectedComponent(component);
     setSelectedText(selection.text);
@@ -685,8 +704,8 @@ function App() {
               // Custom plugin for context menus
               const commonContextMenuLogic = (component, items, actionType) => {
                 const handler = actionType === 'text' ? openModal : openImageModal;
-                const label = actionType === 'text' ? 'Transform Selected Text (AI)' : 'Replace Image (AI)';
-                const icon = actionType === 'text' ? 'sparkles' : 'image';
+                const label = actionType === 'text' ? 'Transform Text (AI)' : 'Replace Image (AI)';
+                const icon = actionType === 'text' ? 'text' : 'image';
                 
                 return [
                   ...items,
