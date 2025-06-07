@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
@@ -286,6 +285,8 @@ function App() {
   // Text modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
+  const [selectedText, setSelectedText] = useState(''); // Store selected text
+  const [selectionInfo, setSelectionInfo] = useState(null); // Store selection details
   const [tone, setTone] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
 
@@ -351,8 +352,39 @@ function App() {
     }
   }, [htmlContent, editorReady]);
 
+  // Function to get current text selection
+  const getTextSelection = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+      
+      if (selectedText.trim()) {
+        return {
+          text: selectedText,
+          range: range.cloneRange(), // Clone the range to preserve it
+          startContainer: range.startContainer,
+          endContainer: range.endContainer,
+          startOffset: range.startOffset,
+          endOffset: range.endOffset
+        };
+      }
+    }
+    return null;
+  };
+
   const openModal = (component) => {
+    // Get current selection before opening modal
+    const selection = getTextSelection();
+    
+    if (!selection) {
+      alert('Please select some text first before using AI transformation.');
+      return;
+    }
+
     setSelectedComponent(component);
+    setSelectedText(selection.text);
+    setSelectionInfo(selection);
     setTone('');
     setCustomPrompt('');
     setModalOpen(true);
@@ -361,6 +393,8 @@ function App() {
   const closeModal = () => {
     setModalOpen(false);
     setSelectedComponent(null);
+    setSelectedText('');
+    setSelectionInfo(null);
   };
 
   const openImageModal = (component) => {
@@ -375,11 +409,10 @@ function App() {
   };
 
   const handleTransform = async () => {
-    if (!selectedComponent) return;
+    if (!selectedComponent || !selectionInfo) return;
 
-    const originalText = selectedComponent.view?.el?.innerText || '';
-    if (!originalText.trim()) {
-      alert('No text to transform.');
+    if (!selectedText.trim()) {
+      alert('No text selected for transformation.');
       return;
     }
 
@@ -400,7 +433,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: originalText,
+          text: selectedText,
           tone: tone === 'Custom Tone' ? 'Custom' : tone,
           prompt: customPrompt,
         }),
@@ -411,13 +444,63 @@ function App() {
       const data = await response.json();
       const newText = data.transformed || '[Error: Empty response from server]';
 
-      selectedComponent.components([{ type: 'text', content: newText }]);
+      // Replace only the selected text
+      replaceSelectedText(newText);
       closeModal();
     } catch (err) {
       console.error('Failed to transform text:', err);
       alert('Failed to transform text: ' + err.message);
     } finally {
       setLoadingAI(false);
+    }
+  };
+
+  const replaceSelectedText = (newText) => {
+    try {
+      if (!selectionInfo || !selectedComponent) return;
+
+      // Get the component's DOM element
+      const componentEl = selectedComponent.getEl();
+      if (!componentEl) return;
+
+      // Create a new range based on stored selection info
+      const range = document.createRange();
+      
+      // Verify that the stored containers still exist in the DOM
+      if (!componentEl.contains(selectionInfo.startContainer) || 
+          !componentEl.contains(selectionInfo.endContainer)) {
+        // Fallback: try to find the text in the component and replace first occurrence
+        const currentHTML = componentEl.innerHTML;
+        const updatedHTML = currentHTML.replace(selectedText, newText);
+        componentEl.innerHTML = updatedHTML;
+        return;
+      }
+
+      // Set the range using stored selection info
+      range.setStart(selectionInfo.startContainer, selectionInfo.startOffset);
+      range.setEnd(selectionInfo.endContainer, selectionInfo.endOffset);
+
+      // Delete the selected content and insert new text
+      range.deleteContents();
+      
+      // Create a text node with the new content
+      const textNode = document.createTextNode(newText);
+      range.insertNode(textNode);
+
+      // Update GrapesJS component content to reflect the changes
+      // This ensures the changes are saved in GrapesJS's internal model
+      const updatedContent = componentEl.innerHTML;
+      selectedComponent.components(updatedContent);
+
+      // Clear the selection
+      window.getSelection().removeAllRanges();
+      
+    } catch (error) {
+      console.error('Error replacing selected text:', error);
+      // Fallback: replace the entire component content
+      const originalText = selectedComponent.view?.el?.innerText || '';
+      const newContent = originalText.replace(selectedText, newText);
+      selectedComponent.components([{ type: 'text', content: newContent }]);
     }
   };
 
@@ -527,8 +610,6 @@ function App() {
     }
   }, [editorReady]);
 
-
-
   // Error boundary - if there's an error, show it
   if (error) {
     return (
@@ -604,7 +685,7 @@ function App() {
               // Custom plugin for context menus
               const commonContextMenuLogic = (component, items, actionType) => {
                 const handler = actionType === 'text' ? openModal : openImageModal;
-                const label = actionType === 'text' ? 'Transform Text (AI)' : 'Replace Image (AI)';
+                const label = actionType === 'text' ? 'Transform Selected Text (AI)' : 'Replace Image (AI)';
                 const icon = actionType === 'text' ? 'sparkles' : 'image';
                 
                 return [
@@ -655,8 +736,33 @@ function App() {
       />
 
       {/* TEXT MODAL */}
-      <Modal isOpen={modalOpen} onClose={closeModal} title="✨ Transform Text with AI">
+      <Modal isOpen={modalOpen} onClose={closeModal} title="✨ Transform Selected Text with AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Show selected text preview */}
+          {selectedText && (
+            <div style={{
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '12px',
+            }}>
+              <Label style={{ marginBottom: '8px', color: '#64748b' }}>Selected text:</Label>
+              <div style={{
+                fontSize: '14px',
+                color: '#374151',
+                fontStyle: 'italic',
+                maxHeight: '80px',
+                overflow: 'auto',
+                backgroundColor: 'white',
+                padding: '8px',
+                borderRadius: '4px',
+                border: '1px solid #e2e8f0'
+              }}>
+                "{selectedText}"
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Choose transformation style</Label>
             <Select
@@ -706,7 +812,7 @@ function App() {
                   Transforming...
                 </>
               ) : (
-                <>✨ Transform Text</>
+                <>✨ Transform Selected Text</>
               )}
             </Button>
           </div>
@@ -765,15 +871,7 @@ function App() {
           </div>
         </div>
       </Modal>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
-
 export default App;
