@@ -15,7 +15,7 @@ function freezeAutoDimensionsInCanvas(editor) {
     const computed = window.getComputedStyle(el);
 
     const width = el.offsetWidth;
-    const height = el.offsetHeight;
+    const height = el.offsetHeight; 
 
     // Apply only if width/height was auto
     if (computed.width === 'auto' || computed.height === 'auto') {
@@ -30,6 +30,31 @@ function freezeAutoDimensionsInCanvas(editor) {
   });
 }
 
+// Enhanced function to properly convert element positioning
+function prepareElementForAbsolutePositioning(element) {
+  if (!element) return;
+  
+  const computed = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  const parentRect = element.offsetParent ? element.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
+  
+  // Calculate the correct absolute position
+  const left = rect.left - parentRect.left;
+  const top = rect.top - parentRect.top;
+  
+  // Store current position before conversion
+  element.style.position = 'absolute';
+  element.style.left = left + 'px';
+  element.style.top = top + 'px';
+  
+  // Preserve dimensions if they were auto
+  if (computed.width === 'auto') {
+    element.style.width = rect.width + 'px';
+  }
+  if (computed.height === 'auto') {
+    element.style.height = rect.height + 'px';
+  }
+}
 
 // Enhanced Modal Component - moved outside App to prevent re-creation
 const Modal = ({ isOpen, onClose, children, title }) => {
@@ -366,7 +391,6 @@ function App() {
       setTimeout(() => freezeAutoDimensionsInCanvas(editorReady), 300);
     }
   }, [editorReady, htmlContent]);
-
 
   useEffect(() => {
     console.log('HTML content changed:', !!htmlContent);
@@ -802,6 +826,29 @@ function App() {
           plugins: [
             canvasAbsoluteMode,
             editor => {
+              // Enhanced plugin to handle smooth position conversion
+              const originalGetFrameEl = editor.Canvas.getFrameEl.bind(editor.Canvas);
+              
+              // Override the drag start event to prepare elements for absolute positioning
+              editor.on('component:drag:start', (component) => {
+                const element = component.getEl();
+                if (element) {
+                  const computed = window.getComputedStyle(element);
+                  if (computed.position !== 'absolute') {
+                    // Store original position before conversion
+                    prepareElementForAbsolutePositioning(element);
+                    
+                    // Update the component's style attributes to match
+                    component.addStyle({
+                      position: 'absolute',
+                      left: element.style.left,
+                      top: element.style.top,
+                      width: element.style.width,
+                      height: element.style.height
+                    });
+                  }
+                }
+              });
 
               // Custom plugin for context menus
               const commonContextMenuLogic = (component, items, actionType) => {
