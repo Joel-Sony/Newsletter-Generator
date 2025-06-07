@@ -4,6 +4,33 @@ import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './App.css';
 
+function freezeAutoDimensionsInCanvas(editor) {
+  const iframe = editor.Canvas.getFrameEl();
+  if (!iframe) return;
+
+  const doc = iframe.contentDocument;
+  const allElements = doc.body.querySelectorAll('*');
+
+  allElements.forEach(el => {
+    const computed = window.getComputedStyle(el);
+
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+
+    // Apply only if width/height was auto
+    if (computed.width === 'auto' || computed.height === 'auto') {
+      el.style.width = width + 'px';
+      el.style.height = height + 'px';
+    }
+
+    // Optional: freeze positioning too
+    if (computed.position === 'static') {
+      el.style.position = 'relative';
+    }
+  });
+}
+
+
 // Enhanced Modal Component - moved outside App to prevent re-creation
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -328,6 +355,18 @@ function App() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (editorReady && htmlContent) {
+      editorReady.loadProjectData({
+        pages: [{ name: 'Edit Template', component: htmlContent }],
+      });
+
+      // Defer to allow DOM to render
+      setTimeout(() => freezeAutoDimensionsInCanvas(editorReady), 300);
+    }
+  }, [editorReady, htmlContent]);
+
 
   useEffect(() => {
     console.log('HTML content changed:', !!htmlContent);
