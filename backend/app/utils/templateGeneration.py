@@ -33,7 +33,7 @@ User prompt is: {user_prompt}. Topic is {topic} RETURN ONLY THE UPDATED PROMPT. 
 
   polish_response = client.chat.completions.create(
      extra_headers={
-        "HTTP-Referer": "http://localhost:5000/", # Optional. Site URL for rankings on openrouter.ai.
+        "HTTP-Referer": "http://localhost:5173/generator", # Optional. Site URL for rankings on openrouter.ai.
     },
     model="meta-llama/llama-3.3-8b-instruct:free",
     messages=[
@@ -73,6 +73,9 @@ Output: Clean HTML code only, no explanations or comments.
 """
     
     html_response = client.chat.completions.create(
+      extra_headers={
+        "HTTP-Referer": "http://localhost:5173/generator", # Optional. Site URL for rankings on openrouter.ai.
+      },
       model="deepseek/deepseek-chat-v3-0324:free",
       # model="tngtech/deepseek-r1t-chimera:free",
       # model="deepseek/deepseek-r1:free",

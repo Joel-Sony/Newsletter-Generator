@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const NewsletterDashboard = () => {
   const [activeSection, setActiveSection] = useState('drafts');
@@ -93,7 +94,7 @@ const NewsletterDashboard = () => {
   };
 
   const allNewsletters = [...newsletters.drafts, ...newsletters.published, ...newsletters.archived];
-
+  const navigate = useNavigate()
   // Handle responsive design
   useEffect(() => {
     const handleResize = () => {
@@ -121,7 +122,8 @@ const NewsletterDashboard = () => {
   };
 
   const createNewsletter = () => {
-    alert('Create New Newsletter feature would open a newsletter editor here!');
+    
+    navigate  ('/generator');
   };
 
   const toggleSidebar = () => {

@@ -54,7 +54,7 @@ async def generate_newsletter():
     - Removed redirects (React will handle navigation)
     - Return JSON responses instead of redirects
     - Added /api prefix to avoid conflicts with React Router
-    """
+    """ 
     try:
         # Handle PDF template upload case
         if request.files.get("pdf_file"):

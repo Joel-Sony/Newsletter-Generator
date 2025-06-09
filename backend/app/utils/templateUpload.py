@@ -15,7 +15,6 @@ from app.config import (
 import asyncio
 
 async def convert_pdf_to_html(fileBytes, filename):
-
     file_content = base64.b64encode(fileBytes).decode("utf-8")
 
     payload = {
@@ -202,7 +201,7 @@ HTML Template with Placeholders:
     try:
         llm_output = client.chat.completions.create(
            extra_headers = {
-                "HTTP-Referer": "http://localhost:5000/"
+                "HTTP-Referer": "http://localhost:5173/generator"
             },
             model="deepseek/deepseek-chat-v3-0324:free",
             messages=[
@@ -215,12 +214,10 @@ HTML Template with Placeholders:
         print(e.response.text)  # See the raw response
     except Exception as e:
         print("Other error:", str(e))
-
     return llm_output.choices[0].message.content
 
 
 def check_output(llm_output, num_tags):
-
     start = llm_output.find("<body")
     end = llm_output.find("</body>")
 
@@ -241,7 +238,7 @@ def check_output(llm_output, num_tags):
     
 
 def add_images_and_styles_with_content(template, llm_output, img_srcs, all_styles):
-
+   
     start = llm_output.find('<body')
     end = llm_output.find('</body>') + len('</body>')
 
@@ -258,6 +255,7 @@ def add_images_and_styles_with_content(template, llm_output, img_srcs, all_style
     for tag in template.body.find_all():
         tag['style'] = all_styles[count]
         count+=1
+
     
     return template
 
@@ -271,7 +269,6 @@ def write_output(template):
 
 async def generate(topic,content,pdf_template,tone):
         print("Inside generate")
-        
         await asyncio.sleep(1)
         print("Received topic:", topic)
         print("Received content:", content)
@@ -282,34 +279,33 @@ async def generate(topic,content,pdf_template,tone):
         print("STARTING WITH", pdf_template.filename)
         
         await asyncio.sleep(1)
-
+        beg = time.time()
         data = await convert_pdf_to_html(pdf_bytes, pdf_template.filename)
         if not data:
     
             return
 
-        print("Step One: Converted pdf to html")
         
+        print("Step One: Converted pdf to html")
         await asyncio.sleep(1)
 
+         
         cleaned_file = clean_html(file_name)
-
         print("Step Two: Converted html to template")
         
         await asyncio.sleep(1)
-
-        template, img_srcs, all_styles = remove_images_and_styles(cleaned_file)
-
-        print("Step Three: Preprocessed template for prompting")
         
+         
+        template, img_srcs, all_styles = remove_images_and_styles(cleaned_file)
+        print("Step Three: Preprocessed template for prompting")
+       
         await asyncio.sleep(1)
 
+         
         final_prompt = build_prompt(topic, content, tone)
-
         print("Step Four: Built prompt from from inputs")
         
         await asyncio.sleep(1)
-
         # attempts = 0
         # llm_output = None
         # while attempts < 3:
@@ -350,13 +346,17 @@ async def generate(topic,content,pdf_template,tone):
             
         #     await asyncio.sleep(1)
         #     return
-        
+
+         
         llm_output = get_content(template, final_prompt)
+        
+        
+         
         template = add_images_and_styles_with_content(
                 template, llm_output, img_srcs, all_styles
         )
-        print("Step Six: Readded removed images and styles")
-            
+        
+        print("Step Six: Re-added removed images and styles")
         await asyncio.sleep(1)
 
         write_output(template)
