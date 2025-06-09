@@ -65,7 +65,7 @@ async def generate_newsletter():
                     pdf_template=file,
                     content=user_prompt
                 )
-                # Instead of redirect("/editor"), return JSON success response
+            
                 return jsonify({
                     "success": True,
                     "message": "Newsletter generated successfully with PDF template",
@@ -89,7 +89,7 @@ async def generate_newsletter():
                 tone,
                 topic
             )
-            # Instead of redirect("/editor"), return JSON success response  
+     
             return jsonify({
                 "success": True,
                 "message": "Newsletter generated successfully without template",
