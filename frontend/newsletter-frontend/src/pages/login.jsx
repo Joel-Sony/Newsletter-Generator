@@ -147,50 +147,50 @@ const Login = () => {
     }
   };
 
-  const handleSignup = async (email, password) => {
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password
-        })
-      });
+const handleSignup = async (email, password) => {
+  try {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password
+      })
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        showMessage(data.message || 'Registration failed', 'error');
-        return;
-      }
-
-      if (data.requiresVerification) {
-        showMessage('Account created! Please check your email for verification.', 'info');
-        setTimeout(() => {
-          switchMode('login');
-          setFormData(prev => ({ ...prev, email: email }));
-        }, 3000);
-      } else {
-        // Auto-login after successful registration
-        if (data.token) {
-          localStorage.setItem('authToken', data.token);
-        }
-        showMessage('Account created successfully! Welcome!', 'success');
-        setTimeout(() => {
-          setUser(data.user);
-        }, 1000);
-      }
-
-    } catch (error) {
-      console.error('Signup error:', error);
-      showMessage('Network error. Please try again.', 'error');
+    if (!response.ok) {
+      showMessage(data.message || 'Registration failed', 'error');
+      return;
     }
-  };
 
-  const handleLogout = async () => {
+    if (data.requiresVerification) {
+      showMessage('Account created! Please check your email for verification.', 'info');
+      setTimeout(() => {
+        switchMode('login');
+        setFormData(prev => ({ ...prev, email: email }));
+      }, 3000);
+    } else {
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+      }
+      showMessage('Account created successfully! Welcome!', 'success');
+      setTimeout(() => {
+        setUser(data.user);
+      }, 1000);
+    }
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    showMessage('Network error. Please try again.', 'error');
+  }
+};
+
+
+const handleLogout = async () => {
     try {
       const token = localStorage.getItem('authToken');
       

@@ -232,72 +232,43 @@ def token_required(f):
     
     return decorated
 
-# Routes
+
 @main_bp.route('/api/auth/register', methods=['POST'])
 def register():
-    """Register a new user"""
+    """Register a new user using Supabase Auth (let DB trigger create public.users row)"""
     try:
         data = request.get_json()
         
         if not data:
             return jsonify({'message': 'No data provided'}), 400
-        print(data.get("email"))
+        
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         
-        # Validation
         if not email or not password:
             return jsonify({'message': 'Email and password are required'}), 400
         
-        if not validate_email(email):
-            return jsonify({'message': 'Invalid email format'}), 400
-        
-        is_valid, password_message = validate_password(password)
-        if not is_valid:
-            return jsonify({'message': password_message}), 400
-        
-        # Check if user already exists
-        existing_user = supabase.table('users').select('*').eq('email', email).execute()
-        if existing_user.data:
-            return jsonify({'message': 'User with this email already exists'}), 409
-        
-        # Hash password
-        hashed_password = generate_password_hash(password)
-        
-        # Create user record
-        user_data = {
-            'email': email,
-            'password_hash': hashed_password,
-            'created_at': datetime.utcnow().isoformat(),
-            'last_login': None,
-            'is_verified': True  # Set to False if you want email verification
-        }
-        
-        result = supabase.table('users').insert(user_data).execute()
-        
-        if not result.data:
-            return jsonify({'message': 'Failed to create user'}), 500
-        
-        user = result.data[0]
-        
-        # Generate token
-        token = generate_token(user['id'], user['email'])
-        
-        # Prepare user data for response (exclude sensitive info)
-        user_response = {
-            'id': user['id'],
-            'email': user['email'],
-            'created_at': user['created_at'],
-            'last_login': user['last_login']
-        }
-        
+        # Call Supabase Auth to sign up
+        auth_response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+
+        # Get the created user
+        user = auth_response.user
+        if not user:
+            return jsonify({'message': 'User creation failed'}), 500
+
+        # Let the Supabase trigger handle inserting into public.users
         return jsonify({
-            'message': 'User registered successfully',
-            'token': token,
-            'user': user_response,
-            'requiresVerification': False  # Set to True if email verification is needed
+            'message': 'Account created! Check your email to verify.',
+            'requiresVerification': True,
+            'user': {
+                'id': user.id,
+                'email': user.email
+            }
         }), 201
-        
+
     except Exception as e:
         print(f"Registration error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
