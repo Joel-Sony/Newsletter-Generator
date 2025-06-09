@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const VioletAuth = () => {
+const Login = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
@@ -181,206 +181,224 @@ const VioletAuth = () => {
 
   const styles = {
     container: {
-      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
       minHeight: '100vh',
+      background: '#0a0a0a',
+      color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px',
-      margin: 0
+      padding: '24px',
+      fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
     card: {
-      background: 'rgba(255, 255, 255, 0.1)',
-      backdropFilter: 'blur(20px)',
-      borderRadius: '20px',
+      backgroundColor: '#171717',
+      borderRadius: '16px',
       padding: '40px',
       width: '100%',
-      maxWidth: '500px',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: '0 25px 45px rgba(0, 0, 0, 0.1)',
-      transition: 'all 0.3s ease',
-      animation: 'fadeIn 0.6s ease-out'
+      maxWidth: '480px',
+      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+      border: '1px solid #262626',
+      position: 'relative'
+    },
+    logo: {
+      fontSize: '32px',
+      fontWeight: '800',
+      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      letterSpacing: '-0.025em',
+      textAlign: 'center',
+      marginBottom: '8px'
     },
     title: {
-      textAlign: 'center',
-      color: 'white',
-      marginBottom: '10px',
-      fontSize: '2.5rem',
-      fontWeight: '300',
-      textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+      fontSize: '28px',
+      fontWeight: '700',
+      color: '#ffffff',
+      marginBottom: '8px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      letterSpacing: '-0.025em',
+      textAlign: 'center'
     },
     subtitle: {
-      textAlign: 'center',
-      color: 'rgba(255, 255, 255, 0.8)',
-      marginBottom: '30px',
-      fontSize: '1rem',
-      fontWeight: '400'
+      color: '#a3a3a3',
+      fontSize: '16px',
+      marginBottom: '32px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontWeight: '400',
+      textAlign: 'center'
     },
-    modeToggle: {
+    tabsContainer: {
       display: 'flex',
-      background: 'rgba(255, 255, 255, 0.1)',
-      borderRadius: '50px',
-      padding: '4px',
-      marginBottom: '30px',
-      position: 'relative'
+      gap: '6px',
+      marginBottom: '32px',
+      backgroundColor: '#111111',
+      borderRadius: '14px',
+      padding: '6px',
+      border: '1px solid #262626'
     },
-    modeBtn: {
+    tab: {
       flex: 1,
-      padding: '12px 20px',
+      padding: '14px 20px',
+      borderRadius: '10px',
+      fontWeight: '500',
       border: 'none',
-      borderRadius: '50px',
-      background: 'transparent',
-      color: 'rgba(255, 255, 255, 0.7)',
-      fontSize: '14px',
-      fontWeight: '600',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      zIndex: 2,
-      position: 'relative'
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: '14px'
     },
-    modeBtnActive: {
+    tabActive: {
+      backgroundColor: '#3b82f6',
       color: 'white',
-      background: 'linear-gradient(45deg, #ff6b6b, #ee5a24, #ff9ff3)',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)'
+      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+    },
+    tabInactive: {
+      backgroundColor: 'transparent',
+      color: '#a3a3a3'
     },
     formGroup: {
-      marginBottom: '25px',
+      marginBottom: '24px',
       position: 'relative'
     },
     input: {
       width: '100%',
-      padding: '15px 20px',
-      border: 'none',
-      borderRadius: '50px',
-      background: 'rgba(255, 255, 255, 0.1)',
-      color: 'white',
+      padding: '16px 20px',
+      borderRadius: '12px',
+      background: '#1f1f1f',
+      color: '#ffffff',
       fontSize: '16px',
       outline: 'none',
-      border: '2px solid transparent',
+      border: '1px solid #404040',
       transition: 'all 0.3s ease',
-      boxSizing: 'border-box'
-    },
-    inputFocus: {
-      background: 'rgba(255, 255, 255, 0.2)',
-      borderColor: 'rgba(255, 255, 255, 0.5)',
-      transform: 'scale(1.02)'
+      boxSizing: 'border-box',
+      fontFamily: 'Inter, system-ui, sans-serif'
     },
     passwordReqs: {
       fontSize: '12px',
-      color: 'rgba(255, 255, 255, 0.6)',
-      marginTop: '5px',
-      paddingLeft: '20px',
+      color: '#737373',
+      marginTop: '8px',
+      paddingLeft: '4px',
       opacity: showPasswordReqs ? 1 : 0,
-      transition: 'opacity 0.3s ease'
+      transition: 'opacity 0.3s ease',
+      fontFamily: 'Inter, system-ui, sans-serif'
     },
-    btn: {
-      width: '100%',
-      padding: '15px',
-      border: 'none',
-      borderRadius: '50px',
-      background: 'linear-gradient(45deg, #ff6b6b, #ee5a24, #ff9ff3)',
+    createButton: {
+      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
       color: 'white',
+      padding: '16px 32px',
+      borderRadius: '12px',
       fontSize: '16px',
       fontWeight: '600',
+      border: 'none',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      marginBottom: '15px',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      disabled: isLoading
+      marginBottom: '24px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+      width: '100%'
     },
-    btnDisabled: {
+    createButtonDisabled: {
       opacity: 0.6,
-      cursor: 'not-allowed'
+      cursor: 'not-allowed',
+      transform: 'none'
     },
     message: {
       textAlign: 'center',
-      padding: '12px',
-      borderRadius: '15px',
-      marginBottom: '20px',
+      padding: '16px 20px',
+      borderRadius: '12px',
+      marginBottom: '24px',
       fontWeight: '500',
-      transition: 'all 0.3s ease'
+      fontSize: '14px',
+      transition: 'all 0.3s ease',
+      fontFamily: 'Inter, system-ui, sans-serif'
     },
     messageSuccess: {
-      background: 'rgba(76, 175, 80, 0.2)',
-      color: '#4caf50',
-      border: '1px solid rgba(76, 175, 80, 0.3)'
+      background: 'rgba(34, 197, 94, 0.1)',
+      color: '#22c55e',
+      border: '1px solid rgba(34, 197, 94, 0.2)'
     },
     messageError: {
-      background: 'rgba(244, 67, 54, 0.2)',
-      color: '#f44336',
-      border: '1px solid rgba(244, 67, 54, 0.3)'
+      background: 'rgba(239, 68, 68, 0.1)',
+      color: '#ef4444',
+      border: '1px solid rgba(239, 68, 68, 0.2)'
     },
     messageInfo: {
-      background: 'rgba(33, 150, 243, 0.2)',
-      color: '#2196f3',
-      border: '1px solid rgba(33, 150, 243, 0.3)'
+      background: 'rgba(59, 130, 246, 0.1)',
+      color: '#3b82f6',
+      border: '1px solid rgba(59, 130, 246, 0.2)'
     },
     dashboard: {
       textAlign: 'center'
     },
+    dashboardTitle: {
+      fontSize: '42px',
+      fontWeight: '800',
+      color: '#ffffff',
+      marginBottom: '8px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      letterSpacing: '-0.025em'
+    },
     userInfo: {
-      background: 'rgba(255, 255, 255, 0.1)',
-      padding: '25px',
-      borderRadius: '15px',
-      margin: '20px 0'
+      backgroundColor: '#1f1f1f',
+      borderRadius: '16px',
+      padding: '24px',
+      border: '1px solid #404040',
+      marginBottom: '24px'
     },
     welcome: {
       fontSize: '20px',
       fontWeight: '600',
-      color: '#ff9ff3',
-      marginBottom: '15px'
+      color: '#ffffff',
+      marginBottom: '16px',
+      fontFamily: 'Inter, system-ui, sans-serif'
     },
     userInfoText: {
-      color: 'white',
-      margin: '12px 0',
-      fontSize: '16px'
-    },
-    features: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '15px',
-      marginTop: '20px'
-    },
-    featureCard: {
-      background: 'rgba(255, 255, 255, 0.05)',
-      padding: '15px',
-      borderRadius: '10px',
-      textAlign: 'center'
-    },
-    featureTitle: {
-      color: '#ff9ff3',
+      color: '#d4d4d4',
+      margin: '8px 0',
       fontSize: '14px',
-      marginBottom: '5px'
+      fontFamily: 'Inter, system-ui, sans-serif'
     },
-    featureText: {
-      color: 'rgba(255, 255, 255, 0.7)',
-      fontSize: '12px'
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: '16px',
+      marginBottom: '32px'
     },
-    logoutBtn: {
-      background: 'linear-gradient(45deg, #ff4757, #c44569)',
-      padding: '12px 35px',
-      border: 'none',
-      borderRadius: '25px',
-      color: 'white',
+    cardTitle: {
+      fontSize: '14px',
       fontWeight: '600',
+      color: '#ffffff',
+      marginBottom: '8px',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    },
+    cardText: {
+      color: '#a3a3a3',
+      fontSize: '12px',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    },
+    logoutButton: {
+      background: 'linear-gradient(45deg, #ef4444, #dc2626)',
+      color: 'white',
+      padding: '14px 28px',
+      borderRadius: '12px',
+      fontSize: '14px',
+      fontWeight: '600',
+      border: 'none',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      textTransform: 'uppercase',
-      letterSpacing: '1px'
+      fontFamily: 'Inter, system-ui, sans-serif',
+      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
     },
     spinner: {
       display: 'inline-block',
-      width: '20px',
-      height: '20px',
+      width: '16px',
+      height: '16px',
       border: '2px solid rgba(255, 255, 255, 0.3)',
       borderRadius: '50%',
-      borderTop: '2px solid white',
+      borderTop: '2px solid #ffffff',
       animation: 'spin 1s linear infinite',
-      marginRight: '10px'
+      marginRight: '8px'
     }
   };
 
@@ -391,9 +409,11 @@ const VioletAuth = () => {
 
     return (
       <div style={styles.container}>
-        <div style={styles.card}>
+        <div style={{ ...styles.card, maxWidth: '600px' }}>
           <div style={styles.dashboard}>
-            <h1 style={styles.title}>Dashboard</h1>
+            <div style={styles.logo}>AuthApp</div>
+            <h1 style={styles.dashboardTitle}>Dashboard</h1>
+            
             <div style={styles.userInfo}>
               <p style={styles.welcome}>Welcome back!</p>
               <p style={styles.userInfoText}>📧 {user.email}</p>
@@ -401,26 +421,26 @@ const VioletAuth = () => {
               <p style={styles.userInfoText}>🕒 Last login: {lastLogin}</p>
             </div>
             
-            <div style={styles.features}>
-              <div style={styles.featureCard}>
-                <h4 style={styles.featureTitle}>Secure Auth</h4>
-                <p style={styles.featureText}>Protected by Supabase</p>
+            <div style={styles.grid}>
+              <div style={styles.card}>
+                <h4 style={styles.cardTitle}>Secure Auth</h4>
+                <p style={styles.cardText}>Protected by Supabase</p>
               </div>
-              <div style={styles.featureCard}>
-                <h4 style={styles.featureTitle}>Real-time</h4>
-                <p style={styles.featureText}>Instant updates</p>
+              <div style={styles.card}>
+                <h4 style={styles.cardTitle}>Real-time</h4>
+                <p style={styles.cardText}>Instant updates</p>
               </div>
-              <div style={styles.featureCard}>
-                <h4 style={styles.featureTitle}>Scalable</h4>
-                <p style={styles.featureText}>Ready for growth</p>
+              <div style={styles.card}>
+                <h4 style={styles.cardTitle}>Scalable</h4>
+                <p style={styles.cardText}>Ready for growth</p>
               </div>
-              <div style={styles.featureCard}>
-                <h4 style={styles.featureTitle}>Modern UI</h4>
-                <p style={styles.featureText}>Beautiful design</p>
+              <div style={styles.card}>
+                <h4 style={styles.cardTitle}>Modern UI</h4>
+                <p style={styles.cardText}>Beautiful design</p>
               </div>
             </div>
             
-            <button style={styles.logoutBtn} onClick={handleLogout}>
+            <button style={styles.logoutButton} onClick={handleLogout}>
               Logout
             </button>
           </div>
@@ -432,6 +452,7 @@ const VioletAuth = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <div style={styles.logo}>AI Newsletter</div>
         <h1 style={styles.title}>
           {isLoginMode ? 'Welcome Back' : 'Create Account'}
         </h1>
@@ -439,11 +460,11 @@ const VioletAuth = () => {
           {isLoginMode ? 'Sign in to your account' : 'Join us today and get started'}
         </p>
         
-        <div style={styles.modeToggle}>
+        <div style={styles.tabsContainer}>
           <button
             style={{
-              ...styles.modeBtn,
-              ...(isLoginMode ? styles.modeBtnActive : {})
+              ...styles.tab,
+              ...(isLoginMode ? styles.tabActive : styles.tabInactive)
             }}
             onClick={() => switchMode('login')}
           >
@@ -451,8 +472,8 @@ const VioletAuth = () => {
           </button>
           <button
             style={{
-              ...styles.modeBtn,
-              ...(!isLoginMode ? styles.modeBtnActive : {})
+              ...styles.tab,
+              ...(!isLoginMode ? styles.tabActive : styles.tabInactive)
             }}
             onClick={() => switchMode('signup')}
           >
@@ -497,9 +518,11 @@ const VioletAuth = () => {
               required
               minLength="6"
             />
-            <div style={styles.passwordReqs}>
-              Password must be at least 6 characters long
-            </div>
+            {!isLoginMode && (
+              <div style={styles.passwordReqs}>
+                Password must be at least 6 characters long
+              </div>
+            )}
           </div>
           
           {!isLoginMode && (
@@ -520,8 +543,8 @@ const VioletAuth = () => {
           <button
             type="submit"
             style={{
-              ...styles.btn,
-              ...(isLoading ? styles.btnDisabled : {})
+              ...styles.createButton,
+              ...(isLoading ? styles.createButtonDisabled : {})
             }}
             disabled={isLoading}
           >
@@ -535,33 +558,37 @@ const VioletAuth = () => {
       </div>
       
       <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
         
         input::placeholder {
-          color: rgba(255, 255, 255, 0.7);
+          color: #737373;
         }
         
         input:focus {
-          background: rgba(255, 255, 255, 0.2) !important;
-          border-color: rgba(255, 255, 255, 0.5) !important;
-          transform: scale(1.02) !important;
+          background: #262626 !important;
+          border-color: #666666 !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
         }
         
         button:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4) !important;
+        }
+        
+        button:active:not(:disabled) {
+          transform: translateY(-1px);
+        }
+        
+        .card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
         }
       `}</style>
     </div>
   );
 };
 
-export default VioletAuth;
+export default Login;
