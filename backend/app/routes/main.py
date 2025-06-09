@@ -9,11 +9,7 @@ from flask import (
 )
 import os
 import traceback
-import time
 from werkzeug.utils import secure_filename
-from PIL import Image
-import base64
-from io import BytesIO
 from app.utils.convertApi import convert_pdf_to_html, convert_html_to_pdf
 from app.utils.templateGeneration import (
     no_template_generation,
@@ -29,7 +25,6 @@ from app.config import OUTPUT_PATH
 main_bp = Blueprint(
     "main",
     __name__,
-    template_folder="/home/joel/Documents/Newsletter-Generator/backend/app/templates",
 )
 
 
