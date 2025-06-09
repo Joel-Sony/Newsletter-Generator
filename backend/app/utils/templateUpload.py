@@ -266,7 +266,6 @@ def write_output(template):
         print("Writing file")
         f.write(template.prettify())
 
-
 async def generate(topic,content,pdf_template,tone):
         print("Inside generate")
         await asyncio.sleep(1)
@@ -306,48 +305,30 @@ async def generate(topic,content,pdf_template,tone):
         print("Step Four: Built prompt from from inputs")
         
         await asyncio.sleep(1)
-        # attempts = 0
-        # llm_output = None
-        # while attempts < 3:
-        #     llm_output = get_content(template, final_prompt)
-
-        #     if check_output(llm_output, len(all_styles)):
-        #         print("Step Five: Recieved content from llm")
-                
-        #         await asyncio.sleep(1)
-        #         break
-        #     else:
-        #         attempts += 1
-        #         if attempts < 3:
-        #             print("Step Five: Improper Output, Trying Again...")
-                    
-        #             await asyncio.sleep(1)
-
-        # if attempts == 3:
-            
-        #     await asyncio.sleep(1)
         
-        #     await asyncio.sleep(1)
-        #     return
+        templatePrompt="""
+You are a professional content generator.
 
-        # else:
-        #     template = add_images_and_styles_with_content(
-        #         template, llm_output, img_srcs, all_styles
-        #     )
-        #     print("Step Six: Readded removed images and styles")
-            
-        #     await asyncio.sleep(1)
+Your task is to generate structured, high-quality content based on a given list of placeholder keys. Each key represents a type of content (e.g., headings or body paragraphs) and a unique index.
 
-        #     write_output(template)
+The input will be a list of keys in the format:
+{"heading1", "heading3", "heading4", "body1", "body2"}
 
-        #     print("Step Seven: Created Output File")
-        
-        #     await asyncio.sleep(1)
-            
-        #     await asyncio.sleep(1)
-        #     return
+For each key:
+- If the key starts with "heading", write a short, engaging heading.
+- If the key starts with "body", write a clear, informative paragraph (2-3 sentences).
 
-         
+- Do NOT skip any keys.
+- Output the result strictly in **JSON format** like:
+```json
+{
+  "heading1": "This is a sample heading",
+  "heading3": "Another heading here",
+  "heading4": "More headlines go here",
+  "body1": "This is the body content for section 1.",
+  "body2": "This is the body content for section 2."
+}
+"""
         llm_output = get_content(template, final_prompt)
         
         
@@ -365,4 +346,3 @@ async def generate(topic,content,pdf_template,tone):
         return
 
 
-        
