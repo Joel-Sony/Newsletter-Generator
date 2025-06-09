@@ -5,8 +5,7 @@ from flask_cors import CORS
 def create_app():
     app = Flask(__name__)
 
-    # Enable CORS
-    CORS(app)    # Your other config & blueprint registrations here
+    CORS(app)    
     from .routes.main import main_bp
     app.register_blueprint(main_bp)
     app.config['UPLOAD_FOLDER'] = 'uploads/htm_files'

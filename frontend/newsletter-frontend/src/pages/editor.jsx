@@ -827,7 +827,7 @@ function Editor() {
             canvasAbsoluteMode,
             editor => {
               // Enhanced plugin to handle smooth position conversion
-              const originalGetFrameEl = editor.Canvas.getFrameEl.bind(editor.Canvas);
+              // const originalGetFrameEl = editor.Canvas.getFrameEl.bind(editor.Canvas);
               
               // Override the drag start event to prepare elements for absolute positioning
               editor.on('component:drag:start', (component) => {

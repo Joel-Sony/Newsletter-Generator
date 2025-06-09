@@ -9,16 +9,22 @@ import os
 import traceback
 from werkzeug.utils import secure_filename
 from app.utils.convertApi import convert_pdf_to_html, convert_html_to_pdf
-from app.utils.templateGeneration import (
-    no_template_generation,
-)
+from app.utils.templateGeneration import no_template_generation
 from app.utils.transformText import transformText
 from app.utils.imageGeneration import generate_image
-from app.utils.templateUpload import (
-    generate,
+from app.utils.templateUpload import generate
+from app.config import (
+    OUTPUT_PATH,
+    SUPABASE_KEY,
+    SUPABASE_URL,
+    SECRET_KEY
 )
-from app.config import OUTPUT_PATH
-
+from functools import wraps
+from supabase import create_client, Client
+import jwt
+from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
+import re
 
 main_bp = Blueprint(
     "main",
@@ -162,6 +168,242 @@ def convert_to_pdf():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+SUPABASE_URL
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+# =============================================================================
+# LOGIN SECTION
+# =============================================================================
+def validate_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_password(password):
+    """Validate password strength"""
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long"
+    return True, "Password is valid"
+
+def generate_token(user_id, email):
+    """Generate JWT token"""
+    payload = {
+        'user_id': user_id,
+        'email': email,
+        'exp': datetime.utcnow() + timedelta(days=7),  # Token expires in 7 days
+        'iat': datetime.utcnow()
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+def verify_token(token):
+    """Verify JWT token"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def token_required(f):
+    """Decorator to require valid token"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+        
+        if auth_header:
+            try:
+                token = auth_header.split(" ")[1]  # Bearer <token>
+            except IndexError:
+                return jsonify({'message': 'Invalid token format'}), 401
+        
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+        
+        payload = verify_token(token)
+        if payload is None:
+            return jsonify({'message': 'Token is invalid or expired'}), 401
+        
+        request.current_user = payload
+        return f(*args, **kwargs)
+    
+    return decorated
+
+# Routes
+@main_bp.route('/api/auth/register', methods=['POST'])
+def register():
+    """Register a new user"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        print(data.get("email"))
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        # Validation
+        if not email or not password:
+            return jsonify({'message': 'Email and password are required'}), 400
+        
+        if not validate_email(email):
+            return jsonify({'message': 'Invalid email format'}), 400
+        
+        is_valid, password_message = validate_password(password)
+        if not is_valid:
+            return jsonify({'message': password_message}), 400
+        
+        # Check if user already exists
+        existing_user = supabase.table('users').select('*').eq('email', email).execute()
+        if existing_user.data:
+            return jsonify({'message': 'User with this email already exists'}), 409
+        
+        # Hash password
+        hashed_password = generate_password_hash(password)
+        
+        # Create user record
+        user_data = {
+            'email': email,
+            'password_hash': hashed_password,
+            'created_at': datetime.utcnow().isoformat(),
+            'last_login': None,
+            'is_verified': True  # Set to False if you want email verification
+        }
+        
+        result = supabase.table('users').insert(user_data).execute()
+        
+        if not result.data:
+            return jsonify({'message': 'Failed to create user'}), 500
+        
+        user = result.data[0]
+        
+        # Generate token
+        token = generate_token(user['id'], user['email'])
+        
+        # Prepare user data for response (exclude sensitive info)
+        user_response = {
+            'id': user['id'],
+            'email': user['email'],
+            'created_at': user['created_at'],
+            'last_login': user['last_login']
+        }
+        
+        return jsonify({
+            'message': 'User registered successfully',
+            'token': token,
+            'user': user_response,
+            'requiresVerification': False  # Set to True if email verification is needed
+        }), 201
+        
+    except Exception as e:
+        print(f"Registration error: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+
+@main_bp.route('/api/auth/login', methods=['POST'])
+def login():
+    """Login user"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'message': 'Email and password are required'}), 400
+        
+        # Get user from database
+        result = supabase.table('users').select('*').eq('email', email).execute()
+        
+        if not result.data:
+            return jsonify({'message': 'Invalid email or password'}), 401
+        
+        user = result.data[0]
+        
+        # Check password
+        if not check_password_hash(user['password_hash'], password):
+            return jsonify({'message': 'Invalid email or password'}), 401
+        
+        # Update last login
+        supabase.table('users').update({
+            'last_login': datetime.utcnow().isoformat()
+        }).eq('id', user['id']).execute()
+        
+        # Generate token
+        token = generate_token(user['id'], user['email'])
+        
+        # Prepare user data for response
+        user_response = {
+            'id': user['id'],
+            'email': user['email'],
+            'created_at': user['created_at'],
+            'last_login': datetime.utcnow().isoformat()
+        }
+        
+        return jsonify({
+            'message': 'Login successful',
+            'token': token,
+            'user': user_response
+        }), 200
+        
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+
+@main_bp.route('/api/auth/verify', methods=['GET'])
+@token_required
+def verify():
+    """Verify token and return user data"""
+    try:
+        user_id = request.current_user['user_id']
+        
+        # Get fresh user data from database
+        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        
+        if not result.data:
+            return jsonify({'message': 'User not found'}), 404
+        
+        user = result.data[0]
+        
+        # Prepare user data for response
+        user_response = {
+            'id': user['id'],
+            'email': user['email'],
+            'created_at': user['created_at'],
+            'last_login': user['last_login']
+        }
+        
+        return jsonify({
+            'message': 'Token is valid',
+            'user': user_response
+        }), 200
+        
+    except Exception as e:
+        print(f"Verify error: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+
+@main_bp.route('/api/auth/logout', methods=['POST'])
+@token_required
+def logout():
+    """Logout user (mainly for clearing server-side sessions if needed)"""
+    try:
+        # In JWT implementation, we don't need to do much server-side
+        # The client will remove the token from localStorage
+        # You could implement token blacklisting here if needed
+        
+        return jsonify({
+            'message': 'Logged out successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"Logout error: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+
 
 
 # =============================================================================

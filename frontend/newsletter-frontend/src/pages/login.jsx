@@ -1,11 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Replace with your Supabase credentials
-const SUPABASE_URL = 'https://wsgemoximzgvjmputncl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZ2Vtb3hpbXpndmptcHV0bmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzNTk0NTcsImV4cCI6MjA2NDkzNTQ1N30.Bxd03q7Zr-GKL0gQ98ukTjf1L0YVl6nlJFaCODjMtqQ';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const Login = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -20,31 +13,33 @@ const Login = () => {
   const [showPasswordReqs, setShowPasswordReqs] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    checkUser();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session);
-      
-      if (event === 'SIGNED_IN' && session) {
-        setUser(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Check if user is already authenticated on component mount
+    checkAuthStatus();
   }, []);
 
-  const checkUser = async () => {
+  const checkAuthStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      const response = await fetch('/api/auth/verify', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData.user);
+      } else {
+        // Token is invalid, remove it
+        localStorage.removeItem('authToken');
       }
     } catch (error) {
-      console.error('Error checking user:', error);
+      console.error('Error checking auth status:', error);
+      localStorage.removeItem('authToken');
     }
   };
 
@@ -116,67 +111,113 @@ const Login = () => {
   };
 
   const handleLogin = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      });
 
-    if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        showMessage('Invalid email or password', 'error');
-      } else {
-        showMessage(error.message, 'error');
+      const data = await response.json();
+
+      if (!response.ok) {
+        showMessage(data.message || 'Invalid email or password', 'error');
+        return;
       }
-      return;
-    }
 
-    showMessage('Login successful! Welcome back!', 'success');
-    setTimeout(() => {
-      setUser(data.user);
-    }, 1000);
-  };
+      // Store the token
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+      }
 
-  const handleSignup = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password
-    });
-
-    if (error) {
-      showMessage(error.message, 'error');
-      return;
-    }
-
-    if (data.user && !data.user.email_confirmed_at) {
-      showMessage('Account created! Please check your email for confirmation link.', 'info');
-      setTimeout(() => {
-        switchMode('login');
-        setFormData(prev => ({ ...prev, email: email }));
-      }, 3000);
-    } else if (data.user) {
-      showMessage('Account created successfully! Welcome!', 'success');
+      showMessage('Login successful! Welcome back!', 'success');
+      
       setTimeout(() => {
         setUser(data.user);
       }, 1000);
+
+    } catch (error) {
+      console.error('Login error:', error);
+      showMessage('Network error. Please try again.', 'error');
+    }
+  };
+
+  const handleSignup = async (email, password) => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showMessage(data.message || 'Registration failed', 'error');
+        return;
+      }
+
+      if (data.requiresVerification) {
+        showMessage('Account created! Please check your email for verification.', 'info');
+        setTimeout(() => {
+          switchMode('login');
+          setFormData(prev => ({ ...prev, email: email }));
+        }, 3000);
+      } else {
+        // Auto-login after successful registration
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        showMessage('Account created successfully! Welcome!', 'success');
+        setTimeout(() => {
+          setUser(data.user);
+        }, 1000);
+      }
+
+    } catch (error) {
+      console.error('Signup error:', error);
+      showMessage('Network error. Please try again.', 'error');
     }
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      // Call logout endpoint if token exists
+      if (token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
       console.error('Logout error:', error);
-      showMessage('Error logging out', 'error');
+    } finally {
+      // Always clear local state and token
+      localStorage.removeItem('authToken');
+      setUser(null);
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setMessage(null);
+      switchMode('login');
     }
-
-    setUser(null);
-    setFormData({
-      email: '',
-      password: '',
-      confirmPassword: ''
-    });
-    setMessage(null);
-    switchMode('login');
   };
 
   const styles = {
@@ -403,9 +444,10 @@ const Login = () => {
   };
 
   if (user) {
-    const lastLogin = user.last_sign_in_at ? 
-      new Date(user.last_sign_in_at).toLocaleString() : 
-      'First time login';
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleString();
+    };
 
     return (
       <div style={styles.container}>
@@ -417,14 +459,15 @@ const Login = () => {
             <div style={styles.userInfo}>
               <p style={styles.welcome}>Welcome back!</p>
               <p style={styles.userInfoText}>📧 {user.email}</p>
-              <p style={styles.userInfoText}>🆔 {user.id.substring(0, 8)}...</p>
-              <p style={styles.userInfoText}>🕒 Last login: {lastLogin}</p>
+              <p style={styles.userInfoText}>🆔 {user.id || 'N/A'}</p>
+              <p style={styles.userInfoText}>🕒 Member since: {formatDate(user.created_at)}</p>
+              <p style={styles.userInfoText}>🔄 Last login: {formatDate(user.last_login)}</p>
             </div>
             
             <div style={styles.grid}>
               <div style={styles.card}>
                 <h4 style={styles.cardTitle}>Secure Auth</h4>
-                <p style={styles.cardText}>Protected by Supabase</p>
+                <p style={styles.cardText}>Protected by Flask</p>
               </div>
               <div style={styles.card}>
                 <h4 style={styles.cardTitle}>Real-time</h4>
