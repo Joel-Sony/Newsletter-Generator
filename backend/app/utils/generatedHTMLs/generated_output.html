@@ -1,172 +1,220 @@
-<style>
-  body {
-    margin: 0;
-    padding: 0;
-    background-color: #f4f4f4;
-    font-family: 'Arial', sans-serif;
-    color: #333;
-    line-height: 1.6;
-  }
-  .container {
-    max-width: 790px;
-    margin: 0 auto;
-    background-color: #fff;
-  }
-  .header {
-    padding: 20px;
-    text-align: center;
-    border-bottom: 1px solid #eaeaea;
-  }
-  .logo {
-    max-width: 200px;
-    height: auto;
-  }
-  .nav {
-    margin-top: 15px;
-  }
-  .nav a {
-    text-decoration: none;
-    color: #555;
-    padding: 0 15px;
-    font-size: 14px;
-  }
-  .nav a:hover {
-    color: #e63946;
-  }
-  .hero {
-    padding: 40px 20px;
-    text-align: center;
-    background-color: #1d3557;
-    color: white;
-  }
-  .hero h1 {
-    font-family: 'Georgia', serif;
-    font-size: 36px;
-    margin-bottom: 15px;
-  }
-  .hero p {
-    font-size: 18px;
-    margin-bottom: 25px;
-  }
-  .btn {
-    display: inline-block;
-    padding: 12px 30px;
-    background-color: #e63946;
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    border-radius: 4px;
-  }
-  .content-block {
-    padding: 30px 20px;
-    display: flex;
-    align-items: center;
-  }
-  .content-block:nth-child(even) {
-    flex-direction: row-reverse;
-    background-color: #f8f8f8;
-  }
-  .content-img {
-    flex: 1;
-    padding: 0 20px;
-  }
-  .content-img img {
-    max-width: 100%;
-    height: auto;
-  }
-  .content-text {
-    flex: 1;
-  }
-  .quote-section {
-    padding: 40px 20px;
-    background-color: #457b9d;
-    color: white;
-    text-align: center;
-  }
-  .quote {
-    font-size: 24px;
-    font-style: italic;
-    margin-bottom: 20px;
-  }
-  .footer {
-    padding: 20px;
-    text-align: center;
-    background-color: #1d3557;
-    color: white;
-    font-size: 12px;
-  }
-  .social-icons {
-    margin-bottom: 15px;
-  }
-  .social-icons a {
-    display: inline-block;
-    margin: 0 10px;
-    color: white;
-    font-size: 18px;
-  }
-  @media (max-width: 600px) {
+<div class="newsletter-container">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    .newsletter-container {
+      max-width: 790px;
+      margin: 0 auto;
+      background: #f8f8f8;
+      color: #333;
+      line-height: 1.6;
+    }
+    .header {
+      padding: 20px;
+      text-align: center;
+      background: #1a1a1a;
+    }
+    .logo {
+      max-width: 180px;
+    }
+    .nav {
+      display: flex;
+      justify-content: center;
+      padding: 15px 0;
+      background: #2c3e50;
+    }
+    .nav a {
+      color: #ecf0f1;
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 14px;
+    }
+    .hero {
+      padding: 60px 20px;
+      text-align: center;
+      background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://via.placeholder.com/790x400') no-repeat center;
+      background-size: cover;
+      color: white;
+    }
+    .hero h1 {
+      font-size: 42px;
+      margin-bottom: 20px;
+      font-family: 'Georgia', serif;
+    }
+    .hero p {
+      font-size: 18px;
+      margin-bottom: 30px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 30px;
+      background: #e74c3c;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      text-transform: uppercase;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #c0392b;
+    }
     .content-block {
-      flex-direction: column;
+      display: flex;
+      padding: 40px 20px;
+      align-items: center;
     }
-    .content-block:nth-child(even) {
-      flex-direction: column;
+    .content-block.reverse {
+      flex-direction: row-reverse;
+      background: #ecf0f1;
     }
-    .content-img {
+    .content-image {
+      flex: 1;
+      padding: 0 20px;
+    }
+    .content-image img {
+      width: 100%;
+      border-radius: 4px;
+    }
+    .content-text {
+      flex: 1;
+      padding: 0 20px;
+    }
+    .content-text h2 {
+      font-size: 28px;
+      margin-bottom: 15px;
+      color: #2c3e50;
+      font-family: 'Georgia', serif;
+    }
+    .content-text p {
+      margin-bottom: 15px;
+    }
+    .quote-section {
+      padding: 50px 20px;
+      text-align: center;
+      background: #34495e;
+      color: white;
+    }
+    .quote-section p {
+      font-size: 24px;
+      font-style: italic;
+      max-width: 700px;
+      margin: 0 auto 20px;
+      font-family: 'Georgia', serif;
+    }
+    .quote-section .author {
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .footer {
+      padding: 30px 20px;
+      text-align: center;
+      background: #1a1a1a;
+      color: #ecf0f1;
+    }
+    .social-icons {
       margin-bottom: 20px;
     }
-  }
-</style>
+    .social-icons a {
+      display: inline-block;
+      margin: 0 10px;
+      color: #ecf0f1;
+      font-size: 20px;
+    }
+    .legal {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+    @media (max-width: 768px) {
+      .content-block {
+        flex-direction: column;
+      }
+      .content-block.reverse {
+        flex-direction: column;
+      }
+      .content-image, .content-text {
+        padding: 20px;
+      }
+      .hero h1 {
+        font-size: 32px;
+      }
+    }
+  </style>
 
-<div class="container">
   <div class="header">
-    <img src="https://via.placeholder.com/200x80?text=GAMEPORT" alt="Company Logo" class="logo">
-    <div class="nav">
-      <a href="#">Home</a>
-      <a href="#">Games</a>
-      <a href="#">News</a>
-      <a href="#">Reviews</a>
-      <a href="#">Contact</a>
-    </div>
+    <img src="https://via.placeholder.com/180x60?text=NAUGHTY+DOG" alt="Naughty Dog Logo" class="logo">
+  </div>
+
+  <div class="nav">
+    <a href="#">Home</a>
+    <a href="#">Games</a>
+    <a href="#">News</a>
+    <a href="#">About</a>
+    <a href="#">Contact</a>
   </div>
 
   <div class="hero">
-    <h1>The Last of Us: A Masterpiece Revisited</h1>
-    <p>Experience the critically acclaimed game that redefined storytelling in video games.</p>
-    <a href="#" class="btn">Pre-order Now</a>
+    <h1>The Last of Us</h1>
+    <p>A harrowing journey through a post-pandemic America where survival is just the beginning</p>
+    <a href="#" class="btn">Experience the Story</a>
   </div>
 
   <div class="content-block">
-    <div class="content-img">
-      <img src="https://via.placeholder.com/350x250?text=Gameplay+Screenshot" alt="Gameplay">
+    <div class="content-image">
+      <img src="https://via.placeholder.com/350x250" alt="Joel and Ellie">
     </div>
     <div class="content-text">
-      <h2>A Story That Resonates</h2>
-      <p>The Last of Us follows Joel, a hardened survivor, as he escorts Ellie across a dangerous post-pandemic America. Their emotional journey forms the heart of this unforgettable narrative.</p>
+      <h2>A World in Ruins</h2>
+      <p>Introducing The Last of Us, a critically acclaimed 2013 action-adventure game crafted by the renowned studio Naughty Dog and published by Sony Computer Entertainment.</p>
+      <p>In this gripping narrative, players assume the role of Joel, a seasoned smuggler, as he embarks on a perilous journey to safely escort Ellie, a determined teenager, across the devastated landscape of a post-apocalyptic United States.</p>
     </div>
   </div>
 
-  <div class="content-block">
-    <div class="content-img">
-      <img src="https://via.placeholder.com/350x250?text=Infected+Creatures" alt="Game Enemies">
+  <div class="content-block reverse">
+    <div class="content-image">
+      <img src="https://via.placeholder.com/350x250" alt="Gameplay screenshot">
     </div>
     <div class="content-text">
-      <h2>Brutal Survival Gameplay</h2>
-      <p>Navigate through hostile environments filled with desperate survivors and terrifying infected creatures. Utilize stealth, weapons, and environmental tactics to survive.</p>
+      <h2>Brutal Combat & Survival</h2>
+      <p>With a third-person perspective, the game's intense action unfolds as players utilize a range of tools, including firearms, improvised weapons, and stealth tactics, to counter the threats of hostile humans and terrifying creatures infected by a deadly fungal outbreak.</p>
     </div>
   </div>
 
   <div class="quote-section">
-    <div class="quote">"The Last of Us is not just a game - it's a landmark moment in interactive storytelling." - GameCritic</div>
+    <p>"The Last of Us isn't just a game—it's a masterpiece of interactive storytelling that redefines what the medium can achieve."</p>
+    <div class="author">- Game Critics Association</div>
+  </div>
+
+  <div class="content-block">
+    <div class="content-image">
+      <img src="https://via.placeholder.com/350x250" alt="Multiplayer screenshot">
+    </div>
+    <div class="content-text">
+      <h2>Factions Multiplayer</h2>
+      <p>The game also features a dynamic online multiplayer mode, where up to eight players can engage in either cooperative or competitive gameplay, further enhancing the immersive experience.</p>
+      <a href="#" class="btn">Join the Battle</a>
+    </div>
   </div>
 
   <div class="footer">
     <div class="social-icons">
-      <a href="#">&#xf082;</a>
+      <a href="#">&#xf09a;</a>
       <a href="#">&#xf099;</a>
       <a href="#">&#xf16d;</a>
-      <a href="#">&#xf08c;</a>
+      <a href="#">&#xf0e1;</a>
     </div>
-    <p>&copy; 2023 GamePort. All rights reserved.</p>
-    <p><a href="#" style="color: white;">Unsubscribe</a> | <a href="#" style="color: white;">Privacy Policy</a></p>
+    <div class="legal">
+      © 2023 Naughty Dog. All rights reserved. The Last of Us is a registered trademark of Sony Computer Entertainment.
+    </div>
   </div>
 </div>

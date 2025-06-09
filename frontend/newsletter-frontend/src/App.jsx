@@ -838,7 +838,7 @@ function App() {
                     // Store original position before conversion
                     prepareElementForAbsolutePositioning(element);
                     
-                    // Update the component's style attributes to match
+                    // Update the component's style attributes to match 
                     component.addStyle({
                       position: 'absolute',
                       left: element.style.left,

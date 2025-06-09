@@ -22,6 +22,7 @@ def isHTML(text):
 
 
 def no_template_generation(user_prompt, pathToSaveHtml,tone, topic):
+  print(OPENROUTER_API_KEY)
   pro_prompt = f"""You are an expert copywriter and HTML email designer. First, take the user's raw prompt that contains newsletter content (such as company information, announcements, goals, etc.) and rewrite it in a more professional, polished, and newsletter-appropriate tone. Maintain the original intent, meaning, and key points, but enhance clarity, tone, and grammar to match corporate or marketing communication standards. Do not remove any meaningful user-provided information—only reword it to sound better.
 User prompt is: {user_prompt}. Topic is {topic} RETURN ONLY THE UPDATED PROMPT. DO NOT SAY ANYTHING ELSE. """
 
@@ -31,6 +32,9 @@ User prompt is: {user_prompt}. Topic is {topic} RETURN ONLY THE UPDATED PROMPT. 
   )
 
   polish_response = client.chat.completions.create(
+     extra_headers={
+        "HTTP-Referer": "http://localhost:5000/", # Optional. Site URL for rankings on openrouter.ai.
+    },
     model="meta-llama/llama-3.3-8b-instruct:free",
     messages=[
       {

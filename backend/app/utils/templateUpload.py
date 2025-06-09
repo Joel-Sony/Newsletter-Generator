@@ -189,6 +189,7 @@ Your job:
 2. DO NOT change, remove, or add any HTML tags, inline styles, or structural attributes.
 3. DO NOT add extra paragraphs, headings, or sections.
 4. DO NOT reformat or beautify the HTML — preserve its structure as-is.
+5, FILL the placeholder parts with content related to {formalised_content}
 HTML Template with Placeholders:
 {str(template.body)}
 """
@@ -200,6 +201,9 @@ HTML Template with Placeholders:
 
     try:
         llm_output = client.chat.completions.create(
+           extra_headers = {
+                "HTTP-Referer": "http://localhost:5000/"
+            },
             model="deepseek/deepseek-chat-v3-0324:free",
             messages=[
                 {"role": "user", "content": prompt}
@@ -272,88 +276,93 @@ async def generate(topic,content,pdf_template,tone):
         print("Received topic:", topic)
         print("Received content:", content)
         print("Received tone:", tone if tone else "None")
+        pdf_bytes = pdf_template.read()
+        file_name = f"{pdf_template.filename[:-4]}"
 
-        if not pdf_template:
-            print("No PDF template uploaded.")
-            
-            await asyncio.sleep(1)
-            
-            await asyncio.sleep(1)
+        print("STARTING WITH", pdf_template.filename)
+        
+        await asyncio.sleep(1)
+
+        data = await convert_pdf_to_html(pdf_bytes, pdf_template.filename)
+        if not data:
+    
             return
 
-        else:
-            pdf_bytes = pdf_template.read()
-            file_name = f"{pdf_template.filename[:-4]}"
+        print("Step One: Converted pdf to html")
+        
+        await asyncio.sleep(1)
 
-            print("STARTING WITH", pdf_template.filename)
-           
-            await asyncio.sleep(1)
+        cleaned_file = clean_html(file_name)
 
-            data = await convert_pdf_to_html(pdf_bytes, pdf_template.filename)
-            if not data:
-       
-                return
+        print("Step Two: Converted html to template")
+        
+        await asyncio.sleep(1)
 
-            print("Step One: Converted pdf to html")
-           
-            await asyncio.sleep(1)
+        template, img_srcs, all_styles = remove_images_and_styles(cleaned_file)
 
-            cleaned_file = clean_html(file_name)
+        print("Step Three: Preprocessed template for prompting")
+        
+        await asyncio.sleep(1)
 
-            print("Step Two: Converted html to template")
-            
-            await asyncio.sleep(1)
+        final_prompt = build_prompt(topic, content, tone)
 
-            template, img_srcs, all_styles = remove_images_and_styles(cleaned_file)
+        print("Step Four: Built prompt from from inputs")
+        
+        await asyncio.sleep(1)
 
-            print("Step Three: Preprocessed template for prompting")
-            
-            await asyncio.sleep(1)
+        # attempts = 0
+        # llm_output = None
+        # while attempts < 3:
+        #     llm_output = get_content(template, final_prompt)
 
-            final_prompt = build_prompt(topic, content, tone)
-
-            print("Step Four: Built prompt from from inputs")
-            
-            await asyncio.sleep(1)
-
-            attempts = 0
-            llm_output = None
-            while attempts < 3:
-                llm_output = get_content(template, final_prompt)
-
-                if check_output(llm_output, len(all_styles)):
-                    print("Step Five: Recieved content from llm")
+        #     if check_output(llm_output, len(all_styles)):
+        #         print("Step Five: Recieved content from llm")
+                
+        #         await asyncio.sleep(1)
+        #         break
+        #     else:
+        #         attempts += 1
+        #         if attempts < 3:
+        #             print("Step Five: Improper Output, Trying Again...")
                     
-                    await asyncio.sleep(1)
-                    break
-                else:
-                    attempts += 1
-                    if attempts < 3:
-                        print("Step Five: Improper Output, Trying Again...")
-                        
-                        await asyncio.sleep(1)
+        #             await asyncio.sleep(1)
 
-            if attempts == 3:
-               
-                await asyncio.sleep(1)
-         
-                await asyncio.sleep(1)
-                return
-
-            else:
-                template = add_images_and_styles_with_content(
-                    template, llm_output, img_srcs, all_styles
-                )
-                print("Step Six: Readded removed images and styles")
-               
-                await asyncio.sleep(1)
-
-                write_output(template)
-
-                print("Step Seven: Created Output File")
+        # if attempts == 3:
             
-                await asyncio.sleep(1)
-               
-                await asyncio.sleep(1)
-                return
+        #     await asyncio.sleep(1)
+        
+        #     await asyncio.sleep(1)
+        #     return
+
+        # else:
+        #     template = add_images_and_styles_with_content(
+        #         template, llm_output, img_srcs, all_styles
+        #     )
+        #     print("Step Six: Readded removed images and styles")
             
+        #     await asyncio.sleep(1)
+
+        #     write_output(template)
+
+        #     print("Step Seven: Created Output File")
+        
+        #     await asyncio.sleep(1)
+            
+        #     await asyncio.sleep(1)
+        #     return
+        
+        llm_output = get_content(template, final_prompt)
+        template = add_images_and_styles_with_content(
+                template, llm_output, img_srcs, all_styles
+        )
+        print("Step Six: Readded removed images and styles")
+            
+        await asyncio.sleep(1)
+
+        write_output(template)
+
+        print("Step Seven: Created Output File")
+        return
+
+
+        
