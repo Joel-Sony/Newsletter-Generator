@@ -254,6 +254,11 @@ def register():
             "password": password
         })
 
+
+        if auth_response.user is None:
+            print("Signup error response:", auth_response)
+            return jsonify({'message': 'User creation failed'}), 500
+
         # Get the created user
         user = auth_response.user
         if not user:
@@ -275,53 +280,39 @@ def register():
 
 @main_bp.route('/api/auth/login', methods=['POST'])
 def login():
-    """Login user"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'message': 'No data provided'}), 400
-        
+
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
-        
+
         if not email or not password:
             return jsonify({'message': 'Email and password are required'}), 400
-        
-        # Get user from database
-        result = supabase.table('users').select('*').eq('email', email).execute()
-        
-        if not result.data:
-            return jsonify({'message': 'Invalid email or password'}), 401
-        
-        user = result.data[0]
-        
-        # Check password
-        if not check_password_hash(user['password_hash'], password):
-            return jsonify({'message': 'Invalid email or password'}), 401
-        
-        # Update last login
-        supabase.table('users').update({
-            'last_login': datetime.utcnow().isoformat()
-        }).eq('id', user['id']).execute()
-        
-        # Generate token
-        token = generate_token(user['id'], user['email'])
-        
-        # Prepare user data for response
-        user_response = {
-            'id': user['id'],
-            'email': user['email'],
-            'created_at': user['created_at'],
-            'last_login': datetime.utcnow().isoformat()
-        }
-        
+
+        # Authenticate via Supabase Auth
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
+        if getattr(auth_response, 'error', None):
+            return jsonify({'message': auth_response.error.message}), 401
+
+        session = auth_response.session
+        user = auth_response.user
+
         return jsonify({
             'message': 'Login successful',
-            'token': token,
-            'user': user_response
+            'token': session.access_token,
+            'user': {
+                'id': user.id,
+                'email': user.email
+            }
         }), 200
-        
+
     except Exception as e:
         print(f"Login error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
@@ -359,21 +350,9 @@ def verify():
         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/logout', methods=['POST'])
-@token_required
 def logout():
-    """Logout user (mainly for clearing server-side sessions if needed)"""
-    try:
-        # In JWT implementation, we don't need to do much server-side
-        # The client will remove the token from localStorage
-        # You could implement token blacklisting here if needed
-        
-        return jsonify({
-            'message': 'Logged out successfully'
-        }), 200
-        
-    except Exception as e:
-        print(f"Logout error: {str(e)}")
-        return jsonify({'message': 'Internal server error'}), 500
+    return jsonify({'message': 'Logged out successfully'}), 200
+
 
 
 

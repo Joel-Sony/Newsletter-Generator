@@ -191,34 +191,40 @@ const handleSignup = async (email, password) => {
 
 
 const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      
-      // Call logout endpoint if token exists
-      if (token) {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Always clear local state and token
-      localStorage.removeItem('authToken');
-      setUser(null);
-      setFormData({
-        email: '',
-        password: '',
-        confirmPassword: ''
+  const token = localStorage.getItem('authToken');
+
+  try {
+    // Call logout API only if token exists
+    if (token) {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
-      setMessage(null);
-      switchMode('login');
+
+      // If token is invalid/expired, treat it as already logged out
+      if (!response.ok && response.status !== 401) {
+        console.warn('Logout failed:', await response.text());
+      }
     }
-  };
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    // Always clear client state and token
+    localStorage.removeItem('authToken');
+    setUser(null);
+    setFormData({
+      email: '',
+      password: '',
+      confirmPassword: ''
+    });
+    setMessage(null);
+    switchMode('login');
+  }
+};
+
 
   const styles = {
     container: {

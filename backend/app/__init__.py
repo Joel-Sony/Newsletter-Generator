@@ -6,7 +6,7 @@ def create_app():
     app = Flask(__name__)
 
     CORS(app)    
-    from .routes.main import main_bp
+    from .main import main_bp
     app.register_blueprint(main_bp)
     app.config['UPLOAD_FOLDER'] = 'uploads/htm_files'
     app.config['CONVERTED_PDFS_FOLDER'] = 'uploads/converted_pdfs'
