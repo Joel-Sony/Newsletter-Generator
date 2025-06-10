@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -11,6 +12,7 @@ const Login = () => {
     confirmPassword: ''
   });
   const [showPasswordReqs, setShowPasswordReqs] = useState(false);
+  const navigate=useNavigate();
 
   useEffect(() => {
     // Check if user is already authenticated on component mount
@@ -192,7 +194,6 @@ const handleSignup = async (email, password) => {
 
 const handleLogout = async () => {
   const token = localStorage.getItem('authToken');
-
   try {
     // Call logout API only if token exists
     if (token) {
@@ -455,48 +456,9 @@ const handleLogout = async () => {
       return new Date(dateString).toLocaleString();
     };
 
-    return (
-      <div style={styles.container}>
-        <div style={{ ...styles.card, maxWidth: '600px' }}>
-          <div style={styles.dashboard}>
-            <div style={styles.logo}>AuthApp</div>
-            <h1 style={styles.dashboardTitle}>Dashboard</h1>
-            
-            <div style={styles.userInfo}>
-              <p style={styles.welcome}>Welcome back!</p>
-              <p style={styles.userInfoText}>📧 {user.email}</p>
-              <p style={styles.userInfoText}>🆔 {user.id || 'N/A'}</p>
-              <p style={styles.userInfoText}>🕒 Member since: {formatDate(user.created_at)}</p>
-              <p style={styles.userInfoText}>🔄 Last login: {formatDate(user.last_login)}</p>
-            </div>
-            
-            <div style={styles.grid}>
-              <div style={styles.card}>
-                <h4 style={styles.cardTitle}>Secure Auth</h4>
-                <p style={styles.cardText}>Protected by Flask</p>
-              </div>
-              <div style={styles.card}>
-                <h4 style={styles.cardTitle}>Real-time</h4>
-                <p style={styles.cardText}>Instant updates</p>
-              </div>
-              <div style={styles.card}>
-                <h4 style={styles.cardTitle}>Scalable</h4>
-                <p style={styles.cardText}>Ready for growth</p>
-              </div>
-              <div style={styles.card}>
-                <h4 style={styles.cardTitle}>Modern UI</h4>
-                <p style={styles.cardText}>Beautiful design</p>
-              </div>
-            </div>
-            
-            <button style={styles.logoutButton} onClick={handleLogout}>
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    
+    navigate("/home");
+  };
 
   return (
     <div style={styles.container}>

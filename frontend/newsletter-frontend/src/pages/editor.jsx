@@ -347,6 +347,12 @@ function Editor() {
   const [selectedImageComponent, setSelectedImageComponent] = useState(null);
   const [imagePrompt, setImagePrompt] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveFormData, setSaveFormData] = useState({
+    projectName: '',
+    userEmail: '',
+    description: ''
+  });
 
   useEffect(() => {
     console.log('App component mounted, fetching HTML content...');
@@ -686,6 +692,77 @@ function Editor() {
     }
   };
 
+
+  const openSaveModal = () => {
+    setSaveModalOpen(true);
+  };
+
+  const closeSaveModal = () => {
+      setSaveModalOpen(false);
+      setSaveFormData({
+        projectName: '',
+        userEmail: '',
+        description: ''
+      });
+    };
+
+  const handleSaveToDatabase = async () => {
+    if (!editorReady) {
+      alert("Editor is not ready.");
+      return;
+  }
+
+  if (!saveFormData.projectName.trim() || !saveFormData.userEmail.trim()) {
+    alert('Please fill in required fields (Project Name and Email).');
+    return;
+  }
+
+  try {
+    setLoadingAI(true);
+
+    const htmlContent = editorReady.getHtml();
+    const cssContent = editorReady.getCss();
+    
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${saveFormData.projectName}</title>
+        <style>${cssContent}</style>
+      </head>
+      <body>
+        ${htmlContent}
+      </body>
+      </html>
+    `;
+
+  const response = await fetch('/api/saveProject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectName: saveFormData.projectName,
+        userEmail: saveFormData.userEmail,
+        description: saveFormData.description,
+        htmlContent: fullHtml,
+        createdAt: new Date().toISOString()
+      }),
+  });
+
+  if (!response.ok) throw new Error('Failed to save project to database');
+
+  const result = await response.json();
+  alert('Project saved successfully!');
+  closeSaveModal();
+  } catch (err) {
+    console.error('Failed to save project:', err);
+    alert('Failed to save project: ' + err.message);
+  } finally {
+    setLoadingAI(false);
+  }
+  };
+
+
   const exportToPDF = (editor) => {
     if (!editor) {
       alert("Editor is not ready.");
@@ -695,7 +772,7 @@ function Editor() {
     const cssContent = editor.getCss();
 
     const fullHtml = `
-      <!DOCTYPE html>
+      <!DOCTYPE html>f
       <html>
       <head>
         <meta charset="utf-8">
@@ -736,20 +813,21 @@ function Editor() {
     });
   };
 
-  // Effect to add custom "Export to PDF" button to GrapesJS panel
+
+  // Effect to add custom "Save to Database" button to GrapesJS panel
   useEffect(() => {
     if (editorReady) {
-      console.log('Adding export to PDF button...');
+      console.log('Adding save to database button...');
       const panels = editorReady.Panels;
-      const commandId = 'export-to-pdf-cmd';
+      const commandId = 'save-to-database-cmd';
 
       if (!panels.getButton('options', commandId)) {
         panels.addButton('options', {
           id: commandId,
-          className: 'fa fa-download',
-          label: 'Export PDF',
-          command: editor => exportToPDF(editor),
-          attributes: { title: 'Export Design to PDF' },
+          className: 'fa fa-save',
+          label: 'Save Project',
+          command: () => openSaveModal(),
+          attributes: { title: 'Save Project to Database' },
         });
       }
     }
@@ -1037,8 +1115,10 @@ function Editor() {
               )}
             </Button>
           </div>
+
         </div>
       </Modal>
+      
     </div>
   );
 }

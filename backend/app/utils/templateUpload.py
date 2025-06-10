@@ -34,7 +34,7 @@ async def convert_pdf_to_html(fileBytes, filename):
         with open(f"{INPUT_PATH}/converted_output.html", "wb") as f:
             f.write(html_response.content)
         return True
-    return False
+    return False    
 
 def process_html_to_template(filename):
     # Read converted HTML
@@ -48,37 +48,52 @@ def process_html_to_template(filename):
     soup = BeautifulSoup(html, "html.parser")
     original_lengths = {}
     placeholder_counter = {}
-    
-    # Class to placeholder mapping
+
+    # Known static mappings
     class_map = {
-        'table-paragraph': 'body', 'heading-1': 'heading', 'heading-2': 'heading',
-        'body-text': 'body', 'title': 'title', 'list-paragraph': 'body',
-        'paragraph': 'body', 'heading-3': 'heading'
+        'table-paragraph': 'body',
+        'heading-1': 'heading',
+        'heading-2': 'heading',
+        'heading-3': 'heading',
+        'body-text': 'body',
+        'title': 'title',
+        'list-paragraph': 'body',
+        'paragraph': 'body'
     }
-    
-    # Process all paragraph tags
+
+    # Helper function to determine placeholder type
+    def get_placeholder_type(class_name):
+        if class_name in class_map:
+            return class_map[class_name]
+        elif re.match(r'heading-\d+', class_name):
+            return 'heading'
+        elif 'body' in class_name:
+            return 'body'
+        return None
+
+    # Process all <p> tags
     for p in soup.find_all('p'):
         if p.get('class'):
             class_name = p.get('class')[1] if len(p.get('class')) > 1 else p.get('class')[0]
-            if class_name in class_map:
-                # Store original text length
+            placeholder_type = get_placeholder_type(class_name)
+
+            if placeholder_type:
                 original_text = p.get_text(strip=True)
-                placeholder_type = class_map[class_name]
-                
+
                 # Create unique placeholder
                 if placeholder_type not in placeholder_counter:
                     placeholder_counter[placeholder_type] = 0
                 placeholder_counter[placeholder_type] += 1
                 unique_id = f"{placeholder_type}{placeholder_counter[placeholder_type]}"
-                
-                # Store length and replace text
+
+                # Store length
                 original_lengths[unique_id] = len(original_text)
-                
-                # Clean up spans and replace content
+
+                # Remove nested <span> tags and set placeholder
                 for span in p.find_all('span'):
                     span.unwrap()
                 p.string = f"{{{{ {unique_id} }}}}"
-    
+
     return soup, original_lengths
 
 def generate_content(placeholders, original_lengths, topic, content, tone):
@@ -136,12 +151,11 @@ Make each section unique - no repetition."""
     return None
 
 async def generate(topic, content, pdf_template, tone):
+    print(OPENROUTER_API_KEY)
     print(f"Processing: {pdf_template.filename}")
     start_time = time.time()
     
     # Step 1: Convert PDF to HTML
-    pdf_bytes = pdf_template.read()
-    convert_pdf_to_html(pdf_bytes, pdf_template.filename)
     print("✓ PDF converted to HTML")
     
     # Step 2: Process HTML to template with placeholders

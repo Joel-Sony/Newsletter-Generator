@@ -8,8 +8,12 @@ import NewsletterGenerator from './pages/generator.jsx';
 function App() {
   return (
     <Routes>
+
+      {/* Sets up default page as login so that it loads first instead of '/'  */}
+      <Route index element={<Navigate to="/login" replace />} />    
+      
       {/* Home page route */}
-      <Route path="/" element={<NewsletterDashboard />} />
+      <Route path="/home" element={<ProtectedRoute><NewsletterDashboard /></ProtectedRoute>} />
       
       {/* Login/Auth page route */}
       <Route path="/login" element={<Login />} />
@@ -24,5 +28,16 @@ function App() {
     </Routes>
   );
 }
+
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('authToken'); // or use context
+
+  if (!token) {
+    return <Navigate to="/login" replace />; // Redirect to login if no token
+  }
+
+  return children; // Otherwise show the child component (e.g. <Home />)
+};
+
 
 export default App;
