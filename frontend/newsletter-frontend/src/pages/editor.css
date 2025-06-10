@@ -30,3 +30,6 @@ html, body, #root {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
+.gjs-pn-panel {
+  background-color: #1e1e2f !important;
+}
