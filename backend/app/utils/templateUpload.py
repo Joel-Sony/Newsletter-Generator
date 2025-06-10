@@ -11,7 +11,6 @@ from app.config import (
     OUTPUT_PATH,
     INPUT_PATH,
 )
-import asyncio
 import re
 
 async def convert_pdf_to_html(fileBytes, filename):
@@ -168,9 +167,7 @@ async def generate(topic, content, pdf_template, tone):
     
     # Step 4: Generate content
     content_dict = generate_content(placeholders, original_lengths, topic, content, tone)
-    if not content_dict:
-        print("Content generation failed")
-        return
+    print(content_dict)
     print("✓ Content generated")
     
     # Step 5: Replace placeholders

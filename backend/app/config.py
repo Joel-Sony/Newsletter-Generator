@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 OPENROUTER_API_KEY=os.getenv("OPENROUTER_API_KEY")
 CONVERT_API_SECRET=os.getenv("CONVERT_API_SECRET")
 IMAGEROUTER_API_KEY=os.getenv("IMAGEROUTER_API_KEY")

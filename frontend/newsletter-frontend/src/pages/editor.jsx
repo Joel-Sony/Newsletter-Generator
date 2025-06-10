@@ -762,58 +762,6 @@ function Editor() {
   }
   };
 
-
-  const exportToPDF = (editor) => {
-    if (!editor) {
-      alert("Editor is not ready.");
-      return;
-    }
-    const htmlContent = editor.getHtml();
-    const cssContent = editor.getCss();
-
-    const fullHtml = `
-      <!DOCTYPE html>f
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Exported Content</title>
-        <style>${cssContent}</style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const formData = new FormData();
-    formData.append('file', blob, 'newsletter_content.html');
-
-    fetch('/convertToPdf', {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => {
-      if (!response.ok) {
-        return response.json().then(err => { throw new Error(err.error || 'PDF conversion failed') });
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data.pdf_path) {
-        alert(`PDF converted successfully!`);
-        window.open(data.pdf_path, '_blank');
-      } else {
-        alert(data.error || 'Error converting to PDF: No PDF path returned.');
-      }
-    })
-    .catch(error => {
-      console.error('Error during PDF conversion process:', error);
-      alert(`An error occurred while converting to PDF: ${error.message}`);
-    });
-  };
-
-
   // Effect to add custom "Save to Database" button to GrapesJS panel
   useEffect(() => {
     if (editorReady) {
