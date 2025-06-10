@@ -24,9 +24,9 @@ function freezeAutoDimensionsInCanvas(editor) {
     }
 
     // Optional: freeze positioning too
-    if (computed.position === 'static') {
-      el.style.position = 'relative';
-    }
+    // if (computed.position === 'static') {      uncommenting this causes snapping when dragging
+    //   el.style.position = 'relative';
+    // }
   });
 }
 

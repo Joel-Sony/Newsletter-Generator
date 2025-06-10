@@ -150,7 +150,6 @@ Make each section unique - no repetition."""
     return None
 
 async def generate(topic, content, pdf_template, tone):
-    print(OPENROUTER_API_KEY)
     print(f"Processing: {pdf_template.filename}")
     start_time = time.time()
     
