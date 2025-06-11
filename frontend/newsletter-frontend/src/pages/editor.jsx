@@ -3,6 +3,7 @@ import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
+import '@grapesjs/studio-sdk/style';
 
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
@@ -30,7 +31,7 @@ function freezeAutoDimensionsInCanvas(editor) {
   });
 }
 
-// Enhanced function to properly convert element positioning
+// // Enhanced function to properly convert element positioning
 // function prepareElementForAbsolutePositioning(element) {
 //   if (!element) return;
   
@@ -828,6 +829,79 @@ function Editor() {
 
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
+      {/* Header with Save Button */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 20px',
+        backgroundColor: '#1a1a1a',
+        borderBottom: '1px solid #333',
+        minHeight: '60px'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#e0e0e0'
+          }}>
+            Newsletter Editor
+          </h1>
+          <div style={{
+            fontSize: '14px',
+            color: '#888',
+            padding: '4px 8px',
+            backgroundColor: '#2a2a2a',
+            borderRadius: '4px'
+          }}>
+            {editorReady ? '✓ Ready' : '⏳ Loading...'}
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Save Button */}
+          <Button
+            variant="primary"
+            onClick={() => setSaveModalOpen(true)}
+            disabled={!editorReady}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#1034a6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: editorReady ? 'pointer' : 'not-allowed',
+              opacity: editorReady ? 1 : 0.6,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (editorReady) {
+                e.target.style.backgroundColor = '#1440c4';
+                e.target.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (editorReady) {
+                e.target.style.backgroundColor = '#1034a6';
+                e.target.style.transform = 'translateY(0)';
+              }
+            }}
+          >
+            💾 Save Project
+          </Button>
+        </div>
+    </div>
+    <div style={{ flex: 1, overflow: 'hidden' }}>
       <StudioEditor
         onReady={editor => {
           console.log('Editor ready callback called:', editor);
@@ -901,6 +975,7 @@ function Editor() {
               });
             },
           ],
+          
         }}
       />
 
@@ -1121,6 +1196,7 @@ function Editor() {
         </div>
       </Modal>
     </div>
+  </div>
   );
 }
 export default Editor;

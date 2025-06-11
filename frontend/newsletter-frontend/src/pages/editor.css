@@ -31,5 +31,47 @@ html, body, #root {
 }
 
 .gjs-pn-panel {
-  background-color: #1e1e2f !important;
+  background-color: #0d0dff !important;
+}
+
+.gjs-editor {
+  padding: 20px !important;
+}
+
+.gjs-pn-panel {
+  padding: 160px 12px !important;
+}
+
+.gjs-pn-buttons {
+  padding: 400px !important;
+}
+
+.gjs-blocks-c {
+  padding: 1600px !important;
+  gap: 12px !important;
+}
+
+.gjs-block {
+  margin: 8px !important;
+  padding: 12px !important;
+}
+
+.gjs-sm-sectors {
+  padding: 16px !important;
+}
+
+.gjs-sm-sector {
+  padding: 12px 0 !important;
+}
+
+.gjs-layers {
+  padding: 16px !important;
+}
+
+.gjs-layer {
+  padding: 800px 12px !important;
+}
+
+.gjs-cv-canvas {
+  padding: 20px !important;
 }
