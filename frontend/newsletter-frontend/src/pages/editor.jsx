@@ -351,9 +351,12 @@ function Editor() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveFormData, setSaveFormData] = useState({
     projectName: '',
-    userEmail: '',
-    description: ''
+    description: '',
+    status: 'DRAFT'
   });
+  
+  const [status, setStatus] = useState('DRAFT');
+
   
 
   useEffect(() => {
@@ -715,13 +718,14 @@ function Editor() {
   };
 
   const closeSaveModal = () => {
-      setSaveModalOpen(false);
-      setSaveFormData({
-        projectName: '',
-        userEmail: '',
-        description: ''
-      });
-    };
+    setSaveModalOpen(false);
+    setSaveFormData({
+      projectName: '',
+      userEmail: '',
+      description: '',
+      status: 'DRAFT'
+    });
+  };
 
   const handleSaveToDatabase = async () => {
     if (!editorReady) {
@@ -862,8 +866,8 @@ function Editor() {
             {editorReady ? '✓ Ready' : '⏳ Loading...'}
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           {/* Save Button */}
           <Button
             variant="primary"
@@ -900,13 +904,37 @@ function Editor() {
             💾 Save Project
           </Button>
         </div>
+
     </div>
     <div style={{ flex: 1, overflow: 'hidden' }}>
       <StudioEditor
+        
         onReady={editor => {
-          console.log('Editor ready callback called:', editor);
-          setEditorReady(editor);
+          console.log('Editor ready:', editor);
+
+          // Wait for panels to fully initialize
+          const style = document.createElement('style');
+          style.textContent = `
+            /* Hide the specific tooltip div that contains the save button */
+            .gs-cmp-tooltip.gs-utl-relative:has(button svg path[d="M5,3A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5.5L18.5,3H17V9A1,1 0 0,1 16,10H8A1,1 0 0,1 7,9V3H5M12,4V9H15V4H12M7,12H17A1,1 0 0,1 18,13V19H6V13A1,1 0 0,1 7,12Z"]) {
+              display: none !important;
+            }
+            
+            /* Alternative: Target by partial path match */
+            .gs-cmp-tooltip.gs-utl-relative:has(button svg path[d*="M5,3A2,2 0 0,0 3,5V19"]) {
+              display: none !important;
+            }
+            
+            /* Fallback: Target any tooltip div containing save icon */
+            .gs-cmp-tooltip.gs-utl-relative:has(.gs-cmp-icon svg path[d*="M5,3A2,2 0 0,0 3,5V19"]) {
+              display: none !important;
+            }
+          `;
+
+          document.head.appendChild(style);
+          setEditorReady(editor)
         }}
+
         options={{
           project: {
             default: {
@@ -1140,22 +1168,15 @@ function Editor() {
           </div>
 
           <div>
-            <Label>Email</Label>
-            <input
-              type="email"
-              value={saveFormData.userEmail}
-              onChange={(e) => setSaveFormData({ ...saveFormData, userEmail: e.target.value })}
-              placeholder="you@example.com"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '14px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                background: 'white',
-                color: '#334155',
-              }}
-            />
+            <Label>Status</Label>
+            <Select
+              value={saveFormData.status || 'DRAFT'}
+              onChange={(e) => setSaveFormData({ ...saveFormData, status: e.target.value })}
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
+            </Select>
           </div>
 
           <div>
