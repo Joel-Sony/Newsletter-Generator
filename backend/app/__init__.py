@@ -3,7 +3,9 @@ from flask_cors import CORS
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__,
+                static_folder="/home/joel/Documents/Newsletter-Generator/frontend/newsletter-frontend/dist/assets", 
+                template_folder="/home/joel/Documents/Newsletter-Generator/frontend/newsletter-frontend/dist")
 
     CORS(app)    
     from .main import main_bp

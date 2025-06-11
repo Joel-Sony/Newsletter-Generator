@@ -353,6 +353,7 @@ function Editor() {
     userEmail: '',
     description: ''
   });
+  
 
   useEffect(() => {
     console.log('App component mounted, fetching HTML content...');
@@ -480,6 +481,21 @@ function Editor() {
       doc.removeEventListener('mouseup', handleMouseUp);
     };
   }, [editorReady]);
+
+  useEffect(() => {
+    if (editorReady) {
+      // Override the default 'save' command to open your modal
+      editorReady.Commands.add('save', {
+        run(editor) {
+          console.log('Default save command overridden');
+          openSaveModal(); // Opens your modal
+        },
+      });
+
+      console.log('Overridden default save command to open modal');
+    }
+  }, [editorReady]);  
+
 
   // Function to get current text selection
   const getTextSelection = () => {
@@ -762,24 +778,7 @@ function Editor() {
   }
   };
 
-  // Effect to add custom "Save to Database" button to GrapesJS panel
-  useEffect(() => {
-    if (editorReady) {
-      console.log('Adding save to database button...');
-      const panels = editorReady.Panels;
-      const commandId = 'save-to-database-cmd';
 
-      if (!panels.getButton('options', commandId)) {
-        panels.addButton('options', {
-          id: commandId,
-          className: 'fa fa-save',
-          label: 'Save Project',
-          command: () => openSaveModal(),
-          attributes: { title: 'Save Project to Database' },
-        });
-      }
-    }
-  }, [editorReady]);
 
   // Error boundary - if there's an error, show it
   if (error) {
@@ -1043,6 +1042,84 @@ function Editor() {
         </div>
       </Modal>
       
+      {/* SAVE MODAL */}
+      <Modal isOpen={saveModalOpen} onClose={closeSaveModal} title="💾 Save Project">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <Label>Project Name</Label>
+            <input
+              type="text"
+              value={saveFormData.projectName}
+              onChange={(e) => setSaveFormData({ ...saveFormData, projectName: e.target.value })}
+              placeholder="My Newsletter Template"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                fontSize: '14px',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                background: 'white',
+                color: '#334155',
+              }}
+            />
+          </div>
+
+          <div>
+            <Label>Email</Label>
+            <input
+              type="email"
+              value={saveFormData.userEmail}
+              onChange={(e) => setSaveFormData({ ...saveFormData, userEmail: e.target.value })}
+              placeholder="you@example.com"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                fontSize: '14px',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                background: 'white',
+                color: '#334155',
+              }}
+            />
+          </div>
+
+          <div>
+            <Label>Description</Label>
+            <TextArea
+              value={saveFormData.description}
+              onChange={(e) => setSaveFormData({ ...saveFormData, description: e.target.value })}
+              placeholder="Describe your template..."
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <Button variant="secondary" onClick={closeSaveModal}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveToDatabase}
+              disabled={loadingAI || !saveFormData.projectName.trim() || !saveFormData.userEmail.trim()}
+            >
+              {loadingAI ? (
+                <>
+                  <span style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></span>
+                  Saving...
+                </>
+              ) : (
+                <>💾 Save Project</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -33,7 +33,7 @@ main_bp = Blueprint(
 
 # Build directory for React app
 BUILD_DIR = os.path.abspath(
-    "/home/joel/Documents/Newsletter-Generator/frontend/newsletter-frontend/dist/"
+    "/home/joel/Documents/Newsletter-Generator/frontend/newsletter-frontend/dist"
 )
 
 # Generated output directory
