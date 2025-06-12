@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
@@ -23,6 +24,35 @@ function freezeAutoDimensionsInCanvas(editor) {
     }
   });
 }
+
+const baseButtonStyle = {
+  fontSize: '16px',
+  fontWeight: 600,
+  padding: '10px 16px',
+  borderRadius: '8px',
+  border: 'none',
+  outline: 'none',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease-in-out',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+};
+
+const secondaryButtonStyle = {
+  ...baseButtonStyle,
+  backgroundColor: '#2a2a2a',
+  color: '#f1f5f9',
+  border: '1px solid #444',
+};
+
+const primaryButtonStyle = (disabled) => ({
+  ...baseButtonStyle,
+  backgroundColor: disabled ? '#64748b' : '#1034a6',
+  color: '#fff',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.7 : 1,
+});
 
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
@@ -297,6 +327,7 @@ const Label = ({ children, ...props }) => (
 );
 
 function Editor() {
+  const navigate = useNavigate()
   const [htmlContent, setHtmlContent] = useState(null);
     const [editorReady, setEditorReady] = useState(null);
     const [error, setError] = useState(null);
@@ -758,6 +789,21 @@ function Editor() {
         minHeight: '60px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Button 
+            variant="secondary" 
+            onClick={() => navigate('/home')} // Navigates to home
+            style={{ 
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#f1f5f9',
+              padding: '12px 10px',
+              backgroundColor: '#2a2a2a',
+              borderRadius: '6px',
+              outline:'none'
+            }}
+          >
+            ← Home
+          </Button>
           <div
             ref={projectNameRef}
             contentEditable
@@ -931,16 +977,19 @@ function Editor() {
           {/* Tone Selection */}
           <div>
             <Label>Select Tone:</Label>
-            <Select value={tone} onChange={(e) => setTone(e.target.value)}>
-              <option value="">Choose a tone...</option>
-              <option value="Professional">Professional</option>
-              <option value="Casual">Casual</option>
-              <option value="Friendly">Friendly</option>
-              <option value="Formal">Formal</option>
-              <option value="Humorous">Humorous</option>
-              <option value="Persuasive">Persuasive</option>
-              <option value="Educational">Educational</option>
-              <option value="Custom Tone">Custom Tone</option>
+            <Select
+              value={tone}
+              onChange={e => setTone(e.target.value)}
+            >
+              <option value="">🎨  Choose a tone…</option>
+              <option value="Professional">💼 Professional</option>
+              <option value="Casual">☕ Casual</option>
+              <option value="Friendly">😊 Friendly</option>
+              <option value="Formal">🎩 Formal</option>
+              <option value="Humorous">😂 Humorous</option>
+              <option value="Persuasive">🗣️ Persuasive</option>
+              <option value="Educational">📚 Educational</option>
+              <option value="Custom Tone">✏️ Custom Tone</option>
             </Select>
           </div>
 
