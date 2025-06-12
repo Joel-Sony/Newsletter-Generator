@@ -1,35 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
-
-const API_BASE_URL = 'http://localhost:5000/api';
-
-// const apiCall = async (endpoint, options = {}) => {
-//   const url = `${API_BASE_URL}${endpoint}`;
-//   const config = {
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'Autho'
-//       ...options.headers,
-//     },
-//     ...options,
-//   };
-
-//   try {
-//     const response = await fetch(url, config);
-    
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-    
-//     return await response.json();
-//   } catch (error) {
-//     console.error('API call failed:', error);
-//     throw error;
-//   }
-// };
 
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
@@ -325,68 +298,60 @@ const Label = ({ children, ...props }) => (
 
 function Editor() {
   const [htmlContent, setHtmlContent] = useState(null);
-  const [editorReady, setEditorReady] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [projectName, setProjectName] = useState('Untitled Newsletter');
-  const [projectId, setProjectId] = useState(null); 
-
-  // Text modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedComponent, setSelectedComponent] = useState(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [selectionInfo, setSelectionInfo] = useState(null);
-  const [tone, setTone] = useState('');
-  const [customPrompt, setCustomPrompt] = useState('');
-
-  // Image modal state
-  const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [selectedImageComponent, setSelectedImageComponent] = useState(null);
-  const [imagePrompt, setImagePrompt] = useState('');
-  const [loadingAI, setLoadingAI] = useState(false);
+    const [editorReady, setEditorReady] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [projectName, setProjectName] = useState('Untitled Newsletter');
+    const [projectId, setProjectId] = useState(null); 
   
-  // Save modal state
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [saveFormData, setSaveFormData] = useState({
-    projectName: '',
-    description: '',
-    status: 'DRAFT'
-  });
-  const [savingProject, setSavingProject] = useState(false);
-  const [projectStatus, setProjectStatus] = useState('DRAFT');
+    // Text modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedComponent, setSelectedComponent] = useState(null);
+    const [selectedText, setSelectedText] = useState('');
+    const [selectionInfo, setSelectionInfo] = useState(null);
+    const [tone, setTone] = useState('');
+    const [customPrompt, setCustomPrompt] = useState('');
+  
+    // Image modal state
+    const [imageModalOpen, setImageModalOpen] = useState(false);
+    const [selectedImageComponent, setSelectedImageComponent] = useState(null);
+    const [imagePrompt, setImagePrompt] = useState('');
+    const [loadingAI, setLoadingAI] = useState(false);
+    
+    const [projectStatus, setProjectStatus] = useState('DRAFT');
+    const [savingProject, setSavingProject] = useState(false);
+    
+    // Reference for editable project name
+    const projectNameRef = useRef(null);
+  
+
 
   useEffect(() => {
-    console.log('App component mounted, fetching HTML content...');
-    
-    // Fetch initial HTML content for the editor
-    fetch('/api/generated_output.html')
-      .then(res => {
-        console.log('Fetch response status:', res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.text();
-      })
-      .then(html => {
-        console.log('HTML content received:', html.substring(0, 200) + '...');
-        setHtmlContent(html);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch initial HTML content:", err);
-        setError(err.message);
-        // Fallback content
-        const fallbackContent = `
-          <div style="padding: 50px; text-align: center;">
-            <h1>Welcome to the Editor</h1>
-            <p>Could not load initial template. Starting with default content.</p>
-            <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
-          </div>
-        `;
-        setHtmlContent(fallbackContent);
-        setLoading(false);
-      });
-  }, []);
+      console.log('App component mounted, fetching HTML content...');
+      
+      fetch('/api/generated_output.html')
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.text();
+        })
+        .then(html => {
+          setHtmlContent(html);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch initial HTML content:", err);
+          setError(err.message);
+          const fallbackContent = `
+            <div style="padding: 50px; text-align: center;">
+              <h1>Welcome to the Editor</h1>
+              <p>Could not load initial template. Starting with default content.</p>
+              <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
+            </div>
+          `;
+          setHtmlContent(fallbackContent);
+          setLoading(false);
+        });
+    }, []);
 
   useEffect(() => {
     if (editorReady && htmlContent) {
@@ -399,74 +364,148 @@ function Editor() {
     }
   }, [editorReady, htmlContent]);
 
-  useEffect(() => {
-    if (!editorReady) return;
+  const getAuthToken = () => {
+    try {
+      return localStorage.getItem('authToken');
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  };
 
-    const iframe = editorReady.Canvas.getFrameEl();
-    if (!iframe) return;
-
-    const doc = iframe.contentDocument;
-
-    const handleMouseDown = () => {
-      // Clear previous selection cache
-      window._cachedTextSelection = null;
-      
-      // Small delay to ensure selection is properly registered
-      setTimeout(() => {
-        const selection = doc.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          if (range && range.toString().trim()) {
-            window._cachedTextSelection = {
-              text: range.toString(),
-              range: range.cloneRange(),
-              startContainer: range.startContainer,
-              endContainer: range.endContainer,
-              startOffset: range.startOffset,
-              endOffset: range.endOffset
-            };
-          }
-        }
-      }, 10);
-    };
-
-    const handleMouseUp = () => {
-      // Also capture selection on mouseup as a fallback
-      setTimeout(() => {
-        const selection = doc.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          if (range && range.toString().trim()) {
-            window._cachedTextSelection = {
-              text: range.toString(),
-              range: range.cloneRange(),
-              startContainer: range.startContainer,
-              endContainer: range.endContainer,
-              startOffset: range.startOffset,
-              endOffset: range.endOffset
-            };
-          }
-        }
-      }, 10);
-    };
-
-    doc.addEventListener('mousedown', handleMouseDown);
-    doc.addEventListener('mouseup', handleMouseUp);
+  const showToast = (message, isError = false) => {
+    const toast = document.createElement('div');
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.padding = '12px 24px';
+    toast.style.backgroundColor = isError ? '#ef4444' : '#3b82f6';
+    toast.style.color = 'white';
+    toast.style.borderRadius = '8px';
+    toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+    toast.style.zIndex = '10000';
+    toast.style.fontFamily = 'sans-serif';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.gap = '10px';
+    toast.textContent = message;
     
-    return () => {
-      doc.removeEventListener('mousedown', handleMouseDown);
-      doc.removeEventListener('mouseup', handleMouseUp);
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  };
+  
+  const handleSaveProject = useCallback(async () => {
+    if (!editorReady) {
+      showToast('Editor not ready', true);
+      return;
+    }
+
+    const currentProjectName = projectName.trim();
+    if (!currentProjectName) {
+      showToast('Please enter a project name', true);
+      return;
+    }
+
+    const authToken = getAuthToken();
+    if (!authToken) {
+      showToast('Authentication required. Please log in.', true);
+      return;
+    }
+
+    try {
+      setSavingProject(true);
+
+      const projectData = editorReady.getProjectData();
+      const response = await fetch('/api/upload-project', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          project_name: currentProjectName,
+          status: projectStatus,
+          project_data: projectData,
+          project_id: projectId,
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
+      if (data.project_id) {
+        setProjectId(data.project_id);
+      }
+
+      showToast(`Project "${currentProjectName}" saved successfully!`);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      showToast(`Failed to save project: ${error.message}`, true);
+    } finally {
+      setSavingProject(false);
+    }
+  }, [editorReady, projectName, projectStatus, projectId]);
+
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveProject();
+      }
     };
-  }, [editorReady]);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveProject]);
+
+
+  useEffect(() => {
+      if (!editorReady) return;
+  
+      const iframe = editorReady.Canvas.getFrameEl();
+      if (!iframe) return;
+  
+      const doc = iframe.contentDocument;
+      
+      const handleSelectionChange = () => {
+        const selection = doc.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (range && range.toString().trim()) {
+            window._cachedTextSelection = {
+              text: range.toString(),
+              range: range.cloneRange(),
+              startContainer: range.startContainer,
+              endContainer: range.endContainer,
+              startOffset: range.startOffset,
+              endOffset: range.endOffset
+            };
+          }
+        }
+      };
+  
+      doc.addEventListener('selectionchange', handleSelectionChange);
+      return () => doc.removeEventListener('selectionchange', handleSelectionChange);
+    }, [editorReady]);
+  
 
   // Function to get current text selection
   const getTextSelection = () => {
-    // First try to get from cache
     if (window._cachedTextSelection) {
       return window._cachedTextSelection;
     }
 
-    // Fallback: try to get current selection
     if (!editorReady) return null;
     
     const iframe = editorReady.Canvas.getFrameEl();
@@ -475,9 +514,9 @@ function Editor() {
     const doc = iframe.contentDocument;
     const selection = doc.getSelection();
     
-    if (selection && selection.rangeCount > 0) {
+    if (selection?.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      if (range && range.toString().trim()) {
+      if (range?.toString().trim()) {
         return {
           text: range.toString(),
           range: range.cloneRange(),
@@ -493,12 +532,10 @@ function Editor() {
   };
 
   const openModal = (component) => {
-    // Get current selection before opening modal
     const selection = getTextSelection();
     
-    // Check if selection exists and has text
-    if (!selection || !selection.text || !selection.text.trim()) {
-      alert('Please select some text first before using AI transformation.');
+    if (!selection?.text?.trim()) {
+      showToast('Please select text before transforming', true);
       return;
     }
 
@@ -515,7 +552,6 @@ function Editor() {
     setSelectedComponent(null);
     setSelectedText('');
     setSelectionInfo(null);
-    // Clear cached selection when modal closes
     window._cachedTextSelection = null;
   };
 
@@ -581,64 +617,48 @@ function Editor() {
     try {
       if (!selectionInfo || !selectedComponent) return;
 
-      // Get the component's DOM element
+      const iframe = editorReady.Canvas.getFrameEl();
+      if (!iframe) return;
+      
+      const doc = iframe.contentDocument;
       const componentEl = selectedComponent.getEl();
       if (!componentEl) return;
 
-      // Create a new range based on stored selection info
-      const range = document.createRange();
+      // Create a new range in the iframe's document
+      const range = doc.createRange();
       
-      // Verify that the stored containers still exist in the DOM
-      if (!componentEl.contains(selectionInfo.startContainer) || 
-          !componentEl.contains(selectionInfo.endContainer)) {
-        // Fallback: try to find the text in the component and replace first occurrence
-        const currentHTML = componentEl.innerHTML;
-        const updatedHTML = currentHTML.replace(selectedText, newText);
-        componentEl.innerHTML = updatedHTML;
-        
-        // Update GrapesJS component content
-        selectedComponent.components(updatedHTML);
-        return;
-      }
-
-      // Set the range using stored selection info
+      // Set range using stored selection info
       range.setStart(selectionInfo.startContainer, selectionInfo.startOffset);
       range.setEnd(selectionInfo.endContainer, selectionInfo.endOffset);
-
-      // Delete the selected content and insert new text
-      range.deleteContents();
       
-      // Create a text node with the new content
-      const textNode = document.createTextNode(newText);
+      range.deleteContents();
+      const textNode = doc.createTextNode(newText);
       range.insertNode(textNode);
 
-      // Update GrapesJS component content to reflect the changes
+      // Update component content
       const updatedContent = componentEl.innerHTML;
       selectedComponent.components(updatedContent);
 
-      // Clear the selection and cache
-      const iframe = editorReady.Canvas.getFrameEl();
-      if (iframe && iframe.contentDocument) {
-        iframe.contentDocument.getSelection().removeAllRanges();
-      }
+      // Clear selection
+      doc.getSelection().removeAllRanges();
       window._cachedTextSelection = null;
       
     } catch (error) {
-      console.error('Error replacing selected text:', error);
-      // Fallback: replace the entire component content
+      console.error('Error replacing text:', error);
+      // Fallback to replacing entire text content
       const originalText = selectedComponent.view?.el?.innerText || '';
       const newContent = originalText.replace(selectedText, newText);
       selectedComponent.components([{ type: 'text', content: newContent }]);
     }
   };
 
-  const handleImageGeneration = async () => {
+    const handleImageGeneration = async () => {
     if (!selectedImageComponent) {
-      alert('No image component selected.');
+      showToast('No image component selected', true);
       return;
     }
     if (!imagePrompt.trim()) {
-      alert('Please enter an image prompt.');
+      showToast('Please enter an image prompt', true);
       return;
     }
 
@@ -651,126 +671,35 @@ function Editor() {
         body: JSON.stringify({ prompt: imagePrompt }),
       });
 
-      if (!response.ok) throw new Error('Image generation failed on server');
+      if (!response.ok) throw new Error('Image generation failed');
 
       const { image_base64, mime_type } = await response.json();
       if (!image_base64 || !mime_type) {
-        throw new Error('Invalid image data received from server.');
+        throw new Error('Invalid image data received');
       }
+      
       const dataUrl = `data:${mime_type};base64,${image_base64}`;
-
       selectedImageComponent.addAttributes({ src: dataUrl });
+      
       closeImageModal();
+      showToast('Image generated successfully!');
     } catch (err) {
       console.error('Image generation error:', err);
-      alert('Image generation error: ' + err.message);
+      showToast(`Image generation error: ${err.message}`, true);
     } finally {
       setLoadingAI(false);
     }
   };
 
-  const openSaveModal = () => {
-    setSaveFormData({
-      projectName: projectName,
-      description: '', // Remove this if not needed in UI
-      status: projectStatus // This gets the external dropdown value
-    });
-    setSaveModalOpen(true);
-  }; 
-
-  const closeSaveModal = () => {
-    setSaveModalOpen(false);
-    setSaveFormData({
-      projectName: '',
-      description: '',
-      status: 'DRAFT'
-    });
-  };
-
-  const handleSaveProject = async () => {
-    if (!editorReady) {
-      alert('Editor not ready');
-      return;
-    }
-
-    if (!saveFormData.projectName.trim()) {
-      alert('Please enter a project name.');
-      return;
-    }
-
-    // Get auth token
-    const authToken = getAuthToken();
-    if (!authToken) {
-      alert('Authentication required. Please log in.');
-      return;
-    }
-
-    try {
-      setSavingProject(true);
-
-      // Get the current project data from the editor
-      const projectData = editorReady.getProjectData();
-      
-      const response = await fetch('/api/upload-project', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}` // Make sure this is correct format
-        },
-        body: JSON.stringify({
-          project_name: saveFormData.projectName, // From form
-          status: projectStatus,                 // From external dropdown
-          project_data: projectData,             // GrapesJS data
-          project_id: projectId,                 // null for new, existing ID for updates
-        })
-      });
-
-      const data = await response.json();
-
-      // Check if the request was successful
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-      }
-
-      // Now access properties from the parsed data
-      if (data.project_id) {
-        setProjectId(data.project_id); // Store for future saves
-      }
-
-      // Update project name in state
-      setProjectName(saveFormData.projectName);
-      
-      alert(`Project saved successfully! Version: ${data.version || 1}`);
-      closeSaveModal();
-      
-    } catch (error) {
-      console.error('Error saving project:', error);
-      alert('Failed to save project: ' + error.message);
-    } finally {
-      setSavingProject(false);
-    }
+  const handleProjectNameChange = (e) => {
+    const newName = e.target.innerText.trim();
+    if (newName) setProjectName(newName);
   };
 
   const loadExistingProject = (loadedProjectId) => {
     // Call this when loading an existing project
     setProjectId(loadedProjectId);
   };
-
-  const handleProjectNameChange = (newName) => {
-    if (newName.trim()) {
-      setProjectName(newName.trim());
-    }
-  };
-
-  const getAuthToken = () => {
-    try {
-      return localStorage.getItem('authToken');
-    } catch (error) {
-      console.error('Error getting auth token:', error);
-      return null;
-    }
-  };
-
 
   // Error boundary - if there's an error, show it
   if (error) {
@@ -820,98 +749,85 @@ function Editor() {
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '12px 20px',
-      backgroundColor: '#1a1a1a',
-      borderBottom: '1px solid #333',
-      minHeight: '60px'
-    }}>
-      <div style={{
         display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: '16px'
+        padding: '12px 20px',
+        backgroundColor: '#1a1a1a',
+        borderBottom: '1px solid #333',
+        minHeight: '60px'
       }}>
-        {/* Newsletter Name - Editable */}
-        <div
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={(e) => handleProjectNameChange(e.target.innerText)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.target.blur();
-            }
-          }}
-          style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#f1f5f9',
-            padding: '4px 8px',
-            backgroundColor: '#2a2a2a',
-            borderRadius: '6px',
-            outline: 'none',
-            minWidth: '150px',
-            maxWidth: '300px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            cursor: 'text'
-          }}
-        >
-          {projectName}
-        </div>
-
-        {/* Status Dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#888' }}>Status:</span>
-          <select
-            value={projectStatus}
-            onChange={(e) => setProjectStatus(e.target.value)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            ref={projectNameRef}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={handleProjectNameChange}
+            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
             style={{
-              padding: '6px 12px',
-              fontSize: '14px',
-              borderRadius: '6px',
-              border: '1px solid #444',
-              backgroundColor: '#2a2a2a',
+              fontSize: '18px',
+              fontWeight: '600',
               color: '#f1f5f9',
-              cursor: 'pointer',
+              padding: '4px 8px',
+              backgroundColor: '#2a2a2a',
+              borderRadius: '6px',
               outline: 'none',
+              minWidth: '150px',
+              maxWidth: '300px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'text'
             }}
           >
-            <option value="DRAFT">Draft</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
+            {projectName}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', color: '#888' }}>Status:</span>
+            <select
+              value={projectStatus}
+              onChange={e => setProjectStatus(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: '1px solid #444',
+                backgroundColor: '#2a2a2a',
+                color: '#f1f5f9',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+          </div>
+
+          <div style={{
+            fontSize: '14px',
+            color: '#888',
+            padding: '4px 8px',
+            backgroundColor: '#2a2a2a',
+            borderRadius: '4px'
+          }}>
+            {editorReady ? '✓ Ready' : '⏳ Loading...'}
+          </div>
         </div>
 
-        {/* Editor Status */}
-        <div style={{
-          fontSize: '14px',
-          color: '#888',
-          padding: '4px 8px',
-          backgroundColor: '#2a2a2a',
-          borderRadius: '4px'
-        }}>
-          {editorReady ? '✓ Ready' : '⏳ Loading...'}
-        </div>
+        <Button
+          variant="primary"
+          onClick={handleSaveProject}
+          disabled={!editorReady || savingProject}
+          style={{
+            backgroundColor: savingProject ? '#64748b' : '#1034a6',
+            color: 'white',
+          }}
+        >
+          {savingProject ? 'Saving...' : '💾 Save Project'}
+        </Button>
       </div>
-
-      {/* Save button */}
-      <Button
-        variant="primary"
-        onClick={openSaveModal}
-        disabled={!editorReady}
-        style={{
-          backgroundColor: '#1034a6',
-          color: 'white',
-          opacity: editorReady ? 1 : 0.6,
-        }}
-      >
-        💾 Save Project
-      </Button>
-    </div>
       
       {/* Editor */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -926,11 +842,7 @@ function Editor() {
                 pages: [
                   {
                     name: 'Home',
-                    component: htmlContent || `
-                      <div style="padding: 20px; max-width: 400px; margin: 0 auto; display: flex; flex-direction: column;">
-                        <h1 style="font-size: 3rem">Loading...</h1>
-                      </div>
-                    `,
+                    component: htmlContent || '<div>Loading...</div>',
                   },
                 ],
               },
@@ -938,18 +850,18 @@ function Editor() {
             plugins: [
               canvasAbsoluteMode,
               editor => {
-                // Custom plugin for context menus
                 const commonContextMenuLogic = (component, items, actionType) => {
                   const handler = actionType === 'text' ? openModal : openImageModal;
-                  const label = actionType === 'text' ? 'Transform Text (AI)' : 'Replace Image (AI)';
-                  const icon = actionType === 'text' ? 'text' : 'image';
+                  const label = actionType === 'text' 
+                    ? 'Transform Text (AI)' 
+                    : 'Replace Image (AI)';
                   
                   return [
                     ...items,
                     {
                       id: `ai-${actionType}-${component.getId()}`,
-                      label: label,
-                      icon: icon,
+                      label,
+                      icon: actionType === 'text' ? 'text' : 'image',
                       onClick: () => handler(component),
                     },
                   ];
@@ -958,7 +870,8 @@ function Editor() {
                 editor.Components.addType('text', {
                   model: {
                     defaults: {
-                      contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'text'),
+                      contextMenu: ({ items, component }) => 
+                        commonContextMenuLogic(component, items, 'text'),
                     },
                   },
                 });
@@ -966,38 +879,35 @@ function Editor() {
                 editor.Components.addType('image', {
                   model: {
                     defaults: {
-                      contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'image'),
+                      contextMenu: ({ items, component }) => 
+                        commonContextMenuLogic(component, items, 'image'),
                     },
                   },
                 });
                 
-                const imageLikeTypes = ['image', 'picture', 'figure'];
+                // Add context menu to other image-like components
+                const imageLikeTypes = ['picture', 'figure'];
                 imageLikeTypes.forEach(type => {
-                  const existingType = editor.Components.getType(type);
-                  if (existingType) {
+                  if (editor.Components.getType(type)) {
                     editor.Components.addType(type, {
                       model: {
                         defaults: {
-                          ...existingType.model.prototype.defaults,
-                        contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'image'),
+                          contextMenu: ({ items, component }) => 
+                            commonContextMenuLogic(component, items, 'image'),
+                        },
                       },
-                    },
-                  });
-                }
-              })
-            }
+                    });
+                  }
+                });
+              }
             ],
             canvas: {
               styles: ['/editor.css'],
-            },
-            i18n: {
-              messages: { en: {} },
             },
           }}
         />
       </div>
 
-      {/* Text Transform Modal */}
       <Modal isOpen={modalOpen} onClose={closeModal} title="Transform Text with AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Selected Text Display */}
@@ -1085,62 +995,6 @@ function Editor() {
               disabled={loadingAI || !imagePrompt.trim()}
             >
               {loadingAI ? 'Generating...' : '🎨 Generate Image'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Save Project Modal */}
-      <Modal isOpen={saveModalOpen} onClose={closeSaveModal} title="Save Project">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <Label>Project Name:</Label>
-            <input
-              type="text"
-              value={saveFormData.projectName}
-              onChange={(e) => setSaveFormData({...saveFormData, projectName: e.target.value})}
-              placeholder="Enter project name..."
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '14px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                background: 'white',
-                color: '#334155',
-                transition: 'all 0.2s ease',
-              }}
-              onFocus={e => {
-                e.target.style.borderColor = '#3b82f6';
-                e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }}
-              onBlur={e => {
-                e.target.style.borderColor = '#e2e8f0';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
-
-          <div>
-            <Label>Description (Optional):</Label>
-            <TextArea
-              value={saveFormData.description}
-              onChange={(e) => setSaveFormData({...saveFormData, description: e.target.value})}
-              placeholder="Describe your project..."
-              style={{ minHeight: '80px' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={closeSaveModal}>
-              Cancel
-            </Button>
-            <Button 
-              variant="success" 
-              onClick={handleSaveProject}
-              disabled={savingProject || !saveFormData.projectName.trim()}
-            >
-              {savingProject ? 'Saving...' : '💾 Save Project'}
             </Button>
           </div>
         </div>
