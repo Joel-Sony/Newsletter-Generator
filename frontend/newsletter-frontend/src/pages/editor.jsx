@@ -3,7 +3,32 @@ import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
-import '@grapesjs/studio-sdk/style';
+
+const API_BASE_URL = 'http://localhost:5000/api';
+
+const apiCall = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+};
 
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
@@ -14,7 +39,6 @@ function freezeAutoDimensionsInCanvas(editor) {
 
   allElements.forEach(el => {
     const computed = window.getComputedStyle(el);
-
     const width = el.offsetWidth;
     const height = el.offsetHeight; 
 
@@ -23,41 +47,10 @@ function freezeAutoDimensionsInCanvas(editor) {
       el.style.width = width + 'px';
       el.style.height = height + 'px';
     }
-
-    // Optional: freeze positioning too
-    // if (computed.position === 'static') {      uncommenting this causes snapping when dragging
-    //   el.style.position = 'relative';
-    // }
   });
 }
 
-// // Enhanced function to properly convert element positioning
-// function prepareElementForAbsolutePositioning(element) {
-//   if (!element) return;
-  
-//   const computed = window.getComputedStyle(element);
-//   const rect = element.getBoundingClientRect();
-//   const parentRect = element.offsetParent ? element.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
-  
-//   // Calculate the correct absolute position
-//   const left = rect.left - parentRect.left;
-//   const top = rect.top - parentRect.top;
-  
-//   // Store current position before conversion
-//   element.style.position = 'absolute';
-//   element.style.left = left + 'px';
-//   element.style.top = top + 'px';
-  
-//   // Preserve dimensions if they were auto
-//   if (computed.width === 'auto') {
-//     element.style.width = rect.width + 'px';
-//   }
-//   if (computed.height === 'auto') {
-//     element.style.height = rect.height + 'px';
-//   }
-// }
-
-// Enhanced Modal Component - moved outside App to prevent re-creation
+// Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
@@ -169,7 +162,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
   );
 };
 
-// Enhanced Button Component - moved outside App
+// Enhanced Button Component
 const Button = ({ variant = 'primary', children, onClick, disabled = false, ...props }) => {
   const baseStyles = {
     padding: '12px 24px',
@@ -250,7 +243,7 @@ const Button = ({ variant = 'primary', children, onClick, disabled = false, ...p
   );
 };
 
-// Enhanced Input Components - moved outside App
+// Enhanced Input Components
 const Select = ({ children, ...props }) => (
   <select
     {...props}
@@ -334,12 +327,13 @@ function Editor() {
   const [editorReady, setEditorReady] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [projectName, setProjectName] = useState('Untitled Newsletter');
 
   // Text modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
-  const [selectedText, setSelectedText] = useState(''); // Store selected text
-  const [selectionInfo, setSelectionInfo] = useState(null); // Store selection details
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionInfo, setSelectionInfo] = useState(null);
   const [tone, setTone] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
 
@@ -348,16 +342,15 @@ function Editor() {
   const [selectedImageComponent, setSelectedImageComponent] = useState(null);
   const [imagePrompt, setImagePrompt] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  
+  // Save modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveFormData, setSaveFormData] = useState({
     projectName: '',
     description: '',
     status: 'DRAFT'
   });
-  
-  const [status, setStatus] = useState('DRAFT');
-
-  
+  const [savingProject, setSavingProject] = useState(false);
 
   useEffect(() => {
     console.log('App component mounted, fetching HTML content...');
@@ -402,29 +395,6 @@ function Editor() {
       setTimeout(() => freezeAutoDimensionsInCanvas(editorReady), 300);
     }
   }, [editorReady, htmlContent]);
-
-  useEffect(() => {
-    console.log('HTML content changed:', !!htmlContent);
-    console.log('Editor ready:', !!editorReady);
-    
-    if (htmlContent && editorReady) {
-      console.log('Loading project data into editor...');
-      try {
-        editorReady.loadProjectData({
-          pages: [{ name: 'Edit Template', component: htmlContent }],
-        });
-        console.log('Project data loaded successfully');
-      } catch (e) {
-        console.error("Error loading project data into GrapesJS:", e);
-        setError(e.message);
-        try {
-          editorReady.setComponents('<div style="color: red;">Error loading content.</div>');
-        } catch (e2) {
-          console.error("Error setting fallback components:", e2);
-        }
-      }
-    }
-  }, [htmlContent, editorReady]);
 
   useEffect(() => {
     if (!editorReady) return;
@@ -485,21 +455,6 @@ function Editor() {
       doc.removeEventListener('mouseup', handleMouseUp);
     };
   }, [editorReady]);
-
-  useEffect(() => {
-    if (editorReady) {
-      // Override the default 'save' command to open your modal
-      editorReady.Commands.add('save', {
-        run(editor) {
-          console.log('Default save command overridden');
-          openSaveModal(); // Opens your modal
-        },
-      });
-
-      console.log('Overridden default save command to open modal');
-    }
-  }, [editorReady]);  
-
 
   // Function to get current text selection
   const getTextSelection = () => {
@@ -655,7 +610,6 @@ function Editor() {
       range.insertNode(textNode);
 
       // Update GrapesJS component content to reflect the changes
-      // This ensures the changes are saved in GrapesJS's internal model
       const updatedContent = componentEl.innerHTML;
       selectedComponent.components(updatedContent);
 
@@ -712,8 +666,12 @@ function Editor() {
     }
   };
 
-
   const openSaveModal = () => {
+    setSaveFormData({
+      projectName: projectName,
+      description: '',
+      status: 'DRAFT'
+    });
     setSaveModalOpen(true);
   };
 
@@ -721,69 +679,57 @@ function Editor() {
     setSaveModalOpen(false);
     setSaveFormData({
       projectName: '',
-      userEmail: '',
       description: '',
       status: 'DRAFT'
     });
   };
 
-  const handleSaveToDatabase = async () => {
+  const handleSaveProject = async () => {
     if (!editorReady) {
-      alert("Editor is not ready.");
+      alert('Editor not ready');
       return;
-  }
+    }
 
-  if (!saveFormData.projectName.trim() || !saveFormData.userEmail.trim()) {
-    alert('Please fill in required fields (Project Name and Email).');
-    return;
-  }
+    if (!saveFormData.projectName.trim()) {
+      alert('Please enter a project name.');
+      return;
+    }
 
-  try {
-    setLoadingAI(true);
+    try {
+      setSavingProject(true);
 
-    const htmlContent = editorReady.getHtml();
-    const cssContent = editorReady.getCss();
-    
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>${saveFormData.projectName}</title>
-        <style>${cssContent}</style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `;
+      // Get the current project data from the editor
+      const projectData = editorReady.getProjectData();
+      
+      const response = await apiCall('/upload-project', {
+        method: 'POST',
+        body: JSON.stringify({
+          project_name: saveFormData.projectName,
+          project_data: projectData,
+          status: saveFormData.status,
+          description: saveFormData.description,
+        })
+      });
 
-  const response = await fetch('/api/saveProject', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectName: saveFormData.projectName,
-        userEmail: saveFormData.userEmail,
-        description: saveFormData.description,
-        htmlContent: fullHtml,
-        createdAt: new Date().toISOString()
-      }),
-  });
-
-  if (!response.ok) throw new Error('Failed to save project to database');
-
-  const result = await response.json();
-  alert('Project saved successfully!');
-  closeSaveModal();
-  } catch (err) {
-    console.error('Failed to save project:', err);
-    alert('Failed to save project: ' + err.message);
-  } finally {
-    setLoadingAI(false);
-  }
+      // Update project name in state
+      setProjectName(saveFormData.projectName);
+      
+      alert('Project saved successfully!');
+      closeSaveModal();
+      
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert('Failed to save project: ' + error.message);
+    } finally {
+      setSavingProject(false);
+    }
   };
 
-
+  const handleProjectNameChange = (newName) => {
+    if (newName.trim()) {
+      setProjectName(newName.trim());
+    }
+  };
 
   // Error boundary - if there's an error, show it
   if (error) {
@@ -829,11 +775,9 @@ function Editor() {
     );
   }
 
-  console.log('Rendering StudioEditor...');
-
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
-      {/* Header with Save Button */}
+      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -848,14 +792,37 @@ function Editor() {
           alignItems: 'center',
           gap: '16px'
         }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#e0e0e0'
-          }}>
-            Newsletter Editor
-          </h1>
+          {/* Newsletter Name - Editable */}
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => handleProjectNameChange(e.target.innerText)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur();
+              }
+            }}
+            style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#f1f5f9',
+              padding: '4px 8px',
+              backgroundColor: '#2a2a2a',
+              borderRadius: '6px',
+              outline: 'none',
+              minWidth: '150px',
+              maxWidth: '300px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'text'
+            }}
+          >
+            {projectName}
+          </div>
+
+          {/* Editor Status */}
           <div style={{
             fontSize: '14px',
             color: '#888',
@@ -867,294 +834,208 @@ function Editor() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          {/* Save Button */}
-          <Button
-            variant="primary"
-            onClick={() => setSaveModalOpen(true)}
-            disabled={!editorReady}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#1034a6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: editorReady ? 'pointer' : 'not-allowed',
-              opacity: editorReady ? 1 : 0.6,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (editorReady) {
-                e.target.style.backgroundColor = '#1440c4';
-                e.target.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (editorReady) {
-                e.target.style.backgroundColor = '#1034a6';
-                e.target.style.transform = 'translateY(0)';
-              }
-            }}
-          >
-            💾 Save Project
-          </Button>
-        </div>
-
-    </div>
-    <div style={{ flex: 1, overflow: 'hidden' }}>
-      <StudioEditor
-        
-        onReady={editor => {
-          console.log('Editor ready:', editor);
-
-          // Wait for panels to fully initialize
-          const style = document.createElement('style');
-          style.textContent = `
-            /* Hide the specific tooltip div that contains the save button */
-            .gs-cmp-tooltip.gs-utl-relative:has(button svg path[d="M5,3A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5.5L18.5,3H17V9A1,1 0 0,1 16,10H8A1,1 0 0,1 7,9V3H5M12,4V9H15V4H12M7,12H17A1,1 0 0,1 18,13V19H6V13A1,1 0 0,1 7,12Z"]) {
-              display: none !important;
-            }
-            
-            /* Alternative: Target by partial path match */
-            .gs-cmp-tooltip.gs-utl-relative:has(button svg path[d*="M5,3A2,2 0 0,0 3,5V19"]) {
-              display: none !important;
-            }
-            
-            /* Fallback: Target any tooltip div containing save icon */
-            .gs-cmp-tooltip.gs-utl-relative:has(.gs-cmp-icon svg path[d*="M5,3A2,2 0 0,0 3,5V19"]) {
-              display: none !important;
-            }
-          `;
-
-          document.head.appendChild(style);
-          setEditorReady(editor)
-        }}
-
-        options={{
-          project: {
-            default: {
-              pages: [
-                {
-                  name: 'Home',
-                  component: htmlContent || `
-                    <div style="padding: 20px; max-width: 400px; margin: 0 auto; display: flex; flex-direction: column;">
-                      <h1 style="font-size: 3rem">Loading...</h1>
-                    </div>
-                  `,
-                },
-              ],
-            },
-          },
-          plugins: [
-            canvasAbsoluteMode,
-            editor => {
-              // Custom plugin for context menus
-              const commonContextMenuLogic = (component, items, actionType) => {
-                const handler = actionType === 'text' ? openModal : openImageModal;
-                const label = actionType === 'text' ? 'Transform Text (AI)' : 'Replace Image (AI)';
-                const icon = actionType === 'text' ? 'text' : 'image';
-                
-                return [
-                  ...items,
+        {/* Save button */}
+        <Button
+          variant="primary"
+          onClick={openSaveModal}
+          disabled={!editorReady}
+          style={{
+            backgroundColor: '#1034a6',
+            color: 'white',
+            opacity: editorReady ? 1 : 0.6,
+          }}
+        >
+          💾 Save Project
+        </Button>
+      </div>
+      
+      {/* Editor */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <StudioEditor
+          onReady={editor => {
+            console.log('Editor ready:', editor);
+            setEditorReady(editor);
+          }}
+          options={{
+            project: {
+              default: {
+                pages: [
                   {
-                    id: `ai-${actionType}-${component.getId()}`,
-                    label: label,
-                    icon: icon,
-                    onClick: () => handler(component),
+                    name: 'Home',
+                    component: htmlContent || `
+                      <div style="padding: 20px; max-width: 400px; margin: 0 auto; display: flex; flex-direction: column;">
+                        <h1 style="font-size: 3rem">Loading...</h1>
+                      </div>
+                    `,
                   },
-                ];
-              };
+                ],
+              },
+            },
+            plugins: [
+              canvasAbsoluteMode,
+              editor => {
+                // Custom plugin for context menus
+                const commonContextMenuLogic = (component, items, actionType) => {
+                  const handler = actionType === 'text' ? openModal : openImageModal;
+                  const label = actionType === 'text' ? 'Transform Text (AI)' : 'Replace Image (AI)';
+                  const icon = actionType === 'text' ? 'text' : 'image';
+                  
+                  return [
+                    ...items,
+                    {
+                      id: `ai-${actionType}-${component.getId()}`,
+                      label: label,
+                      icon: icon,
+                      onClick: () => handler(component),
+                    },
+                  ];
+                };
 
-              editor.Components.addType('text', {
-                model: {
-                  defaults: {
-                    contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'text'),
+                editor.Components.addType('text', {
+                  model: {
+                    defaults: {
+                      contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'text'),
+                    },
                   },
-                },
-              });
+                });
 
-              editor.Components.addType('image', {
-                model: {
-                  defaults: {
-                    contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'image'),
+                editor.Components.addType('image', {
+                  model: {
+                    defaults: {
+                      contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'image'),
+                    },
                   },
-                },
-              });
-              
-              const imageLikeTypes = ['image', 'picture', 'figure'];
-              imageLikeTypes.forEach(type => {
-                const existingType = editor.Components.getType(type);
-                if (existingType) {
-                  editor.Components.addType(type, {
-                    model: {
-                      defaults: {
-                        ...existingType.model.defaults,
+                });
+                
+                const imageLikeTypes = ['image', 'picture', 'figure'];
+                imageLikeTypes.forEach(type => {
+                  const existingType = editor.Components.getType(type);
+                  if (existingType) {
+                    editor.Components.addType(type, {
+                      model: {
+                        defaults: {
+                          ...existingType.model.prototype.defaults,
                         contextMenu: ({ items, component }) => commonContextMenuLogic(component, items, 'image'),
                       },
                     },
-                    view: existingType.view
                   });
                 }
-              });
+              })
+            }
+            ],
+            canvas: {
+              styles: ['/editor.css'],
             },
-          ],
-          
-        }}
-      />
+            i18n: {
+              messages: { en: {} },
+            },
+          }}
+        />
+      </div>
 
-      {/* TEXT MODAL */}
-      <Modal isOpen={modalOpen} onClose={closeModal} title="✨ Transform Selected Text with AI">
+      {/* Text Transform Modal */}
+      <Modal isOpen={modalOpen} onClose={closeModal} title="Transform Text with AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Show selected text preview */}
-          {selectedText && (
+          {/* Selected Text Display */}
+          <div>
+            <Label>Selected Text:</Label>
             <div style={{
+              padding: '12px',
               backgroundColor: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '8px',
-              padding: '12px',
+              fontSize: '14px',
+              color: '#475569',
+              maxHeight: '100px',
+              overflow: 'auto',
+              fontStyle: selectedText ? 'normal' : 'italic'
             }}>
-              <Label style={{ marginBottom: '8px', color: '#64748b' }}>Selected text:</Label>
-              <div style={{
-                fontSize: '14px',
-                color: '#374151',
-                fontStyle: 'italic',
-                maxHeight: '80px',
-                overflow: 'auto',
-                backgroundColor: 'white',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #e2e8f0'
-              }}>
-                "{selectedText}"
-              </div>
+              {selectedText || 'No text selected'}
             </div>
-          )}
+          </div>
 
+          {/* Tone Selection */}
           <div>
-            <Label>Choose transformation style</Label>
-            <Select
-              value={tone}
-              onChange={e => setTone(e.target.value)}
-            >
-              <option value="" disabled>Select a tone...</option>
-              <option value="Formal">📋 Formal & Professional</option>
-              <option value="Humorous">😄 Humorous & Playful</option>
-              <option value="Authoritative">💼 Authoritative & Expert</option>
-              <option value="Inspirational">🌟 Inspirational & Motivating</option>
-              <option value="Custom Tone">🎨 Custom Transformation</option>
+            <Label>Select Tone:</Label>
+            <Select value={tone} onChange={(e) => setTone(e.target.value)}>
+              <option value="">Choose a tone...</option>
+              <option value="Professional">Professional</option>
+              <option value="Casual">Casual</option>
+              <option value="Friendly">Friendly</option>
+              <option value="Formal">Formal</option>
+              <option value="Humorous">Humorous</option>
+              <option value="Persuasive">Persuasive</option>
+              <option value="Educational">Educational</option>
+              <option value="Custom Tone">Custom Tone</option>
             </Select>
           </div>
 
+          {/* Custom Prompt (shown when Custom Tone is selected) */}
           {tone === 'Custom Tone' && (
             <div>
-              <Label htmlFor="customPrompt">Describe your transformation</Label>
+              <Label>Custom Prompt:</Label>
               <TextArea
-                id="customPrompt"
                 value={customPrompt}
-                onChange={e => setCustomPrompt(e.target.value)}
-                placeholder="e.g., Make it more concise and witty, or rewrite in a storytelling format..."
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="Describe how you want the text to be transformed..."
               />
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={closeModal}>
               Cancel
             </Button>
-            <Button
-              variant="success"
+            <Button 
+              variant="success" 
               onClick={handleTransform}
-              disabled={loadingAI || !tone}
+              disabled={loadingAI || !selectedText || !tone}
             >
-              {loadingAI ? (
-                <>
-                  <span style={{ 
-                    width: '16px', 
-                    height: '16px', 
-                    border: '2px solid rgba(255,255,255,0.3)', 
-                    borderTop: '2px solid white', 
-                    borderRadius: '50%', 
-                    animation: 'spin 1s linear infinite' 
-                  }}></span>
-                  Transforming...
-                </>
-              ) : (
-                <>✨ Transform Selected Text</>
-              )}
+              {loadingAI ? 'Transforming...' : '✨ Transform Text'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* IMAGE MODAL */}
-      <Modal isOpen={imageModalOpen} onClose={closeImageModal} title="🎨 Generate Image with AI">
+      {/* Image Generation Modal */}
+      <Modal isOpen={imageModalOpen} onClose={closeImageModal} title="Generate Image with AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <Label>Describe your image</Label>
+            <Label>Image Description:</Label>
             <TextArea
               value={imagePrompt}
-              onChange={e => setImagePrompt(e.target.value)}
-              placeholder="A futuristic cityscape at sunset with flying cars, vibrant neon lights reflecting on glass buildings, cyberpunk style..."
+              onChange={(e) => setImagePrompt(e.target.value)}
+              placeholder="Describe the image you want to generate..."
               style={{ minHeight: '120px' }}
             />
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#64748b', 
-              marginTop: '8px',
-              padding: '8px 12px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '6px',
-              border: '1px solid #e2e8f0'
-            }}>
-              💡 <strong>Tip:</strong> Be specific and descriptive for better results. Include style, mood, colors, and composition details.
-            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={closeImageModal}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
+            <Button 
+              variant="success" 
               onClick={handleImageGeneration}
               disabled={loadingAI || !imagePrompt.trim()}
             >
-              {loadingAI ? (
-                <>
-                  <span style={{ 
-                    width: '16px', 
-                    height: '16px', 
-                    border: '2px solid rgba(255,255,255,0.3)', 
-                    borderTop: '2px solid white', 
-                    borderRadius: '50%', 
-                    animation: 'spin 1s linear infinite' 
-                  }}></span>
-                  Generating...
-                </>
-              ) : (
-                <>🎨 Generate Image</>
-              )}
+              {loadingAI ? 'Generating...' : '🎨 Generate Image'}
             </Button>
           </div>
-
         </div>
       </Modal>
-      
-      {/* SAVE MODAL */}
-      <Modal isOpen={saveModalOpen} onClose={closeSaveModal} title="💾 Save Project">
+
+      {/* Save Project Modal */}
+      <Modal isOpen={saveModalOpen} onClose={closeSaveModal} title="Save Project">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <Label>Project Name</Label>
+            <Label>Project Name:</Label>
             <input
               type="text"
               value={saveFormData.projectName}
-              onChange={(e) => setSaveFormData({ ...saveFormData, projectName: e.target.value })}
-              placeholder="My Newsletter Template"
+              onChange={(e) => setSaveFormData({...saveFormData, projectName: e.target.value})}
+              placeholder="Enter project name..."
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -1163,15 +1044,34 @@ function Editor() {
                 border: '1px solid #e2e8f0',
                 background: 'white',
                 color: '#334155',
+                transition: 'all 0.2s ease',
+              }}
+              onFocus={e => {
+                e.target.style.borderColor = '#3b82f6';
+                e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }}
+              onBlur={e => {
+                e.target.style.borderColor = '#e2e8f0';
+                e.target.style.boxShadow = 'none';
               }}
             />
           </div>
 
           <div>
-            <Label>Status</Label>
-            <Select
-              value={saveFormData.status || 'DRAFT'}
-              onChange={(e) => setSaveFormData({ ...saveFormData, status: e.target.value })}
+            <Label>Description (Optional):</Label>
+            <TextArea
+              value={saveFormData.description}
+              onChange={(e) => setSaveFormData({...saveFormData, description: e.target.value})}
+              placeholder="Describe your project..."
+              style={{ minHeight: '80px' }}
+            />
+          </div>
+
+          <div>
+            <Label>Status:</Label>
+            <Select 
+              value={saveFormData.status} 
+              onChange={(e) => setSaveFormData({...saveFormData, status: e.target.value})}
             >
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
@@ -1179,45 +1079,22 @@ function Editor() {
             </Select>
           </div>
 
-          <div>
-            <Label>Description</Label>
-            <TextArea
-              value={saveFormData.description}
-              onChange={(e) => setSaveFormData({ ...saveFormData, description: e.target.value })}
-              placeholder="Describe your template..."
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={closeSaveModal}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleSaveToDatabase}
-              disabled={loadingAI || !saveFormData.projectName.trim() || !saveFormData.userEmail.trim()}
+            <Button 
+              variant="success" 
+              onClick={handleSaveProject}
+              disabled={savingProject || !saveFormData.projectName.trim()}
             >
-              {loadingAI ? (
-                <>
-                  <span style={{
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTop: '2px solid white',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></span>
-                  Saving...
-                </>
-              ) : (
-                <>💾 Save Project</>
-              )}
+              {savingProject ? 'Saving...' : '💾 Save Project'}
             </Button>
           </div>
         </div>
       </Modal>
     </div>
-  </div>
   );
 }
+
 export default Editor;

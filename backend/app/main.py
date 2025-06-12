@@ -25,6 +25,8 @@ import jwt
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+import json
+import uuid
 
 main_bp = Blueprint(
     "main",
@@ -172,6 +174,99 @@ def convert_to_pdf():
 SUPABASE_URL
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
+# =============================================================================
+# SAVING PROJECT SECTION
+# =============================================================================
+
+PROJECTS_TABLE = 'editorTesting'
+
+@main_bp.route("/api/upload-project", methods=["POST"])
+def upload_project():
+    data = request.get_json()
+
+    user_id = data.get("user_id")
+    project_name = data.get("project_name")
+    project_data = data.get("project_data")
+    status = data.get("status", "DRAFT")
+    incoming_project_id = data.get("project_id")  # Might be None if it's a new project
+    timestamp = datetime.utcnow().isoformat()
+
+    # If project_id is not given, create a new one (first time save)
+    if not incoming_project_id:
+        project_id = str(uuid.uuid4())
+        version = 1
+    else:
+        project_id = incoming_project_id
+
+        # Find latest version for this project_id
+        query = supabase.table("projects").select("version").eq("project_id", project_id).order("version", desc=True).limit(1).execute()
+
+        if query.get("error"):
+            return jsonify({"error": "Failed to fetch version"}), 500
+
+        latest = query["data"][0] if query["data"] else {"version": 0}
+        version = latest["version"] + 1
+
+    # Upload JSON file to Storage
+    filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
+    json_bytes = json.dumps(project_data).encode("utf-8")
+
+    upload_response = supabase.storage.from_("your-bucket-name").upload(
+        f"projects/{filename}",
+        json_bytes,
+        {"content-type": "application/json"},
+        upsert=False
+    )
+
+    if upload_response.get("error"):
+        return jsonify({"error": "Failed to upload JSON file"}), 500
+
+    # Get public URL
+    public_url = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")["publicUrl"]
+
+    # Insert new row with same project_id and incremented version
+    insert_response = supabase.table("projects").insert({
+        "user_id": user_id,
+        "project_name": project_name,
+        "project_id": project_id,
+        "json_path": public_url,
+        "status": status,
+        "version": version,
+        "created_at": timestamp,
+        "updated_at": timestamp
+    }).execute()
+
+    if insert_response.get("error"):
+        return jsonify({"error": "Failed to insert DB row"}), 500
+
+    return jsonify({
+        "message": "Project saved successfully",
+        "project_id": project_id,
+        "version": version
+    }), 200
+
+
+@main_bp.route('/api/projects/<project_id>', methods=['GET'])
+def load_project(project_id):
+    """Load a specific project"""
+    try:
+        result = supabase.table(PROJECTS_TABLE).select("*").eq('project_id', project_id).execute()
+        
+        if not result.data:
+            return jsonify({'error': 'Project not found'}), 404
+        
+        project = result.data[0]
+        return jsonify({
+            'success': True,
+            'project_id': project['project_id'],
+            'project_data': project['project_data'],
+            'created_at': project['created_at'],
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 
 # =============================================================================
 # LOGIN SECTION
