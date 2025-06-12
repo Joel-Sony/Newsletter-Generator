@@ -15,9 +15,10 @@ from app.utils.imageGeneration import generate_image
 from app.utils.templateUpload import generate
 from app.config import (
     OUTPUT_PATH,
-    SUPABASE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY,
     SUPABASE_URL,
-    SECRET_KEY
+    SECRET_KEY,
+    JWT_SECRET_KEY
 )
 from functools import wraps
 from supabase import create_client, Client
@@ -171,82 +172,264 @@ def convert_to_pdf():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-SUPABASE_URL
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 
 # =============================================================================
 # SAVING PROJECT SECTION
 # =============================================================================
 
-PROJECTS_TABLE = 'editorTesting'
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+PROJECTS_TABLE = 'projects'
+
+def get_user_id_from_supabase_token(token):
+    """Extract user_id from Supabase JWT token"""
+    try:
+        print(f"DEBUG: JWT_SECRET_KEY exists: {JWT_SECRET_KEY is not None}")
+        print(f"DEBUG: JWT_SECRET_KEY length: {len(JWT_SECRET_KEY) if JWT_SECRET_KEY else 0}")
+        print(f"DEBUG: Token length: {len(token)}")
+        print(f"DEBUG: Token starts with: {token[:20]}...")
+        
+        # Try to decode without verification first to see the payload structure
+        unverified_payload = jwt.decode(token, options={"verify_signature": False})
+        print(f"DEBUG: Unverified payload: {unverified_payload}")
+        
+        # Now try with verification
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=['HS256'],
+            audience="authenticated")
+        print(f"DEBUG: Verified payload: {payload}")
+        
+        user_id = payload.get('sub')
+        print(f"DEBUG: Extracted user_id: {user_id}")
+        return user_id
+        
+    except jwt.ExpiredSignatureError:
+        print("DEBUG: Token expired")
+        return None
+    except jwt.InvalidSignatureError:
+        print("DEBUG: Invalid signature - JWT_SECRET_KEY might be wrong")
+        return None
+    except jwt.InvalidTokenError as e:
+        print(f"DEBUG: Invalid token error: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"DEBUG: Unexpected error: {str(e)}")
+        return None
+
 
 @main_bp.route("/api/upload-project", methods=["POST"])
 def upload_project():
-    data = request.get_json()
+    try:
+        # Get authorization token from header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+        auth_token = auth_header.split(' ')[1]
+        
+        # Extract user_id from authToken
+        user_id = get_user_id_from_supabase_token(auth_token)
+        if not user_id:
+            return jsonify({"error": "Invalid or expired token"}), 401
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
-    user_id = data.get("user_id")
-    project_name = data.get("project_name")
-    project_data = data.get("project_data")
-    status = data.get("status", "DRAFT")
-    incoming_project_id = data.get("project_id")  # Might be None if it's a new project
-    timestamp = datetime.utcnow().isoformat()
+        project_name = data.get("project_name")
+        project_data = data.get("project_data")
+        status = data.get("status", "DRAFT")
+        incoming_project_id = data.get("project_id")
 
-    # If project_id is not given, create a new one (first time save)
-    if not incoming_project_id:
-        project_id = str(uuid.uuid4())
-        version = 1
-    else:
-        project_id = incoming_project_id
+        # Validate required fields
+        if not project_name:
+            return jsonify({"error": "project_name is required"}), 400
+        if not project_data:
+            return jsonify({"error": "project_data is required"}), 400
 
-        # Find latest version for this project_id
-        query = supabase.table("projects").select("version").eq("project_id", project_id).order("version", desc=True).limit(1).execute()
+        timestamp = datetime.utcnow().isoformat()
 
-        if query.get("error"):
-            return jsonify({"error": "Failed to fetch version"}), 500
+        # Determine if this is a new project or update
+        if not incoming_project_id:
+            project_id = str(uuid.uuid4())
+            version = 1
+        else:
+            project_id = incoming_project_id
+            
+            try:
+                query = supabase.table("projects")\
+                    .select("version")\
+                    .eq("project_id", project_id)\
+                    .eq("user_id", user_id)\
+                    .order("version", desc=True)\
+                    .limit(1)\
+                    .execute()
+                
+                if hasattr(query, 'error') and query.error:
+                    return jsonify({"error": "Failed to fetch project version"}), 500
+                
+                if not query.data:
+                    return jsonify({"error": "Project not found or access denied"}), 404
+                
+                latest_version = query.data[0]["version"]
+                version = latest_version + 1
+                
+            except Exception as e:
+                return jsonify({"error": f"Database query failed: {str(e)}"}), 500
 
-        latest = query["data"][0] if query["data"] else {"version": 0}
-        version = latest["version"] + 1
+        # Create filename for storage
+        filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
+        
+        try:
+            # Convert project data to JSON bytes
+            json_bytes = json.dumps(project_data, indent=2).encode("utf-8")
+            
+            print(f"DEBUG: About to upload file: {filename}")
+            print(f"DEBUG: JSON bytes length: {len(json_bytes)}")
+            
+            # Upload JSON file to Supabase Storage
+            upload_response = supabase.storage.from_("templates").upload(
+                f"projects/{filename}",
+                json_bytes,
+                {"content-type": "application/json"},
+            )
+            
+            print(f"DEBUG: Upload response type: {type(upload_response)}")
+            print(f"DEBUG: Upload response raw: {repr(upload_response)}")
+            
+            # Handle different response types more robustly
+            upload_error = None
+            upload_success = False
+            
+            # Check if it's a successful response
+            if hasattr(upload_response, 'data') and upload_response.data:
+                upload_success = True
+                print("DEBUG: Upload successful - has data attribute")
+            elif hasattr(upload_response, 'error') and upload_response.error:
+                upload_error = str(upload_response.error)
+                print(f"DEBUG: Upload failed with error attribute: {upload_error}")
+            elif isinstance(upload_response, dict):
+                if 'error' in upload_response and upload_response['error']:
+                    upload_error = str(upload_response['error'])
+                    print(f"DEBUG: Upload failed with dict error: {upload_error}")
+                elif 'data' in upload_response or upload_response.get('success'):
+                    upload_success = True
+                    print("DEBUG: Upload successful - dict format")
+            else:
+                # If we can't determine success/failure, assume success if no obvious error
+                try:
+                    # Try to convert to string to see if it contains error info
+                    response_str = str(upload_response)
+                    if 'error' in response_str.lower():
+                        upload_error = response_str
+                        print(f"DEBUG: Upload may have failed: {response_str}")
+                    else:
+                        upload_success = True
+                        print(f"DEBUG: Assuming upload success: {response_str}")
+                except:
+                    upload_success = True
+                    print("DEBUG: Cannot parse response, assuming success")
+            
+            if upload_error:
+                return jsonify({"error": f"Failed to upload project file: {upload_error}"}), 500
+            
+            if not upload_success:
+                return jsonify({"error": "Failed to upload project file: Unknown error"}), 500
+            
+            print("DEBUG: File upload successful")
+            
+        except json.JSONEncodeError as e:
+            print(f"DEBUG: JSON encoding error: {str(e)}")
+            return jsonify({"error": f"Invalid project data format: {str(e)}"}), 400
+        except Exception as e:
+            print(f"DEBUG: File upload exception: {str(e)}")
+            print(f"DEBUG: Exception type: {type(e)}")
+            return jsonify({"error": f"File upload failed: {str(e)}"}), 500
 
-    # Upload JSON file to Storage
-    filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
-    json_bytes = json.dumps(project_data).encode("utf-8")
+        try:
+            # Get public URL for the uploaded file
+            print(f"DEBUG: Getting public URL for: projects/{filename}")
+            
+            public_url_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")
+            
+            print(f"DEBUG: Public URL response type: {type(public_url_response)}")
+            print(f"DEBUG: Public URL response: {repr(public_url_response)}")
+            
+            # Handle different response formats for public URL
+            public_url = None
+            if hasattr(public_url_response, 'publicUrl'):
+                public_url = public_url_response.publicUrl
+            elif hasattr(public_url_response, 'public_url'):
+                public_url = public_url_response.public_url
+            elif isinstance(public_url_response, dict):
+                public_url = public_url_response.get('publicUrl') or public_url_response.get('public_url')
+            elif isinstance(public_url_response, str):
+                public_url = public_url_response
+            
+            if not public_url:
+                print("DEBUG: Could not extract public URL from response")
+                return jsonify({"error": "Failed to generate public URL"}), 500
+            
+            print(f"DEBUG: Extracted public URL: {public_url}")
+            
+        except Exception as e:
+            print(f"DEBUG: Get public URL exception: {str(e)}")
+            return jsonify({"error": f"Failed to get public URL: {str(e)}"}), 500
 
-    upload_response = supabase.storage.from_("your-bucket-name").upload(
-        f"projects/{filename}",
-        json_bytes,
-        {"content-type": "application/json"},
-        upsert=False
-    )
+        try:
+            # Insert new row in database
+            insert_data = {
+                "user_id": user_id,
+                "project_name": project_name,
+                "project_id": project_id,
+                "json_path": public_url,
+                "status": status,
+                "version": version,
+                "created_at": timestamp,
+                "updated_at": timestamp
+            }
+            
+            print(f"DEBUG: About to insert: {insert_data}")
+            
+            insert_response = supabase.table("projects").insert(insert_data).execute()
+            
+            print(f"DEBUG: Insert response type: {type(insert_response)}")
+            print(f"DEBUG: Insert response: {insert_response}")
+            
+            # Check for database insert errors
+            if hasattr(insert_response, 'error') and insert_response.error:
+                error_msg = str(insert_response.error)
+                print(f"DEBUG: Database insert failed: {error_msg}")
+                return jsonify({"error": f"Failed to save project: {error_msg}"}), 500
+            
+            print("DEBUG: Database insert successful")
+            
+        except Exception as e:
+            print(f"DEBUG: Database insert exception: {str(e)}")
+            return jsonify({"error": f"Database insert failed: {str(e)}"}), 500
 
-    if upload_response.get("error"):
-        return jsonify({"error": "Failed to upload JSON file"}), 500
+        # Return success response
+        response_data = {
+            "success": True,
+            "message": "Project saved successfully",
+            "project_id": project_id,
+            "version": version,
+            "status": status,
+            "json_path": public_url
+        }
+        
+        print(f"DEBUG: Returning success response: {response_data}")
+        return jsonify(response_data), 200
 
-    # Get public URL
-    public_url = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")["publicUrl"]
-
-    # Insert new row with same project_id and incremented version
-    insert_response = supabase.table("projects").insert({
-        "user_id": user_id,
-        "project_name": project_name,
-        "project_id": project_id,
-        "json_path": public_url,
-        "status": status,
-        "version": version,
-        "created_at": timestamp,
-        "updated_at": timestamp
-    }).execute()
-
-    if insert_response.get("error"):
-        return jsonify({"error": "Failed to insert DB row"}), 500
-
-    return jsonify({
-        "message": "Project saved successfully",
-        "project_id": project_id,
-        "version": version
-    }), 200
-
-
+    except Exception as e:
+        print(f"DEBUG: Top-level exception: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+    
+    
 @main_bp.route('/api/projects/<project_id>', methods=['GET'])
 def load_project(project_id):
     """Load a specific project"""

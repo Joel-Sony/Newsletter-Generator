@@ -6,29 +6,30 @@ import './editor.css';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-const apiCall = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  };
+// const apiCall = async (endpoint, options = {}) => {
+//   const url = `${API_BASE_URL}${endpoint}`;
+//   const config = {
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Autho'
+//       ...options.headers,
+//     },
+//     ...options,
+//   };
 
-  try {
-    const response = await fetch(url, config);
+//   try {
+//     const response = await fetch(url, config);
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
     
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-};
+//     return await response.json();
+//   } catch (error) {
+//     console.error('API call failed:', error);
+//     throw error;
+//   }
+// };
 
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
@@ -328,6 +329,7 @@ function Editor() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('Untitled Newsletter');
+  const [projectId, setProjectId] = useState(null); 
 
   // Text modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -351,6 +353,7 @@ function Editor() {
     status: 'DRAFT'
   });
   const [savingProject, setSavingProject] = useState(false);
+  const [projectStatus, setProjectStatus] = useState('DRAFT');
 
   useEffect(() => {
     console.log('App component mounted, fetching HTML content...');
@@ -669,11 +672,11 @@ function Editor() {
   const openSaveModal = () => {
     setSaveFormData({
       projectName: projectName,
-      description: '',
-      status: 'DRAFT'
+      description: '', // Remove this if not needed in UI
+      status: projectStatus // This gets the external dropdown value
     });
     setSaveModalOpen(true);
-  };
+  }; 
 
   const closeSaveModal = () => {
     setSaveModalOpen(false);
@@ -695,26 +698,49 @@ function Editor() {
       return;
     }
 
+    // Get auth token
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Authentication required. Please log in.');
+      return;
+    }
+
     try {
       setSavingProject(true);
 
       // Get the current project data from the editor
       const projectData = editorReady.getProjectData();
       
-      const response = await apiCall('/upload-project', {
+      const response = await fetch('/api/upload-project', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}` // Make sure this is correct format
+        },
         body: JSON.stringify({
-          project_name: saveFormData.projectName,
-          project_data: projectData,
-          status: saveFormData.status,
-          description: saveFormData.description,
+          project_name: saveFormData.projectName, // From form
+          status: projectStatus,                 // From external dropdown
+          project_data: projectData,             // GrapesJS data
+          project_id: projectId,                 // null for new, existing ID for updates
         })
       });
+
+      const data = await response.json();
+
+      // Check if the request was successful
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
+      // Now access properties from the parsed data
+      if (data.project_id) {
+        setProjectId(data.project_id); // Store for future saves
+      }
 
       // Update project name in state
       setProjectName(saveFormData.projectName);
       
-      alert('Project saved successfully!');
+      alert(`Project saved successfully! Version: ${data.version || 1}`);
       closeSaveModal();
       
     } catch (error) {
@@ -725,11 +751,26 @@ function Editor() {
     }
   };
 
+  const loadExistingProject = (loadedProjectId) => {
+    // Call this when loading an existing project
+    setProjectId(loadedProjectId);
+  };
+
   const handleProjectNameChange = (newName) => {
     if (newName.trim()) {
       setProjectName(newName.trim());
     }
   };
+
+  const getAuthToken = () => {
+    try {
+      return localStorage.getItem('authToken');
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  };
+
 
   // Error boundary - if there's an error, show it
   if (error) {
@@ -779,75 +820,98 @@ function Editor() {
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '12px 20px',
+      backgroundColor: '#1a1a1a',
+      borderBottom: '1px solid #333',
+      minHeight: '60px'
+    }}>
+      <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '12px 20px',
-        backgroundColor: '#1a1a1a',
-        borderBottom: '1px solid #333',
-        minHeight: '60px'
+        gap: '16px'
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          {/* Newsletter Name - Editable */}
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={(e) => handleProjectNameChange(e.target.innerText)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.target.blur();
-              }
-            }}
-            style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#f1f5f9',
-              padding: '4px 8px',
-              backgroundColor: '#2a2a2a',
-              borderRadius: '6px',
-              outline: 'none',
-              minWidth: '150px',
-              maxWidth: '300px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              cursor: 'text'
-            }}
-          >
-            {projectName}
-          </div>
-
-          {/* Editor Status */}
-          <div style={{
-            fontSize: '14px',
-            color: '#888',
+        {/* Newsletter Name - Editable */}
+        <div
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={(e) => handleProjectNameChange(e.target.innerText)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.target.blur();
+            }
+          }}
+          style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#f1f5f9',
             padding: '4px 8px',
             backgroundColor: '#2a2a2a',
-            borderRadius: '4px'
-          }}>
-            {editorReady ? '✓ Ready' : '⏳ Loading...'}
-          </div>
-        </div>
-
-        {/* Save button */}
-        <Button
-          variant="primary"
-          onClick={openSaveModal}
-          disabled={!editorReady}
-          style={{
-            backgroundColor: '#1034a6',
-            color: 'white',
-            opacity: editorReady ? 1 : 0.6,
+            borderRadius: '6px',
+            outline: 'none',
+            minWidth: '150px',
+            maxWidth: '300px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            cursor: 'text'
           }}
         >
-          💾 Save Project
-        </Button>
+          {projectName}
+        </div>
+
+        {/* Status Dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px', color: '#888' }}>Status:</span>
+          <select
+            value={projectStatus}
+            onChange={(e) => setProjectStatus(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: '1px solid #444',
+              backgroundColor: '#2a2a2a',
+              color: '#f1f5f9',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="DRAFT">Draft</option>
+            <option value="PUBLISHED">Published</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </div>
+
+        {/* Editor Status */}
+        <div style={{
+          fontSize: '14px',
+          color: '#888',
+          padding: '4px 8px',
+          backgroundColor: '#2a2a2a',
+          borderRadius: '4px'
+        }}>
+          {editorReady ? '✓ Ready' : '⏳ Loading...'}
+        </div>
       </div>
+
+      {/* Save button */}
+      <Button
+        variant="primary"
+        onClick={openSaveModal}
+        disabled={!editorReady}
+        style={{
+          backgroundColor: '#1034a6',
+          color: 'white',
+          opacity: editorReady ? 1 : 0.6,
+        }}
+      >
+        💾 Save Project
+      </Button>
+    </div>
       
       {/* Editor */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -1065,18 +1129,6 @@ function Editor() {
               placeholder="Describe your project..."
               style={{ minHeight: '80px' }}
             />
-          </div>
-
-          <div>
-            <Label>Status:</Label>
-            <Select 
-              value={saveFormData.status} 
-              onChange={(e) => setSaveFormData({...saveFormData, status: e.target.value})}
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-              <option value="ARCHIVED">Archived</option>
-            </Select>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>

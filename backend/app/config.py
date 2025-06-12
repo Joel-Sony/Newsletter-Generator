@@ -9,3 +9,5 @@ INPUT_PATH="/home/joel/Documents/Newsletter-Generator/backend/pdfs"
 SUPABASE_URL=os.getenv("SUPABASE_URL")
 SUPABASE_KEY=os.getenv("SUPABASE_KEY")
 SECRET_KEY=os.getenv("SECRET_KEY")
+JWT_SECRET_KEY=os.getenv("JWT_SECRET_KEY")
+SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
