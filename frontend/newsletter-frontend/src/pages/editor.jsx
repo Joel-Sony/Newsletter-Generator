@@ -315,33 +315,65 @@ const Label = ({ children, ...props }) => (
 function Editor() {
   const navigate = useNavigate()
   const [htmlContent, setHtmlContent] = useState(null);
-    const [editorReady, setEditorReady] = useState(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [projectName, setProjectName] = useState('Untitled Newsletter');
-    const [projectId, setProjectId] = useState(null); 
+  const [editorReady, setEditorReady] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [projectName, setProjectName] = useState('Untitled Newsletter');
+  const [projectId, setProjectId] = useState(null); 
+
+  // Text modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedComponent, setSelectedComponent] = useState(null);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionInfo, setSelectionInfo] = useState(null);
+  const [tone, setTone] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  // Image modal state
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImageComponent, setSelectedImageComponent] = useState(null);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
   
-    // Text modal state
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selectedComponent, setSelectedComponent] = useState(null);
-    const [selectedText, setSelectedText] = useState('');
-    const [selectionInfo, setSelectionInfo] = useState(null);
-    const [tone, setTone] = useState('');
-    const [customPrompt, setCustomPrompt] = useState('');
+  const [projectStatus, setProjectStatus] = useState('DRAFT');
+  const [savingProject, setSavingProject] = useState(false);
+
   
-    // Image modal state
-    const [imageModalOpen, setImageModalOpen] = useState(false);
-    const [selectedImageComponent, setSelectedImageComponent] = useState(null);
-    const [imagePrompt, setImagePrompt] = useState('');
-    const [loadingAI, setLoadingAI] = useState(false);
-    
-    const [projectStatus, setProjectStatus] = useState('DRAFT');
-    const [savingProject, setSavingProject] = useState(false);
-    
-    // Reference for editable project name
-    const projectNameRef = useRef(null);
+  // Reference for editable project name
+  const projectNameRef = useRef(null);
   
 
+  async function exportAndSavePreview() {
+    // Get HTML and CSS from GrapesJS
+    const html = editorReady.getHtml();
+    const css = editorReady.getCss();
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>${css}</style>
+        </head>
+        <body>${html}</body>
+      </html>
+    `;
+
+    // Send to backend for conversion
+    const response = await fetch('/api/generate-preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        html: fullHtml,
+        newsletterId: projectId // Pass your newsletter ID
+      })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Preview generated and stored:', result);
+    }
+  }
 
   useEffect(() => {
       console.log('App component mounted, fetching HTML content...');
@@ -419,7 +451,6 @@ function Editor() {
   };
   
   const handleSaveProject = useCallback(async () => {
-    css = editor.ge
     if (!editorReady) {
       showToast('Editor not ready', true);
       return;
@@ -439,7 +470,17 @@ function Editor() {
 
     try {
       setSavingProject(true);
-
+      const html = editorReady.getHtml()
+      const css = editorReady.getCss()
+      const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>${css}</style>
+        </head>
+        <body>${html}</body>
+      </html>
+    `;
       const projectData = editorReady.getProjectData();
       const response = await fetch('/api/upload-project', {
         method: 'POST',
@@ -452,6 +493,7 @@ function Editor() {
           status: projectStatus,
           project_data: projectData,
           project_id: projectId,
+          project_fullHtml:fullHtml,
         })
       });
 
@@ -870,6 +912,14 @@ function Editor() {
             setEditorReady(editor);
           }}
           options={{
+            storage:{
+              type: 'self',
+              autosaveChanges:100,
+              autosaveIntervalMs:60000,
+              onSave: async () => {
+                  handleSaveProject();
+              }
+            },
             project: {
               default: {
                 pages: [

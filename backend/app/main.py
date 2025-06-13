@@ -13,6 +13,7 @@ from app.utils.templateGeneration import no_template_generation
 from app.utils.transformText import transformText
 from app.utils.imageGeneration import generate_image
 from app.utils.templateUpload import generate
+from app.utils.htmlPreview import html_to_png_bytes
 from app.config import (
     OUTPUT_PATH,
     SUPABASE_SERVICE_ROLE_KEY,
@@ -222,7 +223,7 @@ def get_user_id_from_supabase_token(token):
 
 
 @main_bp.route("/api/upload-project", methods=["POST"])
-def upload_project():
+async def upload_project():
     try:
         # Get authorization token from header
         auth_header = request.headers.get('Authorization')
@@ -244,7 +245,9 @@ def upload_project():
         project_data = data.get("project_data")
         status = data.get("status", "DRAFT")
         incoming_project_id = data.get("project_id")
-
+        fullHtml = data.get("project_fullHtml")
+        
+        
         # Validate required fields
         if not project_name:
             return jsonify({"error": "project_name is required"}), 400
@@ -283,13 +286,12 @@ def upload_project():
 
         # Create filename for storage
         filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
-        
+        filename_img = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.png"
+
         try:
-            # Convert project data to JSON bytes
+            # Convert project data to appropriate datatype
             json_bytes = json.dumps(project_data, indent=2).encode("utf-8")
-            
-            # print(f"DEBUG: About to upload file: {filename}")
-            # print(f"DEBUG: JSON bytes length: {len(json_bytes)}")
+            image_bytes = await html_to_png_bytes(fullHtml, width = 600, height = 400)
             
             # Upload JSON file to Supabase Storage
             upload_response = supabase.storage.from_("templates").upload(
@@ -297,65 +299,38 @@ def upload_project():
                 json_bytes,
                 {"content-type": "application/json"},
             )
+
             
-            # print(f"DEBUG: Upload response type: {type(upload_response)}")
-            # print(f"DEBUG: Upload response raw: {repr(upload_response)}")
+            img_upload = supabase.storage.from_("templates").upload(
+                f"projects/{filename_img}",
+                image_bytes,
+                {"content-type": "image/png"}
+            )
+
+            if hasattr(img_upload, 'error') and img_upload.error:
+                return jsonify({"error": f"Image upload failed: {img_upload.error}"}), 500
+            
             
             # Handle different response types more robustly
-            upload_error = None
-            upload_success = False
+            # upload_error = None
+            # upload_success = False
             
-            # Check if it's a successful response
-            if hasattr(upload_response, 'data') and upload_response.data:
-                upload_success = True
-                # print("DEBUG: Upload successful - has data attribute")
-            elif hasattr(upload_response, 'error') and upload_response.error:
-                upload_error = str(upload_response.error)
-                # print(f"DEBUG: Upload failed with error attribute: {upload_error}")
-            elif isinstance(upload_response, dict):
-                if 'error' in upload_response and upload_response['error']:
-                    upload_error = str(upload_response['error'])
-                    # print(f"DEBUG: Upload failed with dict error: {upload_error}")
-                elif 'data' in upload_response or upload_response.get('success'):
-                    upload_success = True
-                    # print("DEBUG: Upload successful - dict format")
-            else:
-                # If we can't determine success/failure, assume success if no obvious error
-                try:
-                    # Try to convert to string to see if it contains error info
-                    response_str = str(upload_response)
-                    if 'error' in response_str.lower():
-                        upload_error = response_str
-                        # print(f"DEBUG: Upload may have failed: {response_str}")
-                    else:
-                        upload_success = True
-                        # print(f"DEBUG: Assuming upload success: {response_str}")
-                except:
-                    upload_success = True
-                    # print("DEBUG: Cannot parse response, assuming success")
             
-            if upload_error:
-                return jsonify({"error": f"Failed to upload project file: {upload_error}"}), 500
+            # if upload_error:
+            #     return jsonify({"error": f"Failed to upload project file: {upload_error}"}), 500
             
-            if not upload_success:
-                return jsonify({"error": "Failed to upload project file: Unknown error"}), 500
-            
-            # print("DEBUG: File upload successful")
+            # if not upload_success:
+            #     return jsonify({"error": "Failed to upload project file: Unknown error"}), 500
             
     
         except Exception as e:
-            # print(f"DEBUG: File upload exception: {str(e)}")
-            # print(f"DEBUG: Exception type: {type(e)}")
             return jsonify({"error": f"File upload failed: {str(e)}"}), 500
 
         try:
+
             # Get public URL for the uploaded file
-            # print(f"DEBUG: Getting public URL for: projects/{filename}")
-            
             public_url_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")
-            
-            # print(f"DEBUG: Public URL response type: {type(public_url_response)}")
-            # print(f"DEBUG: Public URL response: {repr(public_url_response)}")
+            img_publicUrl = supabase.storage.from_("templates").get_public_url(f"projects/{filename_img}")
             
             # Handle different response formats for public URL
             public_url = None
@@ -372,7 +347,7 @@ def upload_project():
                 # print("DEBUG: Could not extract public URL from response")
                 return jsonify({"error": "Failed to generate public URL"}), 500
             
-            # print(f"DEBUG: Extracted public URL: {public_url}")
+
             
         except Exception as e:
             # print(f"DEBUG: Get public URL exception: {str(e)}")
@@ -381,14 +356,15 @@ def upload_project():
         try:
             # Insert new row in database
             insert_data = {
-                "user_id": user_id,
-                "project_name": project_name,
-                "project_id": project_id,
-                "json_path": public_url,
-                "status": status,
-                "version": version,
-                "created_at": timestamp,
-                "updated_at": timestamp
+            "user_id": user_id,
+            "project_name": project_name,
+            "project_id": project_id,
+            "json_path": public_url,
+            "image_path": img_publicUrl,  # Store URL not bytes
+            "status": status,
+            "version": version,
+            "created_at": timestamp,
+            "updated_at": timestamp
             }
             
             # print(f"DEBUG: About to insert: {insert_data}")
@@ -442,7 +418,7 @@ def get_user_newsletters():
         
         if not user_id:
             return jsonify({"error": "Invalid user ID"}), 401
-        
+
         # print(f"Fetching newsletters for user: {user_id}")  # Debug log
         
         result = supabase.table(PROJECTS_TABLE).select("*").eq('user_id', user_id).execute()
@@ -452,7 +428,7 @@ def get_user_newsletters():
             return jsonify({'error': 'Database query failed'}), 500
 
         newsletters = result.data
-        # print(f"Retrieved newsletters: {newsletters}")  # Debug log
+        print(f"Retrieved newsletters: {newsletters}")  # Debug log 
         
         grouped = {
             'DRAFT': [],
@@ -472,6 +448,7 @@ def get_user_newsletters():
     except Exception as e:
         print(f"Error in get_user_newsletters: {str(e)}")  # Debug log
         return jsonify({'error': str(e)}), 500
+
 
 # =============================================================================
 # LOGIN SECTION
