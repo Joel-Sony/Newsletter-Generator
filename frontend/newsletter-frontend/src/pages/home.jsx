@@ -5,96 +5,87 @@ const NewsletterDashboard = () => {
   const [activeSection, setActiveSection] = useState('drafts');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [newsletters, setNewsletters] = useState({
+    drafts: [],
+    published: [],
+    archived: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // Pagination state for each section
+  const [pagination, setPagination] = useState({
+    drafts: { currentPage: 1, itemsPerPage: 6 },
+    published: { currentPage: 1, itemsPerPage: 6 },
+    archived: { currentPage: 1, itemsPerPage: 6 },
+    all: { currentPage: 1, itemsPerPage: 6 }
+  });
+  
+  const navigate = useNavigate();
 
-  // Sample data for newsletters
-  const newsletters = {
-    drafts: [
-      {
-        id: 1,
-        title: "Weekly Tech Updates #45",
-        lastEdited: "2 hours ago",
-        status: "draft",
-        preview: "This week we're covering the latest developments in AI, new framework releases, and upcoming tech conferences. Don't miss our exclusive interview with..."
-      },
-      {
-        id: 2,
-        title: "Product Launch Announcement",
-        lastEdited: "1 day ago",
-        status: "draft",
-        preview: "We're excited to announce our biggest product launch of the year. After months of development and testing, we're ready to share something amazing..."
-      },
-      {
-        id: 3,
-        title: "Q4 Company Updates",
-        lastEdited: "3 days ago",
-        status: "draft",
-        preview: "As we wrap up another successful quarter, we want to share some exciting updates about our team growth, new partnerships, and upcoming initiatives..."
-      },
-      {
-        id: 4,
-        title: "Holiday Special Newsletter",
-        lastEdited: "5 days ago",
-        status: "draft",
-        preview: "The holiday season is here! We've prepared special offers, gift guides, and festive content to help you celebrate with your loved ones..."
-      }
-    ],
-    published: [
-      {
-        id: 5,
-        title: "Weekly Tech Updates #44",
-        lastEdited: "Published: 1 week ago",
-        status: "published",
-        preview: "Last week's edition covering breakthrough AI research, new JavaScript features, and the latest startup funding rounds. Over 15,000 readers engaged..."
-      },
-      {
-        id: 6,
-        title: "Monthly Design Trends",
-        lastEdited: "Published: 2 weeks ago",
-        status: "published",
-        preview: "Exploring the latest in web design, UI/UX trends, and creative inspiration from top designers around the world. Featured case studies include..."
-      },
-      {
-        id: 7,
-        title: "Customer Success Stories",
-        lastEdited: "Published: 3 weeks ago",
-        status: "published",
-        preview: "Celebrating our amazing customers and their success stories. This month we feature three companies that transformed their business using our platform..."
-      },
-      {
-        id: 8,
-        title: "Summer Campaign Results",
-        lastEdited: "Published: 1 month ago",
-        status: "published",
-        preview: "Our summer marketing campaign exceeded all expectations! Here's a detailed breakdown of the results, key learnings, and what's coming next..."
-      },
-      {
-        id: 9,
-        title: "Team Spotlight: Engineering",
-        lastEdited: "Published: 1 month ago",
-        status: "published",
-        preview: "Meet our incredible engineering team! Learn about their latest projects, technical challenges, and innovative solutions that power our platform..."
-      }
-    ],
-    archived: [
-      {
-        id: 10,
-        title: "Legacy Product Update",
-        lastEdited: "Archived: 3 months ago",
-        status: "archived",
-        preview: "Final update on our legacy product line before the transition to our new platform. Important information for existing users about migration..."
-      },
-      {
-        id: 11,
-        title: "Old Branding Newsletter",
-        lastEdited: "Archived: 6 months ago",
-        status: "archived",
-        preview: "Newsletter from our previous branding era. Contains outdated design elements and messaging that no longer align with our current strategy..."
-      }
-    ]
-  };
+  useEffect(() => {
+    const fetchNewsletters = async () => {
+      console.log("Fetching newsletters")
+      try {
+        setLoading(true);
+        const authToken = localStorage.getItem('authToken');
+        
+        if (!authToken) {
+          throw new Error('Authentication required');
+        }
 
-  const allNewsletters = [...newsletters.drafts, ...newsletters.published, ...newsletters.archived];
-  const navigate = useNavigate()
+        const response = await fetch('/api/newsletters', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch newsletters');
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch newsletters');
+        }
+
+        // Transform the API data to match our component structure
+        const transformedData = {
+          drafts: data.data.DRAFT.map(item => ({
+            id: item.id,
+            title: item.project_name || 'Untitled Newsletter',
+            status: 'draft',
+            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+            preview: 'Draft newsletter content...'
+          })),
+          published: data.data.PUBLISHED.map(item => ({
+            id: item.id,
+            title: item.project_name || 'Published Newsletter',
+            status: 'published',
+            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+            preview: 'Published newsletter content...'
+          })),
+          archived: data.data.ARCHIVED.map(item => ({
+            id: item.id,
+            title: item.project_name || 'Archived Newsletter',
+            status: 'archived',
+            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+            preview: 'Archived newsletter content...'
+          }))
+        };
+
+        setNewsletters(transformedData);
+      } catch (err) {
+        console.error('Error fetching newsletters:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNewsletters();
+  }, []);
+
   // Handle responsive design
   useEffect(() => {
     const handleResize = () => {
@@ -117,13 +108,41 @@ const NewsletterDashboard = () => {
     }
   };
 
-  const handleActionClick = (action, title) => {
-    alert(`${action} action clicked for: "${title}"`);
+  const handlePageChange = (section, page) => {
+    setPagination(prev => ({
+      ...prev,
+      [section]: { ...prev[section], currentPage: page }
+    }));
+  };
+
+  const handleActionClick = (action, newsletterId) => {
+    // Handle different actions
+    switch (action) {
+      case 'Edit':
+        navigate(`/editor/${newsletterId}`);
+        break;
+      case 'Preview':
+        // Implement preview logic
+        break;
+      case 'View':
+        // Implement view logic
+        break;
+      case 'Delete':
+        // Implement delete logic
+        break;
+      case 'Duplicate':
+        // Implement duplicate logic
+        break;
+      case 'Restore':
+        // Implement restore logic
+        break;
+      default:
+        console.log(`${action} action clicked for newsletter ID: ${newsletterId}`);
+    }
   };
 
   const createNewsletter = () => {
-    
-    navigate  ('/generator');
+    navigate('/generator');
   };
 
   const toggleSidebar = () => {
@@ -160,13 +179,31 @@ const NewsletterDashboard = () => {
   };
 
   const getCurrentNewsletters = () => {
-    switch (activeSection) {
-      case 'drafts': return newsletters.drafts;
-      case 'published': return newsletters.published;
-      case 'archived': return newsletters.archived;
-      case 'all': return allNewsletters;
-      default: return newsletters.drafts;
-    }
+    const allNewsletters = {
+      drafts: newsletters.drafts,
+      published: newsletters.published,
+      archived: newsletters.archived,
+      all: [...newsletters.drafts, ...newsletters.published, ...newsletters.archived]
+    };
+
+    const sectionNewsletters = allNewsletters[activeSection] || [];
+    const currentPagination = pagination[activeSection];
+    const startIndex = (currentPagination.currentPage - 1) * currentPagination.itemsPerPage;
+    const endIndex = startIndex + currentPagination.itemsPerPage;
+    
+    return sectionNewsletters.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (section) => {
+    const allNewsletters = {
+      drafts: newsletters.drafts,
+      published: newsletters.published,
+      archived: newsletters.archived,
+      all: [...newsletters.drafts, ...newsletters.published, ...newsletters.archived]
+    };
+    
+    const sectionNewsletters = allNewsletters[section] || [];
+    return Math.ceil(sectionNewsletters.length / pagination[section].itemsPerPage);
   };
 
   const getSectionTitle = () => {
@@ -202,8 +239,94 @@ const NewsletterDashboard = () => {
     }
   };
 
+  const renderPagination = () => {
+    const totalPages = getTotalPages(activeSection);
+    const currentPage = pagination[activeSection].currentPage;
+    
+    if (totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisiblePages = 5;
+      
+      if (totalPages <= maxVisiblePages) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        const half = Math.floor(maxVisiblePages / 2);
+        let start = Math.max(1, currentPage - half);
+        let end = Math.min(totalPages, start + maxVisiblePages - 1);
+        
+        if (end - start < maxVisiblePages - 1) {
+          start = Math.max(1, end - maxVisiblePages + 1);
+        }
+        
+        if (start > 1) {
+          pages.push(1);
+          if (start > 2) pages.push('...');
+        }
+        
+        for (let i = start; i <= end; i++) {
+          pages.push(i);
+        }
+        
+        if (end < totalPages) {
+          if (end < totalPages - 1) pages.push('...');
+          pages.push(totalPages);
+        }
+      }
+    
+      return pages;
+    };
+
+    const pageNumbers = getPageNumbers();
+
+    return (
+      <div style={styles.paginationContainer}>
+        <button
+          onClick={() => handlePageChange(activeSection, Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          style={{
+            ...styles.paginationButton,
+            ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
+          }}
+        >
+          ←
+        </button>
+        
+        {pageNumbers.map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' ? handlePageChange(activeSection, page) : null}
+            disabled={page === '...'}
+            style={{
+              ...styles.paginationButton,
+              ...(page === currentPage ? styles.paginationButtonActive : {}),
+              ...(page === '...' ? styles.paginationButtonDisabled : {})
+            }}
+          >
+            {page}
+          </button>
+        ))}
+        
+        <button
+          onClick={() => handlePageChange(activeSection, Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          style={{
+            ...styles.paginationButton,
+            ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
+          }}
+        >
+          →
+        </button>
+      </div>
+    );
+  };
+
   const styles = {
     container: {
+      height: '100%',
       minHeight: '100vh',
       background: '#0a0a0a',
       color: '#ffffff',
@@ -279,7 +402,7 @@ const NewsletterDashboard = () => {
     mainContainer: {
       display: 'flex',
       flex: 1,
-      minHeight: 0
+      overflow: 'hidden'
     },
     sidebar: {
       width: '280px',
@@ -293,7 +416,7 @@ const NewsletterDashboard = () => {
       position: isMobile ? 'fixed' : 'static',
       top: isMobile ? '80px' : 'auto',
       left: isMobile ? 0 : 'auto',
-      height: isMobile ? 'calc(100vh - 80px)' : 'auto',
+      height: isMobile ? 'calc(100vh - 80px)' : '100%',
       zIndex: 40,
       overflowY: 'auto'
     },
@@ -342,8 +465,9 @@ const NewsletterDashboard = () => {
     main: {
       flex: 1,
       padding: '32px',
-      overflowY: 'auto',
-      backgroundColor: '#0a0a0a'
+      backgroundColor: '#0a0a0a',
+      paddingBottom: '64px',
+      overflowY: 'auto'
     },
     mainTitle: {
       fontSize: '42px',
@@ -416,7 +540,8 @@ const NewsletterDashboard = () => {
       borderRadius: '16px',
       padding: '32px',
       boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
-      border: '1px solid #262626'
+      border: '1px solid #262626',
+      marginBottom: '32px'
     },
     contentTitle: {
       fontSize: '28px',
@@ -429,7 +554,8 @@ const NewsletterDashboard = () => {
     grid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-      gap: '24px'
+      gap: '24px',
+      marginBottom: '32px'
     },
     card: {
       backgroundColor: '#1f1f1f',
@@ -492,11 +618,48 @@ const NewsletterDashboard = () => {
       gap: '8px',
       flexWrap: 'wrap'
     },
+    paginationContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '8px',
+      marginTop: '24px'
+    },
+    paginationButton: {
+      padding: '8px 12px',
+      borderRadius: '8px',
+      border: '1px solid #404040',
+      backgroundColor: '#1f1f1f',
+      color: '#a3a3a3',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: '14px',
+      fontWeight: '500',
+      minWidth: '40px',
+      height: '40px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    paginationButtonActive: {
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      borderColor: '#3b82f6',
+      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+    },
+    paginationButtonDisabled: {
+      backgroundColor: '#111111',
+      color: '#525252',
+      cursor: 'not-allowed',
+      borderColor: '#262626'
+    },
     footer: {
       backgroundColor: '#111111',
       borderTop: '1px solid #262626',
       padding: '24px',
-      color: '#a3a3a3'
+      color: '#a3a3a3',
+      marginTop: 'auto'
     },
     footerContent: {
       display: 'flex',
@@ -527,182 +690,208 @@ const NewsletterDashboard = () => {
     }
   };
 
-  return (
-    <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.logo}>
-          NewsletterPro
-        </div>
-        <nav style={styles.nav}>
-          <a href="#dashboard" style={styles.navLink}>Dashboard</a>
-          <a href="#analytics" style={styles.navLink}>Analytics</a>
-          <a href="#templates" style={styles.navLink}>Templates</a>
-          <a href="#subscribers" style={styles.navLink}>Subscribers</a>
-        </nav>
-        <div style={styles.headerRight}>
-          <button 
-            className="mobile-menu-btn"
-            style={styles.mobileMenuBtn}
-            onClick={toggleSidebar}
-          >
-            ☰
-          </button>
-          <div style={styles.avatar}>
-            JD
-          </div>
-        </div>
-      </header>
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        color: 'white',
+        backgroundColor: '#0a0a0a'
+      }}>
+        Loading newsletters...
+      </div>
+    );
+  }
 
-      <div style={styles.mainContainer}>
-        {/* Sidebar */}
-        <aside className="sidebar" style={styles.sidebar}>
-          <div>
-            <div style={styles.sectionTitle}>Newsletter Management</div>
-            <ul style={styles.sidebarList}>
-              {[
-                { key: 'drafts', icon: '📝', label: 'Drafts' },
-                { key: 'published', icon: '📤', label: 'Published' },
-                { key: 'archived', icon: '📦', label: 'Archived' },
-                { key: 'all', icon: '📄', label: 'All Newsletters' }
-              ].map((item) => (
-                <li key={item.key} style={styles.sidebarItem}>
-                  <button
-                    onClick={() => handleSectionChange(item.key)}
-                    style={{
-                      ...styles.sidebarButton,
-                      ...(activeSection === item.key ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
-                    }}
-                    onMouseEnter={(e) => {
-                      if (activeSection !== item.key) {
-                        e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-                        e.target.style.color = '#d4d4d4';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (activeSection !== item.key) {
-                        e.target.style.backgroundColor = 'transparent';
-                        e.target.style.color = '#a3a3a3';
-                      }
-                    }}
-                  >
-                    <span>{item.icon}</span>
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+ return (
+  <div style={styles.container}>
+    {/* Header */}
+    <header style={styles.header}>
+      <div style={styles.logo}>
+        NewsletterPro
+      </div>
+      <nav style={styles.nav}>
+        <a href="#dashboard" style={styles.navLink}>Dashboard</a>
+        <a href="#analytics" style={styles.navLink}>Analytics</a>
+        <a href="#templates" style={styles.navLink}>Templates</a>
+        <a href="#subscribers" style={styles.navLink}>Subscribers</a>
+      </nav>
+      <div style={styles.headerRight}>
+        <button 
+          className="mobile-menu-btn"
+          style={styles.mobileMenuBtn}
+          onClick={toggleSidebar}
+        >
+          ☰
+        </button>
+        <div style={styles.avatar}>
+          JD
+        </div>
+      </div>
+    </header>
 
-          <div>
-            <div style={styles.sectionTitle}>Settings</div>
-            <ul style={styles.sidebarList}>
-              {[
-                { icon: '⚙️', label: 'General' },
-                { icon: '🔒', label: 'Privacy' },
-                { icon: '💰', label: 'Billing' },
-                { icon: '❓', label: 'Help & Support' }
-              ].map((item, index) => (
-                <li key={index} style={styles.sidebarItem}>
-                  <button 
-                    style={{ ...styles.sidebarButton, ...styles.sidebarButtonInactive }}
-                    onMouseEnter={(e) => {
+    <div style={styles.mainContainer}>
+      {/* Sidebar */}
+      <aside className="sidebar" style={styles.sidebar}>
+        <div>
+          <div style={styles.sectionTitle}>Newsletter Management</div>
+          <ul style={styles.sidebarList}>
+            {[
+              { key: 'drafts', icon: '📝', label: 'Drafts' },
+              { key: 'published', icon: '📤', label: 'Published' },
+              { key: 'archived', icon: '📦', label: 'Archived' },
+              { key: 'all', icon: '📄', label: 'All Newsletters' }
+            ].map((item) => (
+              <li key={item.key} style={styles.sidebarItem}>
+                <button
+                  onClick={() => handleSectionChange(item.key)}
+                  style={{
+                    ...styles.sidebarButton,
+                    ...(activeSection === item.key ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeSection !== item.key) {
                       e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
                       e.target.style.color = '#d4d4d4';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = 'transparent';
-                      e.target.style.color = '#a3a3a3';
-                    }}
-                  >
-                    <span>{item.icon}</span>
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main style={styles.main}>
-          <div>
-            <h1 style={styles.mainTitle}>Newsletter Dashboard</h1>
-            <p style={styles.mainSubtitle}>Manage and create your newsletters with ease</p>
-          </div>
-
-          <div style={styles.createButtonContainer}>
-            <button 
-              onClick={createNewsletter}
-              style={styles.createButton}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3)';
-              }}
-            >
-              ✨ Create New Newsletter
-            </button>
-          </div>
-
-          <div style={styles.tabsContainer}>
-            {[
-              { key: 'drafts', label: 'Drafts' },
-              { key: 'published', label: 'Published' },
-              { key: 'archived', label: 'Archived' },
-              { key: 'all', label: 'All Newsletters' }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleSectionChange(tab.key)}
-                style={{
-                  ...styles.tab,
-                  ...(activeSection === tab.key ? styles.tabActive : styles.tabInactive)
-                }}
-                onMouseEnter={(e) => {
-                  if (activeSection !== tab.key) {
-                    e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-                    e.target.style.color = '#d4d4d4';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeSection !== tab.key) {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = '#a3a3a3';
-                  }
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div style={styles.contentContainer}>
-            <h2 style={styles.contentTitle}>{getSectionTitle()}</h2>
-            <div style={styles.grid}>
-              {getCurrentNewsletters().map((newsletter) => (
-                <div 
-                  key={newsletter.id} 
-                  style={styles.card}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-8px)';
-                    e.currentTarget.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.5)';
-                    e.currentTarget.style.borderColor = '#525252';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.borderColor = '#404040';
+                    if (activeSection !== item.key) {
+                      e.target.style.backgroundColor = 'transparent';
+                      e.target.style.color = '#a3a3a3';
+                    }
                   }}
                 >
-                  <div style={styles.cardTopBorder}></div>
-                  
-                  <div>
-                    <h3 style={styles.cardTitle}>{newsletter.title}</h3>
-                    <div style={styles.cardMeta}>
+                  <span>{item.icon}</span>
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <div style={styles.sectionTitle}>Settings</div>
+          <ul style={styles.sidebarList}>
+            {[
+              { icon: '⚙️', label: 'General' },
+              { icon: '🔒', label: 'Privacy' },
+              { icon: '💰', label: 'Billing' },
+              { icon: '❓', label: 'Help & Support' }
+            ].map((item, index) => (
+              <li key={index} style={styles.sidebarItem}>
+                <button 
+                  style={{ ...styles.sidebarButton, ...styles.sidebarButtonInactive }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                    e.target.style.color = '#d4d4d4';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                    e.target.style.color = '#a3a3a3';
+                  }}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
+          
+      {/* Main Content */}
+      <main style={styles.main}>
+        <div>
+          <h1 style={styles.mainTitle}>Newsletter Dashboard</h1>
+          <p style={styles.mainSubtitle}>Manage and create your newsletters with ease</p>
+        </div>
+
+        <div style={styles.createButtonContainer}>
+          <button 
+            onClick={createNewsletter}
+            style={styles.createButton}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3)';
+            }}
+          >
+            ✨ Create New Newsletter
+          </button>
+        </div>
+
+        <div style={styles.tabsContainer}>
+          {[
+            { key: 'drafts', label: 'Drafts' },
+            { key: 'published', label: 'Published' },
+            { key: 'archived', label: 'Archived' },
+            { key: 'all', label: 'All Newsletters' }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleSectionChange(tab.key)}
+              style={{
+                ...styles.tab,
+                ...(activeSection === tab.key ? styles.tabActive : styles.tabInactive)
+              }}
+              onMouseEnter={(e) => {
+                if (activeSection !== tab.key) {
+                  e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                  e.target.style.color = '#d4d4d4';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== tab.key) {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#a3a3a3';
+                }
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={styles.contentContainer}>
+          <h2 style={styles.contentTitle}>{getSectionTitle()}</h2>
+          {getCurrentNewsletters().length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px', 
+              color: '#a3a3a3',
+              fontSize: '18px'
+            }}>
+              No newsletters found in this section.
+            </div>
+          ) : (
+            <>
+              <div style={styles.grid}>
+                {getCurrentNewsletters().map((newsletter) => (
+                  <div 
+                    key={newsletter.id} 
+                    style={styles.card}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-8px)';
+                      e.currentTarget.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.5)';
+                      e.currentTarget.style.borderColor = '#525252';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = '#404040';
+                    }}
+                  >
+                    <div style={styles.cardTopBorder}></div>
+                    
+                    <div>
+                      <h3 style={styles.cardTitle}>{newsletter.title}</h3>
+                      <div style={styles.cardMeta}>
                         <span style={styles.cardDate}>{newsletter.lastEdited}</span>
                         <span style={{...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status)}}>
                           {newsletter.status}
@@ -715,7 +904,10 @@ const NewsletterDashboard = () => {
                         {getActionButtons(newsletter.status).map((action) => (
                           <button
                             key={action}
-                            onClick={() => handleActionClick(action, newsletter.title)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleActionClick(action, newsletter.id);
+                            }}
                             style={getActionButtonStyle(action)}
                             onMouseEnter={(e) => {
                               e.target.style.opacity = '0.8';
@@ -731,29 +923,34 @@ const NewsletterDashboard = () => {
                         ))}
                       </div>
                     </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </main>
-      </div>
+                  </div>
+                ))}
+              </div>
 
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <div style={styles.footerContent}>
-          <div style={styles.copyright}>
-            © 2024 NewsletterPro. All rights reserved.
-          </div>
-          <div style={styles.footerLinks}>
-            <a href="#privacy" style={styles.footerLink}>Privacy Policy</a>
-            <a href="#terms" style={styles.footerLink}>Terms of Service</a>
-            <a href="#support" style={styles.footerLink}>Support</a>
-            <a href="#contact" style={styles.footerLink}>Contact</a>
-          </div>
+              {/* Pagination Controls */}
+              {renderPagination()}
+            </>
+          )}
         </div>
-      </footer>
+      </main>
     </div>
-  );
+
+    {/* Footer */}
+    <footer style={styles.footer}>
+      <div style={styles.footerContent}>
+        <div style={styles.copyright}>
+          © 2024 NewsletterPro. All rights reserved.
+        </div>
+        <div style={styles.footerLinks}>
+          <a href="#privacy" style={styles.footerLink}>Privacy Policy</a>
+          <a href="#terms" style={styles.footerLink}>Terms of Service</a>
+          <a href="#support" style={styles.footerLink}>Support</a>
+          <a href="#contact" style={styles.footerLink}>Contact</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+);
 };
 
 export default NewsletterDashboard;

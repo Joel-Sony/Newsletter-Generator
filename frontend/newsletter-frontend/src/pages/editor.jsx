@@ -39,20 +39,6 @@ const baseButtonStyle = {
   gap: '8px',
 };
 
-const secondaryButtonStyle = {
-  ...baseButtonStyle,
-  backgroundColor: '#2a2a2a',
-  color: '#f1f5f9',
-  border: '1px solid #444',
-};
-
-const primaryButtonStyle = (disabled) => ({
-  ...baseButtonStyle,
-  backgroundColor: disabled ? '#64748b' : '#1034a6',
-  color: '#fff',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.7 : 1,
-});
 
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {

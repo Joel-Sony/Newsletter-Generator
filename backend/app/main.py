@@ -429,24 +429,44 @@ def upload_project():
         print(f"DEBUG: Top-level exception: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
-    
-@main_bp.route('/api/projects/<project_id>', methods=['GET'])
-def load_project(project_id):
-    """Load a specific project"""
+
+
+@main_bp.route('/api/newsletters', methods=['GET'])
+def get_user_newsletters():
+    """Fetch all newsletters for the logged-in user based on user_id"""
     try:
-        result = supabase.table(PROJECTS_TABLE).select("*").eq('project_id', project_id).execute()
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
         
+        auth_token = auth_header.split(' ')[1]
+        
+        # Extract user_id from authToken
+        user_id = get_user_id_from_supabase_token(auth_token)
+        
+        result = supabase.table(PROJECTS_TABLE).select("*").eq('user_id', user_id).execute()
+
         if not result.data:
-            return jsonify({'error': 'Project not found'}), 404
-        
-        project = result.data[0]
-        return jsonify({
-            'success': True,
-            'project_id': project['project_id'],
-            'project_data': project['project_data'],
-            'created_at': project['created_at'],
-        }), 200
-        
+            return jsonify({'success': True, 'data': {
+                'DRAFT': [],
+                'PUBLISHED': [],
+                'ARCHIVED': []
+            }}), 200
+
+        newsletters = result.data
+
+        grouped = {
+            'DRAFT': [],
+            'PUBLISHED': [],
+            'ARCHIVED': []
+        }
+
+        for newsletter in newsletters:
+            status = newsletter.get('status', 'DRAFT')
+            grouped.get(status, grouped['DRAFT']).append(newsletter)
+
+        return jsonify({'success': True, 'data': grouped}), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
