@@ -120,7 +120,7 @@ def serve_generated():
 @main_bp.route("/api/transformText", methods=["POST"])
 def transform_text():
     data = request.json or {}
-    print("Received data:", data)
+    # print("Received data:", data)
     text = data.get("text", "").strip()
     tone = data.get("tone", "Formal").strip()
     prompt = data.get("prompt", "").strip()
@@ -130,7 +130,7 @@ def transform_text():
     
     try:
         transformed = transformText(text, tone, prompt)
-        print(transformed)
+        # print(transformed)
         return jsonify({"transformed": transformed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -186,14 +186,14 @@ PROJECTS_TABLE = 'projects'
 def get_user_id_from_supabase_token(token):
     """Extract user_id from Supabase JWT token"""
     try:
-        print(f"DEBUG: JWT_SECRET_KEY exists: {JWT_SECRET_KEY is not None}")
-        print(f"DEBUG: JWT_SECRET_KEY length: {len(JWT_SECRET_KEY) if JWT_SECRET_KEY else 0}")
-        print(f"DEBUG: Token length: {len(token)}")
-        print(f"DEBUG: Token starts with: {token[:20]}...")
+        # print(f"DEBUG: JWT_SECRET_KEY exists: {JWT_SECRET_KEY is not None}")
+        # print(f"DEBUG: JWT_SECRET_KEY length: {len(JWT_SECRET_KEY) if JWT_SECRET_KEY else 0}")
+        # print(f"DEBUG: Token length: {len(token)}")
+        # print(f"DEBUG: Token starts with: {token[:20]}...")
         
         # Try to decode without verification first to see the payload structure
         unverified_payload = jwt.decode(token, options={"verify_signature": False})
-        print(f"DEBUG: Unverified payload: {unverified_payload}")
+        # print(f"DEBUG: Unverified payload: {unverified_payload}")
         
         # Now try with verification
         payload = jwt.decode(
@@ -201,23 +201,23 @@ def get_user_id_from_supabase_token(token):
             JWT_SECRET_KEY,
             algorithms=['HS256'],
             audience="authenticated")
-        print(f"DEBUG: Verified payload: {payload}")
+        # print(f"DEBUG: Verified payload: {payload}")
         
         user_id = payload.get('sub')
-        print(f"DEBUG: Extracted user_id: {user_id}")
+        # print(f"DEBUG: Extracted user_id: {user_id}")
         return user_id
         
     except jwt.ExpiredSignatureError:
-        print("DEBUG: Token expired")
+        # print("DEBUG: Token expired")
         return None
     except jwt.InvalidSignatureError:
-        print("DEBUG: Invalid signature - JWT_SECRET_KEY might be wrong")
+        # print("DEBUG: Invalid signature - JWT_SECRET_KEY might be wrong")
         return None
     except jwt.InvalidTokenError as e:
-        print(f"DEBUG: Invalid token error: {str(e)}")
+        # print(f"DEBUG: Invalid token error: {str(e)}")
         return None
     except Exception as e:
-        print(f"DEBUG: Unexpected error: {str(e)}")
+        # print(f"DEBUG: Unexpected error: {str(e)}")
         return None
 
 
@@ -288,8 +288,8 @@ def upload_project():
             # Convert project data to JSON bytes
             json_bytes = json.dumps(project_data, indent=2).encode("utf-8")
             
-            print(f"DEBUG: About to upload file: {filename}")
-            print(f"DEBUG: JSON bytes length: {len(json_bytes)}")
+            # print(f"DEBUG: About to upload file: {filename}")
+            # print(f"DEBUG: JSON bytes length: {len(json_bytes)}")
             
             # Upload JSON file to Supabase Storage
             upload_response = supabase.storage.from_("templates").upload(
@@ -298,8 +298,8 @@ def upload_project():
                 {"content-type": "application/json"},
             )
             
-            print(f"DEBUG: Upload response type: {type(upload_response)}")
-            print(f"DEBUG: Upload response raw: {repr(upload_response)}")
+            # print(f"DEBUG: Upload response type: {type(upload_response)}")
+            # print(f"DEBUG: Upload response raw: {repr(upload_response)}")
             
             # Handle different response types more robustly
             upload_error = None
@@ -308,17 +308,17 @@ def upload_project():
             # Check if it's a successful response
             if hasattr(upload_response, 'data') and upload_response.data:
                 upload_success = True
-                print("DEBUG: Upload successful - has data attribute")
+                # print("DEBUG: Upload successful - has data attribute")
             elif hasattr(upload_response, 'error') and upload_response.error:
                 upload_error = str(upload_response.error)
-                print(f"DEBUG: Upload failed with error attribute: {upload_error}")
+                # print(f"DEBUG: Upload failed with error attribute: {upload_error}")
             elif isinstance(upload_response, dict):
                 if 'error' in upload_response and upload_response['error']:
                     upload_error = str(upload_response['error'])
-                    print(f"DEBUG: Upload failed with dict error: {upload_error}")
+                    # print(f"DEBUG: Upload failed with dict error: {upload_error}")
                 elif 'data' in upload_response or upload_response.get('success'):
                     upload_success = True
-                    print("DEBUG: Upload successful - dict format")
+                    # print("DEBUG: Upload successful - dict format")
             else:
                 # If we can't determine success/failure, assume success if no obvious error
                 try:
@@ -326,13 +326,13 @@ def upload_project():
                     response_str = str(upload_response)
                     if 'error' in response_str.lower():
                         upload_error = response_str
-                        print(f"DEBUG: Upload may have failed: {response_str}")
+                        # print(f"DEBUG: Upload may have failed: {response_str}")
                     else:
                         upload_success = True
-                        print(f"DEBUG: Assuming upload success: {response_str}")
+                        # print(f"DEBUG: Assuming upload success: {response_str}")
                 except:
                     upload_success = True
-                    print("DEBUG: Cannot parse response, assuming success")
+                    # print("DEBUG: Cannot parse response, assuming success")
             
             if upload_error:
                 return jsonify({"error": f"Failed to upload project file: {upload_error}"}), 500
@@ -340,24 +340,22 @@ def upload_project():
             if not upload_success:
                 return jsonify({"error": "Failed to upload project file: Unknown error"}), 500
             
-            print("DEBUG: File upload successful")
+            # print("DEBUG: File upload successful")
             
-        except json.JSONEncodeError as e:
-            print(f"DEBUG: JSON encoding error: {str(e)}")
-            return jsonify({"error": f"Invalid project data format: {str(e)}"}), 400
+    
         except Exception as e:
-            print(f"DEBUG: File upload exception: {str(e)}")
-            print(f"DEBUG: Exception type: {type(e)}")
+            # print(f"DEBUG: File upload exception: {str(e)}")
+            # print(f"DEBUG: Exception type: {type(e)}")
             return jsonify({"error": f"File upload failed: {str(e)}"}), 500
 
         try:
             # Get public URL for the uploaded file
-            print(f"DEBUG: Getting public URL for: projects/{filename}")
+            # print(f"DEBUG: Getting public URL for: projects/{filename}")
             
             public_url_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")
             
-            print(f"DEBUG: Public URL response type: {type(public_url_response)}")
-            print(f"DEBUG: Public URL response: {repr(public_url_response)}")
+            # print(f"DEBUG: Public URL response type: {type(public_url_response)}")
+            # print(f"DEBUG: Public URL response: {repr(public_url_response)}")
             
             # Handle different response formats for public URL
             public_url = None
@@ -371,13 +369,13 @@ def upload_project():
                 public_url = public_url_response
             
             if not public_url:
-                print("DEBUG: Could not extract public URL from response")
+                # print("DEBUG: Could not extract public URL from response")
                 return jsonify({"error": "Failed to generate public URL"}), 500
             
-            print(f"DEBUG: Extracted public URL: {public_url}")
+            # print(f"DEBUG: Extracted public URL: {public_url}")
             
         except Exception as e:
-            print(f"DEBUG: Get public URL exception: {str(e)}")
+            # print(f"DEBUG: Get public URL exception: {str(e)}")
             return jsonify({"error": f"Failed to get public URL: {str(e)}"}), 500
 
         try:
@@ -393,23 +391,23 @@ def upload_project():
                 "updated_at": timestamp
             }
             
-            print(f"DEBUG: About to insert: {insert_data}")
+            # print(f"DEBUG: About to insert: {insert_data}")
             
             insert_response = supabase.table("projects").insert(insert_data).execute()
             
-            print(f"DEBUG: Insert response type: {type(insert_response)}")
-            print(f"DEBUG: Insert response: {insert_response}")
+            # print(f"DEBUG: Insert response type: {type(insert_response)}")
+            # print(f"DEBUG: Insert response: {insert_response}")
             
             # Check for database insert errors
             if hasattr(insert_response, 'error') and insert_response.error:
                 error_msg = str(insert_response.error)
-                print(f"DEBUG: Database insert failed: {error_msg}")
+                # print(f"DEBUG: Database insert failed: {error_msg}")
                 return jsonify({"error": f"Failed to save project: {error_msg}"}), 500
             
-            print("DEBUG: Database insert successful")
+            # print("DEBUG: Database insert successful")
             
         except Exception as e:
-            print(f"DEBUG: Database insert exception: {str(e)}")
+            # print(f"DEBUG: Database insert exception: {str(e)}")
             return jsonify({"error": f"Database insert failed: {str(e)}"}), 500
 
         # Return success response
@@ -422,11 +420,11 @@ def upload_project():
             "json_path": public_url
         }
         
-        print(f"DEBUG: Returning success response: {response_data}")
+        # print(f"DEBUG: Returning success response: {response_data}")
         return jsonify(response_data), 200
 
     except Exception as e:
-        print(f"DEBUG: Top-level exception: {str(e)}")
+        # print(f"DEBUG: Top-level exception: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
 
@@ -440,21 +438,22 @@ def get_user_newsletters():
             return jsonify({"error": "Missing or invalid authorization token"}), 401
         
         auth_token = auth_header.split(' ')[1]
-        
-        # Extract user_id from authToken
         user_id = get_user_id_from_supabase_token(auth_token)
         
+        if not user_id:
+            return jsonify({"error": "Invalid user ID"}), 401
+        
+        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
+        
         result = supabase.table(PROJECTS_TABLE).select("*").eq('user_id', user_id).execute()
-
-        if not result.data:
-            return jsonify({'success': True, 'data': {
-                'DRAFT': [],
-                'PUBLISHED': [],
-                'ARCHIVED': []
-            }}), 200
+        
+        if hasattr(result, 'error') and result.error:
+            print(f"Supabase error: {result.error}")  # Debug log
+            return jsonify({'error': 'Database query failed'}), 500
 
         newsletters = result.data
-
+        # print(f"Retrieved newsletters: {newsletters}")  # Debug log
+        
         grouped = {
             'DRAFT': [],
             'PUBLISHED': [],
@@ -462,14 +461,17 @@ def get_user_newsletters():
         }
 
         for newsletter in newsletters:
-            status = newsletter.get('status', 'DRAFT')
-            grouped.get(status, grouped['DRAFT']).append(newsletter)
+            status = newsletter.get('status', 'DRAFT').upper()
+            if status not in grouped:
+                status = 'DRAFT'
+            grouped[status].append(newsletter)
 
+        # print(f"Grouped newsletters: {grouped}")  # Debug log
         return jsonify({'success': True, 'data': grouped}), 200
 
     except Exception as e:
+        print(f"Error in get_user_newsletters: {str(e)}")  # Debug log
         return jsonify({'error': str(e)}), 500
-    
 
 # =============================================================================
 # LOGIN SECTION
@@ -573,7 +575,7 @@ def register():
         }), 201
 
     except Exception as e:
-        print(f"Registration error: {str(e)}")
+        # print(f"Registration error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/login', methods=['POST'])
@@ -612,7 +614,7 @@ def login():
         }), 200
 
     except Exception as e:
-        print(f"Login error: {str(e)}")
+        # print(f"Login error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/verify', methods=['GET'])
@@ -644,7 +646,7 @@ def verify():
         }), 200
         
     except Exception as e:
-        print(f"Verify error: {str(e)}")
+        # print(f"Verify error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/logout', methods=['POST'])

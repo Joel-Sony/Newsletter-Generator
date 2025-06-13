@@ -419,6 +419,7 @@ function Editor() {
   };
   
   const handleSaveProject = useCallback(async () => {
+    css = editor.ge
     if (!editorReady) {
       showToast('Editor not ready', true);
       return;

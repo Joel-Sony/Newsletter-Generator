@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Send, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const NewsletterGenerator = () => {
   const [formData, setFormData] = useState({
@@ -11,7 +12,7 @@ const NewsletterGenerator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
+  const navigate = useNavigate()
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -108,6 +109,38 @@ const NewsletterGenerator = () => {
         overflow: 'hidden',
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }}>
+        <button 
+        onClick={() => navigate('/home')} 
+        style={{
+          position: 'absolute',
+          top: '1.5rem',
+          left: '1.5rem',
+          zIndex: 50,
+          padding: '0.75rem 1.25rem',
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: '0.75rem',
+          color: '#93c5fd',
+          fontWeight: '600',
+          fontSize: '0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          backdropFilter: 'blur(4px)'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.background = 'rgba(59, 130, 246, 0.2)';
+          e.target.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'rgba(59, 130, 246, 0.1)';
+          e.target.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+        }}
+      >
+        ← Home
+      </button>
         
         {/* Animated Background Elements */}
         <div style={{ position: 'absolute', inset: 0 }}>
@@ -202,7 +235,6 @@ const NewsletterGenerator = () => {
             }}>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
                 {/* Topic and Tone Row */}
                 <div style={{
                   display: 'grid',

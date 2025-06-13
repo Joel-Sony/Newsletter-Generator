@@ -12,7 +12,7 @@ const NewsletterDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Pagination state for each section
+  
   const [pagination, setPagination] = useState({
     drafts: { currentPage: 1, itemsPerPage: 6 },
     published: { currentPage: 1, itemsPerPage: 6 },
@@ -49,7 +49,6 @@ const NewsletterDashboard = () => {
           throw new Error(data.error || 'Failed to fetch newsletters');
         }
 
-        // Transform the API data to match our component structure
         const transformedData = {
           drafts: data.data.DRAFT.map(item => ({
             id: item.id,
@@ -72,7 +71,7 @@ const NewsletterDashboard = () => {
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
             preview: 'Archived newsletter content...'
           }))
-        };
+        };  
 
         setNewsletters(transformedData);
       } catch (err) {
@@ -190,8 +189,10 @@ const NewsletterDashboard = () => {
     const currentPagination = pagination[activeSection];
     const startIndex = (currentPagination.currentPage - 1) * currentPagination.itemsPerPage;
     const endIndex = startIndex + currentPagination.itemsPerPage;
-    
-    return sectionNewsletters.slice(startIndex, endIndex);
+    return sectionNewsletters.map(newsletter => ({
+      ...newsletter,
+      previewImage: `https://picsum.photos/seed/${newsletter.id}/600/400`, // Random image with newsletter ID as seed
+    })).slice(startIndex, endIndex);
   };
 
   const getTotalPages = (section) => {
@@ -560,12 +561,32 @@ const NewsletterDashboard = () => {
     card: {
       backgroundColor: '#1f1f1f',
       borderRadius: '16px',
-      padding: '24px',
+      padding: '0', // Changed from 24px to 0 to allow full-width image
       border: '1px solid #404040',
       transition: 'all 0.3s ease',
       position: 'relative',
       overflow: 'hidden',
-      cursor: 'pointer'
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column'
+    },
+    cardImageContainer: {
+      width: '100%',
+      height: '160px',
+      overflow: 'hidden',
+      position: 'relative'
+    },
+    cardImage: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      transition: 'transform 0.3s ease'
+    },
+    cardContent: {
+      padding: '20px',
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column'
     },
     cardTopBorder: {
       position: 'absolute',
@@ -659,7 +680,8 @@ const NewsletterDashboard = () => {
       borderTop: '1px solid #262626',
       padding: '24px',
       color: '#a3a3a3',
-      marginTop: 'auto'
+      marginTop: 'auto',
+
     },
     footerContent: {
       display: 'flex',
@@ -880,16 +902,39 @@ const NewsletterDashboard = () => {
                       e.currentTarget.style.transform = 'translateY(-8px)';
                       e.currentTarget.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.5)';
                       e.currentTarget.style.borderColor = '#525252';
+                      
+                      // Scale up the image on hover
+                      const img = e.currentTarget.querySelector('.card-image');
+                      if (img) {
+                        img.style.transform = 'scale(1.05)';
+                      }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = 'none';
                       e.currentTarget.style.borderColor = '#404040';
+                      
+                      // Reset image scale
+                      const img = e.currentTarget.querySelector('.card-image');
+                      if (img) {
+                        img.style.transform = 'scale(1)';
+                      }
                     }}
                   >
                     <div style={styles.cardTopBorder}></div>
                     
-                    <div>
+                    {/* Image Preview Section */}
+                    <div style={styles.cardImageContainer}>
+                      <img 
+                        src={newsletter.previewImage} 
+                        alt={`Preview of ${newsletter.title}`}
+                        style={styles.cardImage}
+                        className="card-image"
+                      />
+                    </div>
+                    
+                    {/* Card Content */}
+                    <div style={styles.cardContent}>
                       <h3 style={styles.cardTitle}>{newsletter.title}</h3>
                       <div style={styles.cardMeta}>
                         <span style={styles.cardDate}>{newsletter.lastEdited}</span>
