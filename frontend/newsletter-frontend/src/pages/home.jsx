@@ -38,13 +38,11 @@ const NewsletterDashboard = () => {
             'Authorization': `Bearer ${authToken}`
           }
         });
-
         if (!response.ok) {
           throw new Error('Failed to fetch newsletters');
         }
 
         const data = await response.json();
-        
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch newsletters');
         }
@@ -55,21 +53,24 @@ const NewsletterDashboard = () => {
             title: item.project_name || 'Untitled Newsletter',
             status: 'draft',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Draft newsletter content...'
+            preview: 'Draft newsletter content...',
+            image_path:item.image_path
           })),
           published: data.data.PUBLISHED.map(item => ({
             id: item.id,
             title: item.project_name || 'Published Newsletter',
             status: 'published',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Published newsletter content...'
+            preview: 'Published newsletter content...',
+            image_path:item.image_path
           })),
           archived: data.data.ARCHIVED.map(item => ({
             id: item.id,
             title: item.project_name || 'Archived Newsletter',
             status: 'archived',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Archived newsletter content...'
+            preview: 'Archived newsletter content...',
+            image_path:item.image_path
           }))
         };  
 
@@ -189,11 +190,13 @@ const NewsletterDashboard = () => {
     const currentPagination = pagination[activeSection];
     const startIndex = (currentPagination.currentPage - 1) * currentPagination.itemsPerPage;
     const endIndex = startIndex + currentPagination.itemsPerPage;
-    return sectionNewsletters.map(newsletter => ({
+
+    return sectionNewsletters.slice(startIndex, endIndex).map(newsletter => ({
       ...newsletter,
-      previewImage: `https://picsum.photos/seed/${newsletter.id}/600/400`, // Random image with newsletter ID as seed
-    })).slice(startIndex, endIndex);
+      previewImage: newsletter.image_path 
+    }));
   };
+
 
   const getTotalPages = (section) => {
     const allNewsletters = {
@@ -764,7 +767,7 @@ const NewsletterDashboard = () => {
               { key: 'drafts', icon: '📝', label: 'Drafts' },
               { key: 'published', icon: '📤', label: 'Published' },
               { key: 'archived', icon: '📦', label: 'Archived' },
-              { key: 'all', icon: '📄', label: 'All Newsletters' }
+              { key: 'all', icon: '📄', label: 'All Newsletters' },
             ].map((item) => (
               <li key={item.key} style={styles.sidebarItem}>
                 <button
@@ -930,6 +933,12 @@ const NewsletterDashboard = () => {
                         alt={`Preview of ${newsletter.title}`}
                         style={styles.cardImage}
                         className="card-image"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/600x400?text=Image+Not+Found';
+                          e.target.style.objectFit = 'contain';
+                          e.target.style.padding = '20px';
+                          e.target.style.backgroundColor = '#2d2d2d';
+                        }}
                       />
                     </div>
                     
