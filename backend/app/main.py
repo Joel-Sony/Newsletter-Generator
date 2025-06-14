@@ -4,9 +4,11 @@ from flask import (
     send_from_directory,
     jsonify,
     current_app
+    
 )
 import os
 import traceback
+import requests
 from werkzeug.utils import secure_filename
 from app.utils.convertApi import convert_pdf_to_html, convert_html_to_pdf
 from app.utils.templateGeneration import no_template_generation
@@ -201,7 +203,8 @@ def get_user_id_from_supabase_token(token):
             token,
             JWT_SECRET_KEY,
             algorithms=['HS256'],
-            audience="authenticated")
+            audience="authenticated"
+        )
         # print(f"DEBUG: Verified payload: {payload}")
         
         user_id = payload.get('sub')
@@ -283,7 +286,7 @@ async def upload_project():
                 
             except Exception as e:
                 return jsonify({"error": f"Database query failed: {str(e)}"}), 500
-
+            
         # Create filename for storage
         filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
         filename_img = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.png"
@@ -309,19 +312,6 @@ async def upload_project():
 
             if hasattr(img_upload, 'error') and img_upload.error:
                 return jsonify({"error": f"Image upload failed: {img_upload.error}"}), 500
-            
-            
-            # Handle different response types more robustly
-            # upload_error = None
-            # upload_success = False
-            
-            
-            # if upload_error:
-            #     return jsonify({"error": f"Failed to upload project file: {upload_error}"}), 500
-            
-            # if not upload_success:
-            #     return jsonify({"error": "Failed to upload project file: Unknown error"}), 500
-            
     
         except Exception as e:
             return jsonify({"error": f"File upload failed: {str(e)}"}), 500
@@ -448,6 +438,39 @@ def get_user_newsletters():
     except Exception as e:
         print(f"Error in get_user_newsletters: {str(e)}")  # Debug log
         return jsonify({'error': str(e)}), 500
+
+
+@main_bp.route('/api/newsletters/<string:id>')
+def get_newsletter_using_id(id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+        auth_token = auth_header.split(' ')[1]
+        user_id = get_user_id_from_supabase_token(auth_token)
+
+        if not user_id:
+            return jsonify({"error": "Invalid user ID"}), 401
+
+        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
+        
+        result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','version','json_path').eq('id', id).eq('user_id',user_id).execute()
+        if result.data:
+            row = result.data[0]
+            json_path = row.get("json_path")
+            response = requests.get(json_path)
+            if response.status_code != 200:
+                return jsonify({"error": "Failed to fetch JSON from Supabase storage"}), 500
+
+            row["json_path"] = response.json()
+            return jsonify(row)
+        else:
+            return jsonify({"error":"Could not find file"})
+    except Exception as e:
+            return jsonify({"Error":"Could not fetch single newsletter"})
+                
+
 
 
 # =============================================================================
