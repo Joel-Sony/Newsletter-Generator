@@ -121,9 +121,6 @@ const NewsletterDashboard = () => {
       case 'Edit':
         navigate(`/editor/${newsletterId}`);
         break;
-      case 'Preview':
-        // Implement preview logic
-        break;
       case 'View':
         // Implement view logic
         break;

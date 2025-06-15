@@ -1,235 +1,240 @@
-<div class="newsletter-wrapper" style="max-width: 790px; margin: 0 auto; background-color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; color: #333333;">
-    <style>
-        /* Base Styles */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-            font-family: 'Georgia', serif;
-            color: #333333;
-        }
-        .newsletter-wrapper {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        img {
-            max-width: 100%;
-            height: auto;
-        }
-        a {
-            text-decoration: none;
-            color: #1a5276;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #2980b9;
-            color: white;
-            font-weight: bold;
-            border-radius: 4px;
-            margin-top: 15px;
-        }
-        .section {
-            padding: 30px;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .margin-top {
-            margin-top: 20px;
-        }
-        .margin-bottom {
-            margin-bottom: 20px;
-        }
-        
-        /* Header Styles */
-        .header {
-            padding: 20px 30px;
-            border-bottom: 1px solid #eaeaea;
-        }
-        .logo {
-            max-height: 50px;
-            vertical-align: middle;
-        }
-        .nav {
-            margin-top: 15px;
-        }
-        .nav-item {
-            display: inline-block;
-            margin: 0 10px;
-            font-weight: 600;
-            color: #1a5276;
-        }
-        
-        /* Hero Section */
-        .hero {
-            background-color: #f8f9fa;
-            padding: 60px 30px;
-            text-align: center;
-        }
-        .hero-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
-        .hero-subtitle {
-            font-size: 18px;
-            color: #7f8c8d;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        /* Content Blocks */
-        .content-block {
-            display: flex;
-            align-items: center;
-            margin: 30px 0;
-        }
-        .content-block.reverse {
-            flex-direction: row-reverse;
-        }
-        .content-image {
-            flex: 1;
-            padding: 15px;
-        }
-        .content-text {
-            flex: 1;
-            padding: 15px;
-        }
-        .content-title {
-            font-size: 22px;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        /* Quote Section */
-        .quote-section {
-            background-color: #e8f4fc;
-            padding: 40px;
-            margin: 30px 0;
-        }
-        .quote {
-            font-size: 20px;
-            font-style: italic;
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        
-        /* Footer */
-        .footer {
-            background-color: #2c3e50;
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        .social-icons {
-            margin: 20px 0;
-        }
-        .social-icon {
-            display: inline-block;
-            margin: 0 10px;
-        }
-        .legal {
-            font-size: 12px;
-            color: #bdc3c7;
-        }
-        
-        /* Responsive Styles */
-        @media (max-width: 600px) {
-            .content-block, .content-block.reverse {
-                flex-direction: column;
-            }
-            .nav-item {
-                display: block;
-                margin: 10px 0;
-            }
-            .section {
-                padding: 20px;
-            }
-        }
-    </style>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@700&display=swap');
+  
+  .newsletter {
+    width: 790px;
+    max-width: 100%;
+    margin: 0 auto;
+    background-color: #f5f5f5;
+    font-family: 'Montserrat', sans-serif;
+    color: #333333;
+    line-height: 1.6;
+  }
+  
+  .container {
+    padding: 30px;
+  }
+  
+  .header {
+    text-align: center;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e63946;
+  }
+  
+  .logo {
+    max-width: 200px;
+    margin-bottom: 20px;
+  }
+  
+  .nav {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 20px 0;
+  }
+  
+  .nav-item {
+    text-decoration: none;
+    color: #333333;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  
+  .nav-item:hover {
+    color: #e63946;
+  }
+  
+  .hero {
+    background-color: #1a1a2e;
+    color: white;
+    padding: 60px 40px;
+    text-align: center;
+    margin: 30px 0;
+    border-radius: 5px;
+  }
+  
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    margin-bottom: 20px;
+  }
+  
+  .hero p {
+    font-size: 18px;
+    margin-bottom: 30px;
+  }
+  
+  .btn {
+    display: inline-block;
+    background-color: #e63946;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+  }
+  
+  .btn:hover {
+    background-color: #c1121f;
+    transform: translateY(-2px);
+  }
+  
+  .content-block {
+    display: flex;
+    align-items: center;
+    margin: 40px 0;
+  }
+  
+  .content-text {
+    flex: 1;
+    padding: 0 30px;
+  }
+  
+  .content-image {
+    flex: 1;
+  }
+  
+  .content-image img {
+    max-width: 100%;
+    border-radius: 5px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  }
+  
+  .content-block:nth-child(even) {
+    flex-direction: row-reverse;
+  }
+  
+  .quote-section {
+    background-color: #1a1a2e;
+    color: white;
+    padding: 40px;
+    text-align: center;
+    margin: 40px 0;
+    border-radius: 5px;
+  }
+  
+  .quote {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-style: italic;
+    margin-bottom: 20px;
+  }
+  
+  .footer {
+    text-align: center;
+    padding: 30px 0;
+    border-top: 2px solid #e63946;
+  }
+  
+  .social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  
+  .social-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #333333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+  
+  .social-icon:hover {
+    background-color: #e63946;
+    transform: translateY(-3px);
+  }
+  
+  .legal {
+    font-size: 12px;
+    color: #777777;
+    margin-top: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    .content-block {
+      flex-direction: column;
+    }
+    
+    .content-block:nth-child(even) {
+      flex-direction: column;
+    }
+    
+    .content-text, .content-image {
+      padding: 0;
+      margin-bottom: 20px;
+    }
+    
+    .nav {
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+</style>
 
-    <!-- Header -->
+<div class="newsletter">
+  <div class="container">
     <div class="header">
-        <img src="https://via.placeholder.com/150x50?text=Persona+Chronicles" alt="Persona Chronicles Logo" class="logo">
-        <div class="nav">
-            <a href="#" class="nav-item">Home</a>
-            <a href="#" class="nav-item">Features</a>
-            <a href="#" class="nav-item">Analysis</a>
-            <a href="#" class="nav-item">Gallery</a>
-            <a href="#" class="nav-item">Contact</a>
-        </div>
+      <img src="https://via.placeholder.com/200x80?text=NEED+FOR+SPEED" alt="Need for Speed Logo" class="logo">
+      <div class="nav">
+        <a href="#" class="nav-item">News</a>
+        <a href="#" class="nav-item">Games</a>
+        <a href="#" class="nav-item">Community</a>
+        <a href="#" class="nav-item">Shop</a>
+        <a href="#" class="nav-item">Support</a>
+      </div>
     </div>
     
-    <!-- Hero Section -->
     <div class="hero">
-        <h1 class="hero-title">Exploring the World of Persona 3: Reflecting on a Timeless Classic</h1>
-        <p class="hero-subtitle">Delve into the masterpiece that redefined the JRPG genre with its innovative mechanics and profound themes</p>
-        <a href="#" class="btn">Read Our Full Analysis</a>
+      <h1>Return of Need for Speed: Most Wanted</h1>
+      <p>Experience the thrill of high-stakes street racing and claim your place at the top</p>
+      <a href="#" class="btn">Play Now</a>
     </div>
     
-    <!-- Content Block 1 -->
-    <div class="section">
-        <div class="content-block">
-            <div class="content-image">
-                <img src="https://via.placeholder.com/350x200?text=Persona+3" alt="Persona 3 Gameplay">
-            </div>
-            <div class="content-text">
-                <h2 class="content-title">The Revolutionary Dark Hour Concept</h2>
-                <p>The game's signature mechanic transformed traditional dungeon crawling into a time-limited survival experience that perfectly complemented the story's themes.</p>
-                <a href="#" class="btn margin-top">Learn About Mechanics</a>
-            </div>
-        </div>
+    <div class="content-block">
+      <div class="content-image">
+        <img src="https://via.placeholder.com/350x250?text=BMW+M3+GTR" alt="BMW M3 GTR">
+      </div>
+      <div class="content-text">
+        <h2>The Legendary BMW M3 GTR</h2>
+        <p>Get ready to hit the fast lane with the return of Need for Speed: Most Wanted! In this adrenaline-fueled racing game, the stakes are higher and the competition is fiercer as you strive to blacklist your rivals and claim the top spot. Feel the rush of driving the iconic BMW M3 GTR, a vehicle synonymous with speed and performance.</p>
+      </div>
     </div>
     
-    <!-- Content Block 2 -->
-    <div class="section" style="background-color: #f8f9fa;">
-        <div class="content-block reverse">
-            <div class="content-image">
-                <img src="https://via.placeholder.com/350x200?text=Persona+Characters" alt="Persona 3 Characters">
-            </div>
-            <div class="content-text">
-                <h2 class="content-title">Memorable Characters With Depth</h2>
-                <p>From the reluctant leader to the tragic antagonist, each character arc handles mature themes with nuance and emotional honesty.</p>
-                <a href="#" class="btn margin-top">Meet the Cast</a>
-            </div>
-        </div>
+    <div class="content-block">
+      <div class="content-text">
+        <h2>Become the Most Wanted</h2>
+        <p>Join the thrilling world of Need for Speed: Most Wanted, where the ultimate goal is to become the most wanted driver of all. Test your skills against the best street racers and outrun the cops in intense high-speed chases through the city.</p>
+      </div>
+      <div class="content-image">
+        <img src="https://via.placeholder.com/350x250?text=Street+Race" alt="Street Race">
+      </div>
     </div>
     
-    <!-- Quote Section -->
     <div class="quote-section">
-        <p class="quote">"Persona 3 remains relevant precisely because it doesn't shy away from addressing life's hardest questions."</p>
+      <p class="quote">"Speed has never felt this intense. The return of Most Wanted brings back all the adrenaline of street racing with next-gen thrills."</p>
+      <p>- Racing Weekly</p>
     </div>
     
-    <!-- Content Block 3 -->
-    <div class="section">
-        <div class="content-block">
-            <div class="content-image">
-                <img src="https://via.placeholder.com/350x200?text=Persona+Legacy" alt="Persona 3 Legacy">
-            </div>
-            <div class="content-text">
-                <h2 class="content-title">Enduring Influence on Modern RPGs</h2>
-                <p>The social link system and calendar mechanics have become genre staples, influencing countless games that followed.</p>
-                <a href="#" class="btn margin-top">View Influenced Games</a>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Footer -->
     <div class="footer">
-        <div class="social-icons">
-            <a href="#" class="social-icon"><img src="https://via.placeholder.com/30x30?text=FB" alt="Facebook"></a>
-            <a href="#" class="social-icon"><img src="https://via.placeholder.com/30x30?text=TW" alt="Twitter"></a>
-            <a href="#" class="social-icon"><img src="https://via.placeholder.com/30x30?text=IG" alt="Instagram"></a>
-            <a href="#" class="social-icon"><img src="https://via.placeholder.com/30x30?text=YT" alt="YouTube"></a>
-        </div>
-        <p>© 2023 Persona Chronicles. All rights reserved.</p>
-        <p class="legal">All trademarks and registered trademarks are the property of their respective owners.</p>
-        <p class="legal">
-            <a href="#" style="color: #bdc3c7;">Privacy Policy</a> | 
-            <a href="#" style="color: #bdc3c7;">Terms of Service</a> | 
-            <a href="#" style="color: #bdc3c7;">Unsubscribe</a>
-        </p>
+      <div class="social-icons">
+        <a href="#" class="social-icon">FB</a>
+        <a href="#" class="social-icon">TW</a>
+        <a href="#" class="social-icon">IG</a>
+        <a href="#" class="social-icon">YT</a>
+      </div>
+      <p class="legal">© 2023 Need for Speed. All rights reserved. All trademarks are property of their respective owners.</p>
     </div>
+  </div>
 </div>

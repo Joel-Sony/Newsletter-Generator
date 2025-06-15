@@ -5,6 +5,7 @@ import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
 
+// Re-using provided helper functions and components as they are generally fine
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
   if (!iframe) return;
@@ -38,7 +39,6 @@ const baseButtonStyle = {
   alignItems: 'center',
   gap: '8px',
 };
-
 
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
@@ -313,15 +313,14 @@ const Label = ({ children, ...props }) => (
 );
 
 function Editor() {
-  const {id} = useParams()
-  const navigate = useNavigate()
-  const [htmlContent, setHtmlContent] = useState(null);
-  const [editorReady, setEditorReady] = useState(null);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [editor, setEditor] = useState(null); // Renamed from editorReady for consistency
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('Untitled Newsletter');
   const [projectId, setProjectId] = useState(null); 
-
+  
   // Text modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
@@ -339,82 +338,9 @@ function Editor() {
   const [projectStatus, setProjectStatus] = useState('DRAFT');
   const [savingProject, setSavingProject] = useState(false);
 
-  
   // Reference for editable project name
   const projectNameRef = useRef(null);
   
-
-
-  async function loadProject() {
-    console.log('App component mounted, fetching HTML content...');
-    
-    fetch('/api/generated_output.html')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.text();
-      })
-      .then(html => {
-        setHtmlContent(html);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch initial HTML content:", err);
-        setError(err.message);
-        const fallbackContent = `
-          <div style="padding: 50px; text-align: center;">
-            <h1>Welcome to the Editor</h1>
-            <p>Could not load initial template. Starting with default content.</p>
-            <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
-          </div>
-        `;
-        setHtmlContent(fallbackContent);
-        setLoading(false);
-      });
-    }
-
-  async function loadProjectbyId(){
-    try {
-        const authToken = getAuthToken();
-        if (!authToken) {
-            throw new Error('No authentication token found');
-        }
-
-        const response = await fetch(`/api/newsletters/${id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.status}`);
-        }
-
-        const rowData = await response.json(); 
-        setProjectId(rowData["project_id"])
-        setProjectName(rowData["project_name"])
-        setProjectStatus(rowData["status"])
-        return rowData
-        
-    } catch (error) {
-        console.error('Error loading project:', error);
-        throw error;  
-    }
-  }
-
-  const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token || token === 'null' || token === 'undefined') {
-        return null;
-      }
-      return token;
-    } catch (error) {
-      console.error('Error accessing localStorage:', error);
-      return null;
-    }
-  };
-
   const showToast = (message, isError = false) => {
     const toast = document.createElement('div');
     toast.style.position = 'fixed';
@@ -442,43 +368,95 @@ function Editor() {
       }, 300);
     }, 3000);
   };
-  
+
+  const getAuthToken = () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token || token === 'null' || token === 'undefined') {
+        return null;
+      }
+      return token;
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
+      return null;
+    }
+  };
+
+  const loadProjectContent = useCallback(async (editorInstance) => {
+    if (!editorInstance) return;
+
+    setLoading(true);
+    try {
+      if (id) {
+        console.log("Loading existing project:", id);
+        const authToken = getAuthToken();
+        if (!authToken) throw new Error('No authentication token found');
+
+        const res = await fetch(`/api/newsletters/${id}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${authToken}` },
+        });
+
+        if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
+
+        const data = await res.json();
+        setProjectId(data.project_id);
+        setProjectName(data.project_name);
+        setProjectStatus(data.status);
+        editorInstance.loadProjectData(data.json_path);
+      } else {
+        console.log("Loading new project template");
+        const res = await fetch('/api/generated_output.html');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const html = await res.text();
+        editorInstance.setComponents(html);
+      }
+    } catch (err) {
+      console.error("Failed to load initial HTML content or project:", err);
+      setError(err.message);
+      const fallbackContent = `
+        <div style="padding: 50px; text-align: center;">
+          <h1>Welcome to the Editor</h1>
+          <p>Could not load initial template. Starting with default content.</p>
+          <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
+        </div>
+      `;
+      editorInstance.setComponents(fallbackContent);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   const handleSaveProject = useCallback(async () => {
-    // 1. Validate editor state
-    if (!editorReady) {
+    if (!editor) { // Use 'editor' state
       showToast('Editor not ready', true);
       return;
     }
 
-    // 2. Validate project name with fallback
     const currentProjectName = (projectName || 'Untitled Newsletter').trim();
     if (!currentProjectName) {
       setProjectName('Untitled Newsletter');
     }
 
-    // 3. Validate auth token
     const authToken = getAuthToken();
     if (!authToken) {
       showToast('Authentication required. Please log in.', true);
-      // Consider redirecting to login instead of just returning
       return;
     }
 
     try {
       setSavingProject(true);
       
-      // 4. Safely extract editor data
       let html, css, projectData;
       try {
-        html = editorReady.getHtml() || '';
-        css = editorReady.getCss() || '';
-        projectData = editorReady.getProjectData() || {};
+        html = editor.getHtml() || ''; // Use 'editor' state
+        css = editor.getCss() || '';   // Use 'editor' state
+        projectData = editor.getProjectData() || {}; // Use 'editor' state
       } catch (editorError) {
         console.error('Error extracting editor data:', editorError);
         throw new Error('Failed to extract editor content');
       }
 
-      // 5. Create full HTML safely
       const fullHtml = `<!DOCTYPE html>
   <html>
     <head>
@@ -487,9 +465,6 @@ function Editor() {
     <body>${html}</body>
   </html>`;
 
-      
-
-      // 7. Make request with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
@@ -511,7 +486,6 @@ function Editor() {
 
       clearTimeout(timeoutId);
 
-      // 8. Handle response
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -519,30 +493,27 @@ function Editor() {
 
       const data = await response.json();
 
-      // 9. Update state
       if (data.project_id && !projectId) {
         setProjectId(data.project_id);
+        // If it's a new project being saved, navigate to its URL
+        navigate(`/editor/${data.project_id}`, { replace: true });
       }
 
       showToast(`Project "${currentProjectName}" saved successfully!`);
       
     } catch (error) {
       console.error('Error saving project:', error);
-      
-      // Better error messages
       let errorMessage = 'Failed to save project';
       if (error.name === 'AbortError') {
         errorMessage = 'Save request timed out';
       } else if (error.message) {
         errorMessage = `Failed to save: ${error.message}`;
       }
-      
       showToast(errorMessage, true);
     } finally {
       setSavingProject(false);
     }
-  }, [editorReady, projectName, projectStatus, projectId]);
-
+  }, [editor, projectName, projectStatus, projectId, navigate]); // Add 'navigate' to dependencies
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -556,63 +527,35 @@ function Editor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSaveProject]);
 
-
   useEffect(() => {
-      if (!editorReady) return;
+    if (!editor) return; // Use 'editor' state
   
-      const iframe = editorReady.Canvas.getFrameEl();
-      if (!iframe) return;
+    const iframe = editor.Canvas.getFrameEl();
+    if (!iframe) return;
   
-      const doc = iframe.contentDocument;
-      
-      const handleSelectionChange = () => {
-        const selection = doc.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          if (range && range.toString().trim()) {
-            window._cachedTextSelection = {
-              text: range.toString(),
-              range: range.cloneRange(),
-              startContainer: range.startContainer,
-              endContainer: range.endContainer,
-              startOffset: range.startOffset,
-              endOffset: range.endOffset
-            };
-          }
-        }
-      };
-  
-      doc.addEventListener('selectionchange', handleSelectionChange);
-      return () => doc.removeEventListener('selectionchange', handleSelectionChange);
-    }, [editorReady]);
-
-  useEffect(() => {
-    if (!editorReady) return;
+    const doc = iframe.contentDocument;
     
-    const initializeProject = async () => {
-      try {
-        if (id) {
-          console.log("Loading existing project:", id);
-          const rowData = await loadProjectbyId();
-          if (rowData && rowData.project_data) {
-            editorReady.loadProjectData(rowData.project_data);
-          }
-        } else {
-          console.log("Loading new project template");
-          await loadProject();
-          // Set initial content if htmlContent is available
-          if (htmlContent) {
-            editorReady.setComponents(htmlContent);
-          }
+    const handleSelectionChange = () => {
+      const selection = doc.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (range && range.toString().trim()) {
+          window._cachedTextSelection = {
+            text: range.toString(),
+            range: range.cloneRange(),
+            startContainer: range.startContainer,
+            endContainer: range.endContainer,
+            startOffset: range.startOffset,
+            endOffset: range.endOffset
+          };
         }
-      } catch (error) {
-        console.error("Project initialization failed:", error);
-        showToast('Failed to load project', true);
       }
     };
+  
+    doc.addEventListener('selectionchange', handleSelectionChange);
+    return () => doc.removeEventListener('selectionchange', handleSelectionChange);
+  }, [editor]); // Use 'editor' state as dependency
 
-    initializeProject();
-  }, [editorReady, id, htmlContent]);
 
   // Function to get current text selection
   const getTextSelection = () => {
@@ -620,9 +563,9 @@ function Editor() {
       return window._cachedTextSelection;
     }
 
-    if (!editorReady) return null;
+    if (!editor) return null; // Use 'editor' state
     
-    const iframe = editorReady.Canvas.getFrameEl();
+    const iframe = editor.Canvas.getFrameEl();
     if (!iframe) return null;
     
     const doc = iframe.contentDocument;
@@ -729,19 +672,17 @@ function Editor() {
 
   const replaceSelectedText = (newText) => {
     try {
-      if (!selectionInfo || !selectedComponent) return;
+      if (!selectionInfo || !selectedComponent || !editor) return; // Add editor check
 
-      const iframe = editorReady.Canvas.getFrameEl();
+      const iframe = editor.Canvas.getFrameEl();
       if (!iframe) return;
       
       const doc = iframe.contentDocument;
       const componentEl = selectedComponent.getEl();
       if (!componentEl) return;
 
-      // Create a new range in the iframe's document
       const range = doc.createRange();
       
-      // Set range using stored selection info
       range.setStart(selectionInfo.startContainer, selectionInfo.startOffset);
       range.setEnd(selectionInfo.endContainer, selectionInfo.endOffset);
       
@@ -759,7 +700,6 @@ function Editor() {
       
     } catch (error) {
       console.error('Error replacing text:', error);
-      // Fallback to replacing entire text content
       const originalText = selectedComponent.view?.el?.innerText || '';
       const newContent = originalText.replace(selectedText, newText);
       selectedComponent.components([{ type: 'text', content: newContent }]);
@@ -838,7 +778,6 @@ function Editor() {
       </div>
     );
   }
-
 
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
@@ -922,14 +861,14 @@ function Editor() {
             backgroundColor: '#2a2a2a',
             borderRadius: '4px'
           }}>
-            {editorReady ? '✓ Ready' : '⏳ Loading...'}
+            {loading ? '⏳ Loading...' : (editor ? '✓ Ready' : '❌ Error')}
           </div>
         </div>
 
         <Button
           variant="primary"
           onClick={handleSaveProject}
-          disabled={!editorReady || savingProject}
+          disabled={!editor || savingProject} // Use 'editor' state
           style={{
             backgroundColor: savingProject ? '#64748b' : '#1034a6',
             color: 'white',
@@ -942,23 +881,15 @@ function Editor() {
       {/* Editor */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <StudioEditor
-          onReady={(editor) => {
-            console.log('Editor ready:', editor);
-            setEditorReady(editor);  
+          onReady={(grapesEditor) => {
+            console.log('Editor ready:', grapesEditor);
+            setEditor(grapesEditor); 
+            loadProjectContent(grapesEditor); 
           }}
           options={{
-            project: {
-              default: {
-                pages: [
-                  {
-                    name: 'New Page', 
-                  },
-                ],
-              },
-            },
             plugins: [
               canvasAbsoluteMode,
-              editor => {
+              editorInstance => { 
                 const commonContextMenuLogic = (component, items, actionType) => {
                   const handler = actionType === 'text' ? openModal : openImageModal;
                   const label = actionType === 'text' 
@@ -976,7 +907,7 @@ function Editor() {
                   ];
                 };
 
-                editor.Components.addType('text', {
+                editorInstance.Components.addType('text', {
                   model: {
                     defaults: {
                       contextMenu: ({ items, component }) => 
@@ -985,7 +916,7 @@ function Editor() {
                   },
                 });
 
-                editor.Components.addType('image', {
+                editorInstance.Components.addType('image', {
                   model: {
                     defaults: {
                       contextMenu: ({ items, component }) => 
@@ -994,11 +925,10 @@ function Editor() {
                   },
                 });
                 
-                // Add context menu to other image-like components
                 const imageLikeTypes = ['picture', 'figure'];
                 imageLikeTypes.forEach(type => {
-                  if (editor.Components.getType(type)) {
-                    editor.Components.addType(type, {
+                  if (editorInstance.Components.getType(type)) {
+                    editorInstance.Components.addType(type, {
                       model: {
                         defaults: {
                           contextMenu: ({ items, component }) => 
@@ -1027,11 +957,10 @@ function Editor() {
               backgroundColor: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '8px',
-              fontSize: '14px',
+              minHeight: '60px',
+              fontStyle: 'italic',
               color: '#475569',
-              maxHeight: '100px',
-              overflow: 'auto',
-              fontStyle: selectedText ? 'normal' : 'italic'
+              wordBreak: 'break-word',
             }}>
               {selectedText || 'No text selected'}
             </div>
@@ -1039,74 +968,60 @@ function Editor() {
 
           {/* Tone Selection */}
           <div>
-            <Label>Select Tone:</Label>
-            <Select
-              value={tone}
-              onChange={e => setTone(e.target.value)}
-            >
-              <option value="">🎨  Choose a tone…</option>
-              <option value="Professional">💼 Professional</option>
-              <option value="Casual">☕ Casual</option>
-              <option value="Friendly">😊 Friendly</option>
-              <option value="Formal">🎩 Formal</option>
-              <option value="Humorous">😂 Humorous</option>
-              <option value="Persuasive">🗣️ Persuasive</option>
-              <option value="Educational">📚 Educational</option>
-              <option value="Custom Tone">✏️ Custom Tone</option>
+            <Label htmlFor="tone-select">Select Tone:</Label>
+            <Select id="tone-select" value={tone} onChange={e => setTone(e.target.value)}>
+              <option value="">Choose a tone</option>
+              <option value="Professional">Professional</option>
+              <option value="Friendly">Friendly</option>
+              <option value="Concise">Concise</option>
+              <option value="Empathetic">Empathetic</option>
+              <option value="Witty">Witty</option>
+              <option value="Custom Tone">Custom Tone...</option>
             </Select>
           </div>
 
-          {/* Custom Prompt (shown when Custom Tone is selected) */}
+          {/* Custom Prompt (conditionally rendered) */}
           {tone === 'Custom Tone' && (
             <div>
-              <Label>Custom Prompt:</Label>
+              <Label htmlFor="custom-prompt">Custom Prompt:</Label>
               <TextArea
+                id="custom-prompt"
+                placeholder="e.g., Make this text sound like a pirate."
                 value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="Describe how you want the text to be transformed..."
+                onChange={e => setCustomPrompt(e.target.value)}
               />
             </div>
           )}
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={closeModal}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+            <Button variant="secondary" onClick={closeModal} disabled={loadingAI}>
               Cancel
             </Button>
-            <Button 
-              variant="success" 
-              onClick={handleTransform}
-              disabled={loadingAI || !selectedText || !tone}
-            >
-              {loadingAI ? 'Transforming...' : '✨ Transform Text'}
+            <Button variant="primary" onClick={handleTransform} disabled={loadingAI || !tone || (tone === 'Custom Tone' && !customPrompt.trim())}>
+              {loadingAI ? 'Transforming...' : 'Transform'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Image Generation Modal */}
       <Modal isOpen={imageModalOpen} onClose={closeImageModal} title="Generate Image with AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <Label>Image Description:</Label>
+            <Label htmlFor="image-prompt">Image Prompt:</Label>
             <TextArea
+              id="image-prompt"
+              placeholder="Describe the image you want to generate (e.g., 'A futuristic city at sunset, cyberpunk style')"
               value={imagePrompt}
-              onChange={(e) => setImagePrompt(e.target.value)}
-              placeholder="Describe the image you want to generate..."
-              style={{ minHeight: '120px' }}
+              onChange={e => setImagePrompt(e.target.value)}
             />
           </div>
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={closeImageModal}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+            <Button variant="secondary" onClick={closeImageModal} disabled={loadingAI}>
               Cancel
             </Button>
-            <Button 
-              variant="success" 
-              onClick={handleImageGeneration}
-              disabled={loadingAI || !imagePrompt.trim()}
-            >
-              {loadingAI ? 'Generating...' : '🎨 Generate Image'}
+            <Button variant="primary" onClick={handleImageGeneration} disabled={loadingAI || !imagePrompt.trim()}>
+              {loadingAI ? 'Generating...' : 'Generate Image'}
             </Button>
           </div>
         </div>
