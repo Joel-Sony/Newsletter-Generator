@@ -443,6 +443,7 @@ def get_user_newsletters():
 @main_bp.route('/api/newsletters/<string:id>')
 def get_newsletter_using_id(id):
     try:
+        print(f"ID IS:{id}")
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"error": "Missing or invalid authorization token"}), 401
@@ -466,7 +467,7 @@ def get_newsletter_using_id(id):
             row["json_path"] = response.json()
             return jsonify(row)
         else:
-            return jsonify({"error":"Could not find file"})
+             return jsonify({"error":"Could not find file"})
     except Exception as e:
             return jsonify({"Error":"Could not fetch single newsletter"})
                 

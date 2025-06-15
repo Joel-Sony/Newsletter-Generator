@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useRef} from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
@@ -24,21 +24,6 @@ function freezeAutoDimensionsInCanvas(editor) {
     }
   });
 }
-
-const baseButtonStyle = {
-  fontSize: '16px',
-  fontWeight: 600,
-  padding: '10px 16px',
-  borderRadius: '8px',
-  border: 'none',
-  outline: 'none',
-  cursor: 'pointer',
-  transition: 'all 0.2s ease-in-out',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-};
-
 
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
@@ -313,7 +298,6 @@ const Label = ({ children, ...props }) => (
 );
 
 function Editor() {
-  const {id} = useParams()
   const navigate = useNavigate()
   const [htmlContent, setHtmlContent] = useState(null);
   const [editorReady, setEditorReady] = useState(null);
@@ -338,41 +322,42 @@ function Editor() {
   
   const [projectStatus, setProjectStatus] = useState('DRAFT');
   const [savingProject, setSavingProject] = useState(false);
+  const {id} = useParams();
 
   
   // Reference for editable project name
   const projectNameRef = useRef(null);
-  
-
 
   async function loadProject() {
     console.log('App component mounted, fetching HTML content...');
-    
-    fetch('/api/generated_output.html')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.text();
-      })
-      .then(html => {
-        setHtmlContent(html);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch initial HTML content:", err);
-        setError(err.message);
-        const fallbackContent = `
-          <div style="padding: 50px; text-align: center;">
-            <h1>Welcome to the Editor</h1>
-            <p>Could not load initial template. Starting with default content.</p>
-            <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
-          </div>
-        `;
-        setHtmlContent(fallbackContent);
-        setLoading(false);
-      });
-    }
+    try {
+      const res = await fetch('/api/generated_output.html');
 
-  async function loadProjectbyId(){
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const html = await res.text();
+      setHtmlContent(html);
+      setLoading(false);
+
+    } catch (err) {
+      console.error("Failed to fetch initial HTML content:", err);
+      setError(err.message);
+
+      const fallbackContent = `
+        <div style="padding: 50px; text-align: center;">
+          <h1>Welcome to the Editor</h1>
+          <p>Could not load initial template. Starting with default content.</p>
+          <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
+        </div>
+      `;
+      setHtmlContent(fallbackContent);
+      setLoading(false);
+    }
+  }
+
+  async function loadProject_id(id) {  // Added id parameter
     try {
         const authToken = getAuthToken();
         if (!authToken) {
@@ -390,27 +375,66 @@ function Editor() {
             throw new Error(`Network response was not ok: ${response.status}`);
         }
 
-        const rowData = await response.json(); 
-        setProjectId(rowData["project_id"])
-        setProjectName(rowData["project_name"])
-        setProjectStatus(rowData["status"])
-        return rowData
+        const data = await response.json(); 
+        
+        if (!data.json_path) {
+            throw new Error('No json_path found in response');
+        }
+
+        return data.json_path;  
         
     } catch (error) {
         console.error('Error loading project:', error);
         throw error;  
     }
   }
+  
+  const loadInitialContent = useCallback(async () => {
+    try {
+      let content = '<div>Default content</div>';
+      
+      if (id) {
+        // Load existing project
+        const projectData = await loadProject_id(id);
+        content = projectData?.component || content;
+        if (projectData?.name) setProjectName(projectData.name);
+      } else {
+        // Load default template
+        const res = await fetch('/api/generated_output.html');
+        if (res.ok) {
+          content = await res.text();
+        }
+      }
+      
+      setHtmlContent(content);
+      setLoading(false);
+    } catch (err) {
+      console.error("Loading error:", err);
+      setError(err.message);
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadInitialContent();
+  }, [loadInitialContent]);
+
+  useEffect(() => {
+    if (editorReady && htmlContent) {
+      editorReady.loadProjectData({
+        pages: [{ name: 'Edit Template', component: htmlContent }],
+      });
+      setTimeout(() => freezeAutoDimensionsInCanvas(editorReady), 300);
+    }
+  }, [editorReady, htmlContent]);
+
+
 
   const getAuthToken = () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token || token === 'null' || token === 'undefined') {
-        return null;
-      }
-      return token;
+      return localStorage.getItem('authToken');
     } catch (error) {
-      console.error('Error accessing localStorage:', error);
+      console.error('Error getting auth token:', error);
       return null;
     }
   };
@@ -444,55 +468,38 @@ function Editor() {
   };
   
   const handleSaveProject = useCallback(async () => {
-    // 1. Validate editor state
     if (!editorReady) {
       showToast('Editor not ready', true);
       return;
     }
 
-    // 2. Validate project name with fallback
-    const currentProjectName = (projectName || 'Untitled Newsletter').trim();
+    const currentProjectName = projectName.trim();
     if (!currentProjectName) {
-      setProjectName('Untitled Newsletter');
+      showToast('Please enter a project name', true);
+      return;
     }
 
-    // 3. Validate auth token
     const authToken = getAuthToken();
     if (!authToken) {
       showToast('Authentication required. Please log in.', true);
-      // Consider redirecting to login instead of just returning
       return;
     }
 
     try {
       setSavingProject(true);
-      
-      // 4. Safely extract editor data
-      let html, css, projectData;
-      try {
-        html = editorReady.getHtml() || '';
-        css = editorReady.getCss() || '';
-        projectData = editorReady.getProjectData() || {};
-      } catch (editorError) {
-        console.error('Error extracting editor data:', editorError);
-        throw new Error('Failed to extract editor content');
-      }
-
-      // 5. Create full HTML safely
-      const fullHtml = `<!DOCTYPE html>
-  <html>
-    <head>
-      <style>${css}</style>
-    </head>
-    <body>${html}</body>
-  </html>`;
-
-      
-
-      // 7. Make request with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
+      const html = editorReady.getHtml()
+      const css = editorReady.getCss()
+      const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>${css}</style>
+        </head>
+        <body>${html}</body>
+      </html>
+    `;
+      const projectData = editorReady.getProjectData();
+      console.log(projectData)
       const response = await fetch('/api/upload-project', {
         method: 'POST',
         headers: {
@@ -504,40 +511,24 @@ function Editor() {
           status: projectStatus,
           project_data: projectData,
           project_id: projectId,
-          project_fullHtml: fullHtml,
-        }),
-        signal: controller.signal
+          project_fullHtml:fullHtml,
+        })
       });
-
-      clearTimeout(timeoutId);
-
-      // 8. Handle response
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
 
       const data = await response.json();
 
-      // 9. Update state
-      if (data.project_id && !projectId) {
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
+      if (data.project_id) {
         setProjectId(data.project_id);
       }
 
       showToast(`Project "${currentProjectName}" saved successfully!`);
-      
     } catch (error) {
       console.error('Error saving project:', error);
-      
-      // Better error messages
-      let errorMessage = 'Failed to save project';
-      if (error.name === 'AbortError') {
-        errorMessage = 'Save request timed out';
-      } else if (error.message) {
-        errorMessage = `Failed to save: ${error.message}`;
-      }
-      
-      showToast(errorMessage, true);
+      showToast(`Failed to save project: ${error.message}`, true);
     } finally {
       setSavingProject(false);
     }
@@ -585,34 +576,7 @@ function Editor() {
       doc.addEventListener('selectionchange', handleSelectionChange);
       return () => doc.removeEventListener('selectionchange', handleSelectionChange);
     }, [editorReady]);
-
-  useEffect(() => {
-    if (!editorReady) return;
-    
-    const initializeProject = async () => {
-      try {
-        if (id) {
-          console.log("Loading existing project:", id);
-          const rowData = await loadProjectbyId();
-          if (rowData && rowData.project_data) {
-            editorReady.loadProjectData(rowData.project_data);
-          }
-        } else {
-          console.log("Loading new project template");
-          await loadProject();
-          // Set initial content if htmlContent is available
-          if (htmlContent) {
-            editorReady.setComponents(htmlContent);
-          }
-        }
-      } catch (error) {
-        console.error("Project initialization failed:", error);
-        showToast('Failed to load project', true);
-      }
-    };
-
-    initializeProject();
-  }, [editorReady, id, htmlContent]);
+  
 
   // Function to get current text selection
   const getTextSelection = () => {
@@ -810,7 +774,6 @@ function Editor() {
     if (newName) setProjectName(newName);
   };
 
-
   // Error boundary - if there's an error, show it
   if (error) {
     return (
@@ -839,6 +802,21 @@ function Editor() {
     );
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        fontSize: '18px',
+        fontFamily: 'Arial, sans-serif' 
+      }}>
+        Loading editor...
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
@@ -942,16 +920,42 @@ function Editor() {
       {/* Editor */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <StudioEditor
-          onReady={(editor) => {
+          onReady={editor => {
             console.log('Editor ready:', editor);
-            setEditorReady(editor);  
+            setEditorReady(editor); 
           }}
           options={{
+            storage:{
+              onLoad: async () => {
+                let project;
+                if(id){
+                  project = loadProject_id(id)
+                    setLoadingAI(false)
+                  return{
+                    project:project
+                  }
+                }
+                else{
+                  loadProject();
+                  return {
+                    project:{
+                      pages: [
+                       {
+                         name: 'Home',
+                         component: htmlContent || '<div>Loading...</div>',
+                       },
+                     ], 
+                    }
+                  };
+                }
+              }
+            },
             project: {
               default: {
                 pages: [
                   {
-                    name: 'New Page', 
+                    name: 'Home',
+                    component:'<div>New Project.</div>',
                   },
                 ],
               },

@@ -19,12 +19,12 @@ function App() {
       <Route path="/login" element={<Login />} />
       
       {/* Editor page route */}
+      <Route path="/editor/:id" element={<Editor />} />
       <Route path="/editor" element={<Editor />} />
+
       
       <Route path="/generator" element={<NewsletterGenerator />} />
       
-      {/* Redirect any unknown routes to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
