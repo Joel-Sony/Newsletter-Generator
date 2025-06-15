@@ -179,7 +179,7 @@ def convert_to_pdf():
 
 
 # =============================================================================
-# SAVING PROJECT SECTION
+# SAVING and DELETION SECTION
 # =============================================================================
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -443,7 +443,6 @@ def get_user_newsletters():
 @main_bp.route('/api/newsletters/<string:id>')
 def get_newsletter_using_id(id):
     try:
-        print(f"ID IS:{id}")
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"error": "Missing or invalid authorization token"}), 401
@@ -472,6 +471,61 @@ def get_newsletter_using_id(id):
             return jsonify({"Error":"Could not fetch single newsletter"})
                 
 
+# =============================================================================
+# DELETION SECTION
+# =============================================================================
+
+@main_bp.route("/api/delete/<string:id>", methods=["DELETE"])
+def delete(id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+        auth_token = auth_header.split(' ')[1]
+        user_id = get_user_id_from_supabase_token(auth_token)
+
+        if not user_id:
+            return jsonify({"error": "Invalid user ID"}), 401
+
+        result = supabase.table(PROJECTS_TABLE).delete().eq('id', id).execute()
+        if result.data:
+            return jsonify({"success":"File deletion successful!"})
+        else:
+             return jsonify({"error":"Could not find file"})
+    except Exception as e:
+            return jsonify({"Error":"Could not fetch single newsletter"})
+                
+
+@main_bp.route("/api/preview/<string:id>")
+def preview(id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+        auth_token = auth_header.split(' ')[1]
+        user_id = get_user_id_from_supabase_token(auth_token)
+
+        if not user_id:
+            return jsonify({"error": "Invalid user ID"}), 401
+
+        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
+        
+        result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','version','json_path').eq('id', id).eq('user_id',user_id).execute()
+        if result.data:
+            row = result.data[0]
+            json_path = row.get("json_path")
+            response = requests.get(json_path)
+            if response.status_code != 200:
+                return jsonify({"error": "Failed to fetch JSON from Supabase storage"}), 500
+
+            row["json_path"] = response.json()
+            return jsonify(row)
+        else:
+             return jsonify({"error":"Could not find file"})
+    except Exception as e:
+            return jsonify({"Error":"Could not fetch single newsletter"})
 
 
 # =============================================================================

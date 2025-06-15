@@ -12,23 +12,31 @@ const NewsletterDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [pagination, setPagination] = useState({
     drafts: { currentPage: 1, itemsPerPage: 6 },
     published: { currentPage: 1, itemsPerPage: 6 },
     archived: { currentPage: 1, itemsPerPage: 6 },
     all: { currentPage: 1, itemsPerPage: 6 }
   });
-  
+
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [newsletterToDelete, setNewsletterToDelete] = useState(null);
+
+  // State for toast notification
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchNewsletters = async () => {
-      console.log("Fetching newsletters")
+      console.log("Fetching newsletters");
       try {
         setLoading(true);
         const authToken = localStorage.getItem('authToken');
-        
+
         if (!authToken) {
           throw new Error('Authentication required');
         }
@@ -72,7 +80,7 @@ const NewsletterDashboard = () => {
             preview: 'Archived newsletter content...',
             image_path:item.image_path
           }))
-        };  
+        };
 
         setNewsletters(transformedData);
       } catch (err) {
@@ -101,6 +109,18 @@ const NewsletterDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Effect to hide toast after a few seconds
+  useEffect(() => {
+    let timer;
+    if (showToast) {
+      timer = setTimeout(() => {
+        setShowToast(false);
+        setToastMessage('');
+      }, 3000); // Toast disappears after 3 seconds
+    }
+    return () => clearTimeout(timer); // Clean up the timer
+  }, [showToast]);
+
   const handleSectionChange = (section) => {
     setActiveSection(section);
     if (isMobile) {
@@ -115,6 +135,83 @@ const NewsletterDashboard = () => {
     }));
   };
 
+  // Function to handle opening the delete confirmation modal
+  const handleDeleteClick = (newsletterId) => {
+    setNewsletterToDelete(newsletterId);
+    setShowDeleteModal(true);
+  };
+
+  // Helper to get newsletter title by ID
+  const getNewsletterTitleById = (id) => {
+    const allNewsletters = [
+      ...newsletters.drafts,
+      ...newsletters.published,
+      ...newsletters.archived
+    ];
+    const found = allNewsletters.find(nl => nl.id === id);
+    return found ? found.title : 'Unknown Newsletter';
+  };
+
+  // Function to confirm and perform the delete action
+  const confirmDelete = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('Authentication required');
+      }
+
+      // Replace with your actual delete API endpoint
+      const response = await fetch(`/api/delete/${newsletterToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete newsletter');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete newsletter');
+      }
+
+      const deletedNewsletterTitle = getNewsletterTitleById(newsletterToDelete); // Get the title BEFORE updating state
+
+      // Update the newsletters state to remove the deleted item
+      setNewsletters(prevNewsletters => {
+        const newNewsletters = { ...prevNewsletters };
+        // Find and remove the newsletter from all categories
+        for (const section in newNewsletters) {
+          newNewsletters[section] = newNewsletters[section].filter(
+            (newsletter) => newsletter.id !== newsletterToDelete
+          );
+        }
+        return newNewsletters;
+      });
+
+      // Show toast notification
+      setToastMessage(`File '${deletedNewsletterTitle}' deleted successfully.`);
+      setShowToast(true);
+
+    } catch (err) {
+      console.error('Error deleting newsletter:', err);
+      setError(err.message);
+      setToastMessage(`Error deleting newsletter: ${err.message}`); // Show error in toast too
+      setShowToast(true);
+    } finally {
+      setShowDeleteModal(false);
+      setNewsletterToDelete(null);
+    }
+  };
+
+  // Function to cancel the delete action
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setNewsletterToDelete(null);
+  };
+
   const handleActionClick = (action, newsletterId) => {
     // Handle different actions
     switch (action) {
@@ -122,16 +219,25 @@ const NewsletterDashboard = () => {
         navigate(`/editor/${newsletterId}`);
         break;
       case 'View':
-        // Implement view logic
+        // Implement view logic (if different from preview, e.g., for published newsletters)
+        // For now, let's treat 'View' similarly to 'Preview' if it's meant to be a read-only view.
+        // If 'View' means something else (e.g., view analytics), adjust accordingly.
+        console.log(`View action clicked for newsletter ID: ${newsletterId}`);
+        navigate(`/preview/${newsletterId}`); // Assuming 'View' also goes to a preview-like page
+        break;
+      case 'Preview': // <<< ADD THIS CASE
+        navigate(`/preview/${newsletterId}`); // Navigate to the dedicated preview route
         break;
       case 'Delete':
-        // Implement delete logic
+        handleDeleteClick(newsletterId); // Call the new handler for delete
         break;
       case 'Duplicate':
         // Implement duplicate logic
+        console.log(`Duplicate action clicked for newsletter ID: ${newsletterId}`);
         break;
       case 'Restore':
         // Implement restore logic
+        console.log(`Restore action clicked for newsletter ID: ${newsletterId}`);
         break;
       default:
         console.log(`${action} action clicked for newsletter ID: ${newsletterId}`);
@@ -190,10 +296,9 @@ const NewsletterDashboard = () => {
 
     return sectionNewsletters.slice(startIndex, endIndex).map(newsletter => ({
       ...newsletter,
-      previewImage: newsletter.image_path 
+      previewImage: newsletter.image_path
     }));
   };
-
 
   const getTotalPages = (section) => {
     const allNewsletters = {
@@ -202,7 +307,7 @@ const NewsletterDashboard = () => {
       archived: newsletters.archived,
       all: [...newsletters.drafts, ...newsletters.published, ...newsletters.archived]
     };
-    
+
     const sectionNewsletters = allNewsletters[section] || [];
     return Math.ceil(sectionNewsletters.length / pagination[section].itemsPerPage);
   };
@@ -243,13 +348,13 @@ const NewsletterDashboard = () => {
   const renderPagination = () => {
     const totalPages = getTotalPages(activeSection);
     const currentPage = pagination[activeSection].currentPage;
-    
+
     if (totalPages <= 1) return null;
 
     const getPageNumbers = () => {
       const pages = [];
       const maxVisiblePages = 5;
-      
+
       if (totalPages <= maxVisiblePages) {
         for (let i = 1; i <= totalPages; i++) {
           pages.push(i);
@@ -258,26 +363,26 @@ const NewsletterDashboard = () => {
         const half = Math.floor(maxVisiblePages / 2);
         let start = Math.max(1, currentPage - half);
         let end = Math.min(totalPages, start + maxVisiblePages - 1);
-        
+
         if (end - start < maxVisiblePages - 1) {
           start = Math.max(1, end - maxVisiblePages + 1);
         }
-        
+
         if (start > 1) {
           pages.push(1);
           if (start > 2) pages.push('...');
         }
-        
+
         for (let i = start; i <= end; i++) {
           pages.push(i);
         }
-        
+
         if (end < totalPages) {
           if (end < totalPages - 1) pages.push('...');
           pages.push(totalPages);
         }
       }
-    
+
       return pages;
     };
 
@@ -295,7 +400,7 @@ const NewsletterDashboard = () => {
         >
           ←
         </button>
-        
+
         {pageNumbers.map((page, index) => (
           <button
             key={index}
@@ -310,7 +415,7 @@ const NewsletterDashboard = () => {
             {page}
           </button>
         ))}
-        
+
         <button
           onClick={() => handlePageChange(activeSection, Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
@@ -561,7 +666,7 @@ const NewsletterDashboard = () => {
     card: {
       backgroundColor: '#1f1f1f',
       borderRadius: '16px',
-      padding: '0', // Changed from 24px to 0 to allow full-width image
+      padding: '0',
       border: '1px solid #404040',
       transition: 'all 0.3s ease',
       position: 'relative',
@@ -709,15 +814,106 @@ const NewsletterDashboard = () => {
     copyright: {
       fontSize: '14px',
       fontFamily: 'Inter, system-ui, sans-serif'
+    },
+    // Modal Styles
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    modalContent: {
+      backgroundColor: '#1f1f1f',
+      borderRadius: '16px',
+      padding: '32px',
+      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)',
+      textAlign: 'center',
+      maxWidth: '400px',
+      width: '90%',
+      border: '1px solid #404040',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px'
+    },
+    modalTitle: {
+      fontSize: '24px',
+      fontWeight: '700',
+      color: '#ffffff',
+      marginBottom: '8px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+    },
+    modalText: {
+      color: '#d4d4d4',
+      fontSize: '16px',
+      lineHeight: '1.6',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      marginBottom: '20px'
+    },
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '16px',
+    },
+    modalButton: {
+      padding: '12px 24px',
+      borderRadius: '10px',
+      fontSize: '16px',
+      fontWeight: '600',
+      border: 'none',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      fontFamily: 'Inter, system-ui, sans-serif',
+    },
+    modalButtonConfirm: {
+      backgroundColor: '#ef4444',
+      color: 'white',
+    },
+    modalButtonCancel: {
+      backgroundColor: '#404040',
+      color: '#ffffff',
+    },
+    // Toast Styles
+    toastContainer: {
+      position: 'fixed',
+      bottom: '30px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      backgroundColor: '#10b981', // Green for success
+      color: 'white',
+      padding: '15px 25px',
+      borderRadius: '10px',
+      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+      zIndex: 1100,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: '16px',
+      fontWeight: '500',
+      opacity: 0,
+      transition: 'opacity 0.5s ease-in-out, transform 0.5s ease-in-out',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+    },
+    toastContainerVisible: {
+      opacity: 1,
+      transform: 'translateX(-50%) translateY(-10px)',
+    },
+    toastIcon: {
+      fontSize: '20px',
     }
   };
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         color: 'white',
         backgroundColor: '#0a0a0a'
@@ -741,7 +937,7 @@ const NewsletterDashboard = () => {
         <a href="#subscribers" style={styles.navLink}>Subscribers</a>
       </nav>
       <div style={styles.headerRight}>
-        <button 
+        <button
           className="mobile-menu-btn"
           style={styles.mobileMenuBtn}
           onClick={toggleSidebar}
@@ -804,7 +1000,7 @@ const NewsletterDashboard = () => {
               { icon: '❓', label: 'Help & Support' }
             ].map((item, index) => (
               <li key={index} style={styles.sidebarItem}>
-                <button 
+                <button
                   style={{ ...styles.sidebarButton, ...styles.sidebarButtonInactive }}
                   onMouseEnter={(e) => {
                     e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
@@ -823,7 +1019,7 @@ const NewsletterDashboard = () => {
           </ul>
         </div>
       </aside>
-          
+
       {/* Main Content */}
       <main style={styles.main}>
         <div>
@@ -832,7 +1028,7 @@ const NewsletterDashboard = () => {
         </div>
 
         <div style={styles.createButtonContainer}>
-          <button 
+          <button
             onClick={createNewsletter}
             style={styles.createButton}
             onMouseEnter={(e) => {
@@ -883,9 +1079,9 @@ const NewsletterDashboard = () => {
         <div style={styles.contentContainer}>
           <h2 style={styles.contentTitle}>{getSectionTitle()}</h2>
           {getCurrentNewsletters().length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '40px', 
+            <div style={{
+              textAlign: 'center',
+              padding: '40px',
               color: '#a3a3a3',
               fontSize: '18px'
             }}>
@@ -895,14 +1091,14 @@ const NewsletterDashboard = () => {
             <>
               <div style={styles.grid}>
                 {getCurrentNewsletters().map((newsletter) => (
-                  <div 
-                    key={newsletter.id} 
+                  <div
+                    key={newsletter.id}
                     style={styles.card}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-8px)';
                       e.currentTarget.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.5)';
                       e.currentTarget.style.borderColor = '#525252';
-                      
+
                       // Scale up the image on hover
                       const img = e.currentTarget.querySelector('.card-image');
                       if (img) {
@@ -913,7 +1109,7 @@ const NewsletterDashboard = () => {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = 'none';
                       e.currentTarget.style.borderColor = '#404040';
-                      
+
                       // Reset image scale
                       const img = e.currentTarget.querySelector('.card-image');
                       if (img) {
@@ -922,11 +1118,11 @@ const NewsletterDashboard = () => {
                     }}
                   >
                     <div style={styles.cardTopBorder}></div>
-                    
+
                     {/* Image Preview Section */}
                     <div style={styles.cardImageContainer}>
-                      <img 
-                        src={newsletter.previewImage} 
+                      <img
+                        src={newsletter.previewImage}
                         alt={`Preview of ${newsletter.title}`}
                         style={styles.cardImage}
                         className="card-image"
@@ -938,7 +1134,7 @@ const NewsletterDashboard = () => {
                         }}
                       />
                     </div>
-                    
+
                     {/* Card Content */}
                     <div style={styles.cardContent}>
                       <h3 style={styles.cardTitle}>{newsletter.title}</h3>
@@ -948,9 +1144,9 @@ const NewsletterDashboard = () => {
                           {newsletter.status}
                         </span>
                       </div>
-                      
+
                       <p style={styles.cardPreview}>{newsletter.preview}</p>
-                      
+
                       <div style={styles.cardActions}>
                         {getActionButtons(newsletter.status).map((action) => (
                           <button
@@ -986,6 +1182,43 @@ const NewsletterDashboard = () => {
       </main>
     </div>
 
+    {/* Delete Confirmation Modal */}
+    {showDeleteModal && (
+      <div style={styles.modalOverlay}>
+        <div style={styles.modalContent}>
+          <h2 style={styles.modalTitle}>Confirm Deletion</h2>
+          <p style={styles.modalText}>
+            Are you sure you want to delete this newsletter? This action is permanent and cannot be undone.
+          </p>
+          <div style={styles.modalActions}>
+            <button
+              onClick={confirmDelete}
+              style={{ ...styles.modalButton, ...styles.modalButtonConfirm }}
+            >
+              Delete
+            </button>
+            <button
+              onClick={cancelDelete}
+              style={{ ...styles.modalButton, ...styles.modalButtonCancel }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Toast Notification */}
+    {showToast && (
+      <div style={{
+        ...styles.toastContainer,
+        ...styles.toastContainerVisible
+      }}>
+        <span style={styles.toastIcon}></span>
+        {toastMessage}
+      </div>
+    )}
+
     {/* Footer */}
     <footer style={styles.footer}>
       <div style={styles.footerContent}>
@@ -995,8 +1228,7 @@ const NewsletterDashboard = () => {
         <div style={styles.footerLinks}>
           <a href="#privacy" style={styles.footerLink}>Privacy Policy</a>
           <a href="#terms" style={styles.footerLink}>Terms of Service</a>
-          <a href="#support" style={styles.footerLink}>Support</a>
-          <a href="#contact" style={styles.footerLink}>Contact</a>
+          <a href="#support" style={styles.footerLink}>Contact</a>
         </div>
       </div>
     </footer>
