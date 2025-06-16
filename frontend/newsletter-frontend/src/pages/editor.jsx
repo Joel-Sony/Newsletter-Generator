@@ -5,7 +5,6 @@ import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
 
-// Re-using provided helper functions and components as they are generally fine
 function freezeAutoDimensionsInCanvas(editor) {
   const iframe = editor.Canvas.getFrameEl();
   if (!iframe) return;
@@ -26,19 +25,19 @@ function freezeAutoDimensionsInCanvas(editor) {
   });
 }
 
-const baseButtonStyle = {
-  fontSize: '16px',
-  fontWeight: 600,
-  padding: '10px 16px',
-  borderRadius: '8px',
-  border: 'none',
-  outline: 'none',
-  cursor: 'pointer',
-  transition: 'all 0.2s ease-in-out',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-};
+// const baseButtonStyle = {
+//   fontSize: '16px',
+//   fontWeight: 600,
+//   padding: '10px 16px',
+//   borderRadius: '8px',
+//   border: 'none',
+//   outline: 'none',
+//   cursor: 'pointer',
+//   transition: 'all 0.2s ease-in-out',
+//   display: 'flex',
+//   alignItems: 'center',
+//   gap: '8px',
+// };
 
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
