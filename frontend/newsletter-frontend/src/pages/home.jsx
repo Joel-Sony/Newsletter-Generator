@@ -61,24 +61,24 @@ const NewsletterDashboard = () => {
             title: item.project_name || 'Untitled Newsletter',
             status: 'draft',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Draft newsletter content...',
-            image_path:item.image_path
+            image_path:item.image_path,
+            version: item.version || 'N/A' // Added version
           })),
           published: data.data.PUBLISHED.map(item => ({
             id: item.id,
             title: item.project_name || 'Published Newsletter',
             status: 'published',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Published newsletter content...',
-            image_path:item.image_path
+            image_path:item.image_path,
+            version: item.version || 'N/A' // Added version
           })),
           archived: data.data.ARCHIVED.map(item => ({
             id: item.id,
             title: item.project_name || 'Archived Newsletter',
             status: 'archived',
             lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            preview: 'Archived newsletter content...',
-            image_path:item.image_path
+            image_path:item.image_path,
+            version: item.version || 'N/A' // Added version
           }))
         };
 
@@ -219,9 +219,6 @@ const NewsletterDashboard = () => {
         navigate(`/editor/${newsletterId}`);
         break;
       case 'View':
-        // Implement view logic (if different from preview, e.g., for published newsletters)
-        // For now, let's treat 'View' similarly to 'Preview' if it's meant to be a read-only view.
-        // If 'View' means something else (e.g., view analytics), adjust accordingly.
         console.log(`View action clicked for newsletter ID: ${newsletterId}`);
         navigate(`/preview/${newsletterId}`); // Assuming 'View' also goes to a preview-like page
         break;
@@ -905,6 +902,12 @@ const NewsletterDashboard = () => {
     },
     toastIcon: {
       fontSize: '20px',
+    },
+    versionText: { // New style for version number
+      color: '#a3a3a3',
+      fontSize: '14px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      marginTop: '4px' // Add some space below the title
     }
   };
 
@@ -1078,117 +1081,113 @@ const NewsletterDashboard = () => {
 
         <div style={styles.contentContainer}>
           <h2 style={styles.contentTitle}>{getSectionTitle()}</h2>
-          {getCurrentNewsletters().length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '40px',
-              color: '#a3a3a3',
-              fontSize: '18px'
-            }}>
+          {error && <div style={{ color: '#ef4444', marginBottom: '20px' }}>Error: {error}</div>}
+          {getCurrentNewsletters().length === 0 && !loading && (
+            <div style={{ textAlign: 'center', color: '#a3a3a3', padding: '50px' }}>
               No newsletters found in this section.
             </div>
-          ) : (
-            <>
-              <div style={styles.grid}>
-                {getCurrentNewsletters().map((newsletter) => (
-                  <div
-                    key={newsletter.id}
-                    style={styles.card}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-8px)';
-                      e.currentTarget.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.5)';
-                      e.currentTarget.style.borderColor = '#525252';
-
-                      // Scale up the image on hover
-                      const img = e.currentTarget.querySelector('.card-image');
-                      if (img) {
-                        img.style.transform = 'scale(1.05)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.borderColor = '#404040';
-
-                      // Reset image scale
-                      const img = e.currentTarget.querySelector('.card-image');
-                      if (img) {
-                        img.style.transform = 'scale(1)';
-                      }
-                    }}
-                  >
-                    <div style={styles.cardTopBorder}></div>
-
-                    {/* Image Preview Section */}
-                    <div style={styles.cardImageContainer}>
-                      <img
-                        src={newsletter.previewImage}
-                        alt={`Preview of ${newsletter.title}`}
-                        style={styles.cardImage}
-                        className="card-image"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/600x400?text=Image+Not+Found';
-                          e.target.style.objectFit = 'contain';
-                          e.target.style.padding = '20px';
-                          e.target.style.backgroundColor = '#2d2d2d';
-                        }}
-                      />
-                    </div>
-
-                    {/* Card Content */}
-                    <div style={styles.cardContent}>
-                      <h3 style={styles.cardTitle}>{newsletter.title}</h3>
-                      <div style={styles.cardMeta}>
-                        <span style={styles.cardDate}>{newsletter.lastEdited}</span>
-                        <span style={{...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status)}}>
-                          {newsletter.status}
-                        </span>
-                      </div>
-
-                      <p style={styles.cardPreview}>{newsletter.preview}</p>
-
-                      <div style={styles.cardActions}>
-                        {getActionButtons(newsletter.status).map((action) => (
-                          <button
-                            key={action}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleActionClick(action, newsletter.id);
-                            }}
-                            style={getActionButtonStyle(action)}
-                            onMouseEnter={(e) => {
-                              e.target.style.opacity = '0.8';
-                              e.target.style.transform = 'translateY(-1px)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.opacity = '1';
-                              e.target.style.transform = 'translateY(0)';
-                            }}
-                          >
-                            {action}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination Controls */}
-              {renderPagination()}
-            </>
           )}
+          <div style={styles.grid}>
+            {getCurrentNewsletters().map((newsletter) => (
+              <div
+                key={newsletter.id}
+                style={styles.card}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 0, 0, 0.4)';
+                  if (newsletter.previewImage) {
+                    e.currentTarget.querySelector('img').style.transform = 'scale(1.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.25)';
+                  if (newsletter.previewImage) {
+                    e.currentTarget.querySelector('img').style.transform = 'scale(1)';
+                  }
+                }}
+              >
+                <div style={styles.cardTopBorder}></div>
+                <div style={styles.cardImageContainer}>
+                  {newsletter.previewImage ? (
+                    <img src={newsletter.previewImage} alt={newsletter.title} style={styles.cardImage} />
+                  ) : (
+                    <div style={{
+                      ...styles.cardImage,
+                      backgroundColor: '#333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#a3a3a3',
+                      fontSize: '18px',
+                      fontWeight: '600'
+                    }}>
+                      No Image
+                    </div>
+                  )}
+                </div>
+                <div style={styles.cardContent}>
+                  <h3 style={styles.cardTitle}>{newsletter.title}</h3>
+                  <p style={styles.versionText}>Version: {newsletter.version}</p> {/* Display version here */}
+                  <div style={styles.cardMeta}>
+                    <span style={styles.cardDate}>Last Edited: {newsletter.lastEdited}</span>
+                    <span style={{ ...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status) }}>
+                      {newsletter.status}
+                    </span>
+                  </div>
+                  <p style={styles.cardPreview}>{newsletter.preview}</p>
+                  <div style={{ ...styles.cardActions, marginTop: 'auto' }}>
+                    {getActionButtons(newsletter.status).map((action) => (
+                      <button
+                        key={action}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click when button is clicked
+                          handleActionClick(action, newsletter.id);
+                        }}
+                        style={getActionButtonStyle(action)}
+                        onMouseEnter={(e) => {
+                          e.target.style.opacity = 0.8;
+                          e.target.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.opacity = 1;
+                          e.target.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {renderPagination()}
         </div>
       </main>
     </div>
+
+    {/* Footer */}
+    <footer style={styles.footer}>
+      <div style={styles.footerContent}>
+        <div style={styles.copyright}>
+          © {new Date().getFullYear()} NewsletterPro. All rights reserved.
+        </div>
+        <div style={styles.footerLinks}>
+          <a href="#privacy" style={styles.footerLink}>Privacy Policy</a>
+          <a href="#terms" style={styles.footerLink}>Terms of Service</a>
+          <a href="#contact" style={styles.footerLink}>Contact Us</a>
+        </div>
+      </div>
+    </footer>
 
     {/* Delete Confirmation Modal */}
     {showDeleteModal && (
       <div style={styles.modalOverlay}>
         <div style={styles.modalContent}>
-          <h2 style={styles.modalTitle}>Confirm Deletion</h2>
+          <h3 style={styles.modalTitle}>Confirm Deletion</h3>
           <p style={styles.modalText}>
-            Are you sure you want to delete this newsletter? This action is permanent and cannot be undone.
+            Are you sure you want to delete "{getNewsletterTitleById(newsletterToDelete)}"? This action cannot be undone.
           </p>
           <div style={styles.modalActions}>
             <button
@@ -1209,31 +1208,15 @@ const NewsletterDashboard = () => {
     )}
 
     {/* Toast Notification */}
-    {showToast && (
-      <div style={{
-        ...styles.toastContainer,
-        ...styles.toastContainerVisible
-      }}>
-        <span style={styles.toastIcon}></span>
-        {toastMessage}
-      </div>
-    )}
-
-    {/* Footer */}
-    <footer style={styles.footer}>
-      <div style={styles.footerContent}>
-        <div style={styles.copyright}>
-          © 2024 NewsletterPro. All rights reserved.
-        </div>
-        <div style={styles.footerLinks}>
-          <a href="#privacy" style={styles.footerLink}>Privacy Policy</a>
-          <a href="#terms" style={styles.footerLink}>Terms of Service</a>
-          <a href="#support" style={styles.footerLink}>Contact</a>
-        </div>
-      </div>
-    </footer>
+    <div style={{
+      ...styles.toastContainer,
+      ...(showToast ? styles.toastContainerVisible : {})
+    }}>
+      <span style={styles.toastIcon}>✅</span>
+      {toastMessage}
+    </div>
   </div>
-);
+ );
 };
 
 export default NewsletterDashboard;

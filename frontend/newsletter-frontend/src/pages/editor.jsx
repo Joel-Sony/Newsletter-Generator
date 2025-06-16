@@ -5,25 +5,25 @@ import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
 
-function freezeAutoDimensionsInCanvas(editor) {
-  const iframe = editor.Canvas.getFrameEl();
-  if (!iframe) return;
+// function freezeAutoDimensionsInCanvas(editor) {
+//   const iframe = editor.Canvas.getFrameEl();
+//   if (!iframe) return;
 
-  const doc = iframe.contentDocument;
-  const allElements = doc.body.querySelectorAll('*');
+//   const doc = iframe.contentDocument;
+//   const allElements = doc.body.querySelectorAll('*');
 
-  allElements.forEach(el => {
-    const computed = window.getComputedStyle(el);
-    const width = el.offsetWidth;
-    const height = el.offsetHeight; 
+//   allElements.forEach(el => {
+//     const computed = window.getComputedStyle(el);
+//     const width = el.offsetWidth;
+//     const height = el.offsetHeight; 
 
-    // Apply only if width/height was auto
-    if (computed.width === 'auto' || computed.height === 'auto') {
-      el.style.width = width + 'px';
-      el.style.height = height + 'px';
-    }
-  });
-}
+//     // Apply only if width/height was auto
+//     if (computed.width === 'auto' || computed.height === 'auto') {
+//       el.style.width = width + 'px';
+//       el.style.height = height + 'px';
+//     }
+//   });
+// }
 
 // const baseButtonStyle = {
 //   fontSize: '16px',
@@ -314,7 +314,7 @@ const Label = ({ children, ...props }) => (
 function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [editor, setEditor] = useState(null); // Renamed from editorReady for consistency
+  const [editor, setEditor] = useState(null); 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('Untitled Newsletter');
