@@ -5,40 +5,6 @@ import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
 import './editor.css';
 
-// function freezeAutoDimensionsInCanvas(editor) {
-//   const iframe = editor.Canvas.getFrameEl();
-//   if (!iframe) return;
-
-//   const doc = iframe.contentDocument;
-//   const allElements = doc.body.querySelectorAll('*');
-
-//   allElements.forEach(el => {
-//     const computed = window.getComputedStyle(el);
-//     const width = el.offsetWidth;
-//     const height = el.offsetHeight; 
-
-//     // Apply only if width/height was auto
-//     if (computed.width === 'auto' || computed.height === 'auto') {
-//       el.style.width = width + 'px';
-//       el.style.height = height + 'px';
-//     }
-//   });
-// }
-
-// const baseButtonStyle = {
-//   fontSize: '16px',
-//   fontWeight: 600,
-//   padding: '10px 16px',
-//   borderRadius: '8px',
-//   border: 'none',
-//   outline: 'none',
-//   cursor: 'pointer',
-//   transition: 'all 0.2s ease-in-out',
-//   display: 'flex',
-//   alignItems: 'center',
-//   gap: '8px',
-// };
-
 // Enhanced Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -317,6 +283,7 @@ function Editor() {
   const [editor, setEditor] = useState(null); 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showProjectLoadingOverlay, setShowProjectLoadingOverlay] = useState(false); // New state for loading overlay
   const [projectName, setProjectName] = useState('Untitled Newsletter');
   const [projectId, setProjectId] = useState(null); 
   
@@ -385,6 +352,11 @@ function Editor() {
     if (!editorInstance) return;
 
     setLoading(true);
+    // Only show overlay for existing projects (when id is present)
+    if (id) {
+      setShowProjectLoadingOverlay(true); 
+    }
+
     try {
       if (id) {
         console.log("Loading existing project:", id);
@@ -423,6 +395,7 @@ function Editor() {
       editorInstance.setComponents(fallbackContent);
     } finally {
       setLoading(false);
+      setShowProjectLoadingOverlay(false); // Hide overlay after loading or error
     }
   }, [id]);
 
@@ -877,8 +850,51 @@ function Editor() {
         </Button>
       </div>
       
-      {/* Editor */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      {/* Editor Container */}
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}> {/* Add position: 'relative' for overlay positioning */}
+        {showProjectLoadingOverlay && ( // Conditionally render the overlay
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999, // Ensure it's above the editor
+            color: 'white',
+            fontSize: '24px',
+            fontWeight: '600',
+            backdropFilter: 'blur(5px)',
+            animation: 'fadeIn 0.3s forwards' // Optional: add a fade-in animation
+          }}>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+              }
+            `}</style>
+            <div style={{
+              border: '4px solid rgba(255, 255, 255, 0.3)',
+              borderTop: '4px solid #3b82f6',
+              borderRadius: '50%',
+              width: '50px',
+              height: '50px',
+              animation: 'spin 1s linear infinite',
+              marginBottom: '20px'
+            }}></div>
+            Loading Project...
+            <p style={{ fontSize: '16px', fontWeight: 'normal', marginTop: '10px' }}>Please wait a moment</p>
+          </div>
+        )}
+
         <StudioEditor
           onReady={(grapesEditor) => {
             console.log('Editor ready:', grapesEditor);
@@ -1019,7 +1035,7 @@ function Editor() {
             <Button variant="secondary" onClick={closeImageModal} disabled={loadingAI}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleImageGeneration} disabled={loadingAI || !imagePrompt.trim()}>
+            <Button variant="success" onClick={handleImageGeneration} disabled={loadingAI || !imagePrompt.trim()}>
               {loadingAI ? 'Generating...' : 'Generate Image'}
             </Button>
           </div>
