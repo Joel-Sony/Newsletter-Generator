@@ -4,6 +4,7 @@ import NewsletterDashboard from './pages/NewsletterDashboard.jsx';
 import Login from './pages/Login.jsx'; 
 import NewsletterGenerator from './pages/NewsletterGenerator.jsx';
 import Preview from './pages/Preview.jsx';
+import NewsletterVersionsPage from './pages/NewsletterVersionsPage.jsx';
 
 function App() {
   const isAuthenticated = () => {
@@ -39,6 +40,11 @@ function App() {
       <Route 
       path="/preview/:id"
       element={isAuthenticated() ? <Preview /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+      path="/versions/:projectId"
+      element={isAuthenticated() ? <NewsletterVersionsPage /> : <Navigate to="/login" replace />}
       />
 
       <Route path="/" element={<Navigate to="/login" replace />} />

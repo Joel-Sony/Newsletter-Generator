@@ -223,7 +223,7 @@ def get_user_id_from_supabase_token(token):
     except Exception as e:
         # print(f"DEBUG: Unexpected error: {str(e)}")
         return None
-
+    
 
 @main_bp.route("/api/upload-project", methods=["POST"])
 async def upload_project():
@@ -532,16 +532,18 @@ async def duplicate(id):
             row = result.data[0]
         else:
             return jsonify({"error":"Could not find file"})
-        print(f"ROW: {row}")
+        
+
         row["project_id"] = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat()
-        row["project_name"] = f"Duplicated {row['project_name']}"
+
+        newProjectName = get_unique_project_name(row["project_name"],user_id)
         insert_data = {
             "user_id":user_id,
-            "project_name": row["project_name"],
+            "project_name": newProjectName,
             "project_id": row["project_id"],
             "json_path": row["json_path"],
-            "image_path": row["image_path"],  # Store URL not bytes
+            "image_path": row["image_path"], 
             "status": "DRAFT",
             "version": 1,
             "created_at": timestamp,
@@ -554,13 +556,13 @@ async def duplicate(id):
         response_data = {
             "success": True,
             "message": "Project saved successfully",
+            "name":newProjectName
         }
         
         return jsonify(response_data), 201
 
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-
 
 
 
@@ -593,6 +595,64 @@ def preview(id):
              return jsonify({"error":"Could not find file"})
     except Exception as e:
             return jsonify({"Error":"Could not fetch single newsletter"})
+
+
+@main_bp.route("/api/newsletters/<string:project_id>/versions", methods=["GET"])
+def get_newsletter_versions(project_id):
+    """
+    Fetches all versions of a specific newsletter identified by its project_id.
+    Versions are ordered from newest to oldest.
+
+    Args:
+        project_id (str): The common project_id UUID for all versions of a newsletter.
+
+    Returns:
+        JSON response with success status, message, and a list of newsletter versions.
+        Returns 401 if authentication fails.
+        Returns 500 for internal server errors or database query failures.
+    """
+    try:
+        # 1. Authentication and User ID extraction
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+        auth_token = auth_header.split(' ')[1]
+        user_id = get_user_id_from_supabase_token(auth_token)
+
+        if not user_id:
+            return jsonify({"error": "Invalid user ID or expired token"}), 401
+        
+        # 2. Query Supabase for all versions of the given project_id for the current user
+        # We assume 'project_id' in your table refers to the common identifier across versions,
+        # and 'id' is the unique primary key for each specific version row.
+        # 'version' is an integer column for ordering.
+        result = supabase.table(PROJECTS_TABLE) \
+            .select('id, project_id, project_name, status, version, created_at, updated_at, image_path, json_path') \
+            .eq('project_id', project_id) \
+            .eq('user_id', user_id) \
+            .order('version', desc=True) \
+            .execute()
+        
+        # 3. Handle Supabase query errors
+        # The Supabase client's .execute() can return a response object with an 'error' attribute
+        if hasattr(result, 'error') and result.error:
+            print(f"Supabase query error for project_id {project_id}: {result.error}")
+            return jsonify({"error": f"Failed to fetch versions from database: {result.error.get('message', 'Unknown Supabase error')}"}), 500
+
+        # Extract data from the result. It will be an empty list if no rows match.
+        versions_data = result.data if result.data else []
+
+        if not versions_data:
+            return jsonify({"success": True, "message": "No versions found for this project ID.", "versions": []}), 200
+        
+        return jsonify({"success": True, "message": "Newsletter versions fetched successfully.", "versions": versions_data}), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Internal server error while fetching newsletter versions for project_id {project_id}: {e}")
+        return jsonify({"error": f"Internal server error: {str(e)}. Check server logs for details."}), 500
 
 
 # =============================================================================
@@ -702,7 +762,7 @@ def register():
 
 @main_bp.route('/api/auth/login', methods=['POST'])
 def login():
-    try:
+    try:    
         data = request.get_json()
 
         if not data:
@@ -739,34 +799,6 @@ def login():
         # print(f"Login error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
-# @main_bp.route('/api/auth/verify', methods=['GET'])
-# @token_required
-# def verify():
-#     """Verify token and return user data"""
-#     try:
-#         user_id = request.current_user['user_id']
-        
-#         # Get fresh user data from database
-#         result = supabase.table('projects').select('*').eq('id', user_id).execute()
-        
-#         if not result.data:
-#             return jsonify({'message': 'User not found'}), 404
-        
-#         user = result.data[0]
-        
-#         # Prepare user data for response
-#         user_response = {
-#             'id': user['id'],
-#         }
-        
-#         return jsonify({
-#             'message': 'Token is valid',
-#             'user': user_response
-#         }), 200
-        
-#     except Exception as e:
-#         # print(f"Verify error: {str(e)}")
-#         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/logout', methods=['POST'])
 def logout():
@@ -797,3 +829,71 @@ def serve_react_app(path):
     # For all other routes (including /editor, /login, etc.), 
     # serve index.html and let React Router handle it
     return send_from_directory(BUILD_DIR, "index.html")
+
+
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+def get_unique_project_name(desired_project_name: str, user_id: str, current_project_id: str = None) -> str:
+    """
+    Suggests a unique project name by appending (Duplicate N) if a conflict exists.
+    
+    Args:
+        desired_project_name: The initial name proposed by the user.
+        user_id: The ID of the user creating/updating the project.
+        current_project_id: Optional. The project_id if updating an existing project.
+                            This allows the current project's name to be ignored as a conflict.
+    Returns:
+        A unique project name.
+    """
+    # Step 1: Determine the base name without any existing (Duplicate X) suffix
+    base_name_match = re.match(r"^(.*?)(?: \(Duplicate(?: (\d+))?\))?$", desired_project_name)
+    if base_name_match:
+        base_name = base_name_match.group(1).strip()
+    else:
+        base_name = desired_project_name
+
+    # Step 2: Query for existing projects by this user that might conflict
+    existing_projects_query = supabase.table(PROJECTS_TABLE).select('project_name', 'project_id').ilike('project_name', f"{base_name}%") .eq('user_id', user_id) .execute()
+    
+    existing_names_by_user = []
+    if existing_projects_query.data:
+        for p in existing_projects_query.data:
+            # Exclude the current project_id's name if we are updating it.
+            # This prevents a project from conflicting with its own existing name.
+            if current_project_id and p.get('project_id') == current_project_id:
+                continue
+            existing_names_by_user.append(p['project_name'])
+
+    suggested_name = desired_project_name # Start with the desired name
+    
+    # Check if the desired_project_name itself already exists exactly among *other* projects
+    if desired_project_name in existing_names_by_user:
+        is_conflict_found = True
+    else:
+        is_conflict_found = False
+
+    if is_conflict_found:
+        highest_num = 0
+        duplicate_pattern_with_num = re.compile(r" \(Duplicate (\d+)\)$")
+        duplicate_pattern_no_num = re.compile(r" \(Duplicate\)$")
+
+        for name in existing_names_by_user:
+            match_num = duplicate_pattern_with_num.search(name)
+            if match_num:
+                num = int(match_num.group(1))
+                if num > highest_num:
+                    highest_num = num
+            elif duplicate_pattern_no_num.search(name) and highest_num == 0:
+                highest_num = 0 # Ensures it starts from 0 for the first numbered duplicate
+        
+        if highest_num == 0 and any(duplicate_pattern_no_num.search(name) for name in existing_names_by_user):
+            suggested_name = f"{base_name} (Duplicate 1)"
+        elif highest_num > 0:
+            suggested_name = f"{base_name} (Duplicate {highest_num + 1})"
+        else:
+            suggested_name = f"{base_name} (Duplicate)"
+            
+    return suggested_name

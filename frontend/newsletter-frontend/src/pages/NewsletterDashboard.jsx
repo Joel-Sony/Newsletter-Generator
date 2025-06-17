@@ -55,7 +55,6 @@ const NewsletterDashboard = () => {
       if (!data.success) {
         throw new Error(data.error || 'Failed to fetch newsletters');
       }
-
       const transformedData = {
         drafts: data.data.DRAFT.map(item => ({
           id: item.id,
@@ -63,7 +62,8 @@ const NewsletterDashboard = () => {
           status: 'draft',
           lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
           image_path:item.image_path,
-          version: item.version || 'N/A'
+          version: item.version || 'N/A',
+          project_id:item.project_id
         })),
         published: data.data.PUBLISHED.map(item => ({
           id: item.id,
@@ -71,7 +71,8 @@ const NewsletterDashboard = () => {
           status: 'published',
           lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
           image_path:item.image_path,
-          version: item.version || 'N/A'
+          version: item.version || 'N/A',
+          project_id:item.project_id
         })),
         archived: data.data.ARCHIVED.map(item => ({
           id: item.id,
@@ -79,7 +80,8 @@ const NewsletterDashboard = () => {
           status: 'archived',
           lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
           image_path:item.image_path,
-          version: item.version || 'N/A'
+          version: item.version || 'N/A',
+          project_id:item.project_id
         }))
       };
 
@@ -244,7 +246,7 @@ const NewsletterDashboard = () => {
         throw new Error(data.error || 'Failed to duplicate newsletter.');
       }
 
-      setToastMessage(`Newsletter '${data.originalNewsletterTitle}' duplicated successfully!`);
+      setToastMessage(`Newsletter '${data.name}' duplicated successfully!`);
       setToastType('success');
       setShowToast(true);
 
@@ -266,7 +268,7 @@ const NewsletterDashboard = () => {
     setNewsletterToDelete(null);
   };
 
-  const handleActionClick = (action, newsletterId) => {
+  const handleActionClick = (action, newsletterId,projectId) => {
     switch (action) {
       case 'Edit':
         navigate(`/editor/${newsletterId}`);
@@ -285,8 +287,11 @@ const NewsletterDashboard = () => {
         handleDuplicate(newsletterId); // Call the new handler for duplicate
         break;
       case 'Restore':
-        // Implement restore logic
+        newsletterId.status = "DRAFT"
         console.log(`Restore action clicked for newsletter ID: ${newsletterId}`);
+        break;
+      case 'Versions':
+        navigate(`/versions/${projectId}`);
         break;
       default:
         console.log(`${action} action clicked for newsletter ID: ${newsletterId}`);
@@ -323,9 +328,9 @@ const NewsletterDashboard = () => {
 
   const getActionButtons = (status) => {
     switch (status) {
-      case 'draft': return ['Edit', 'Preview', 'Delete'];
-      case 'published': return ['View', 'Duplicate'];
-      case 'archived': return ['View', 'Restore'];
+      case 'draft': return ['Edit', 'Preview', 'Delete','Versions'];
+      case 'published': return ['View', 'Duplicate','Versions'];
+      case 'archived': return ['View', 'Restore,','Versions'];
       default: return ['View'];
     }
   };
@@ -1172,7 +1177,7 @@ const NewsletterDashboard = () => {
                           key={action}
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent card click event from firing
-                            handleActionClick(action, newsletter.id);
+                            handleActionClick(action, newsletter.id, newsletter.project_id);
                           }}
                           style={getActionButtonStyle(action)}
                           onMouseEnter={(e) => e.target.style.opacity = 0.9}
