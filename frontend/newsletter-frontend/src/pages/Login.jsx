@@ -14,36 +14,36 @@ const Login = () => {
   const [showPasswordReqs, setShowPasswordReqs] = useState(false);
   const navigate=useNavigate();
 
-  useEffect(() => {
-    // Check if user is already authenticated on component mount
-    checkAuthStatus();
-  }, []);
+  // useEffect(() => {
+  //   // Check if user is already authenticated on component mount
+  //   checkAuthStatus();
+  // }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
+  // const checkAuthStatus = async () => {
+  //   try {
+  //     const token = localStorage.getItem('authToken');
+  //     if (!token) return;
 
-      const response = await fetch('/api/auth/verify', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  //     const response = await fetch('/api/auth/verify', {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.user);
-      } else {
-        // Token is invalid, remove it
-        localStorage.removeItem('authToken');
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      localStorage.removeItem('authToken');
-    }
-  };
+  //     if (response.ok) {
+  //       const userData = await response.json();
+  //       setUser(userData.user);
+  //     } else {
+  //       // Token is invalid, remove it
+  //       localStorage.removeItem('authToken');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking auth status:', error);
+  //     localStorage.removeItem('authToken');
+  //   }
+  // };
 
   const showMessage = (text, type) => {
     setMessage({ text, type });
@@ -142,7 +142,7 @@ const Login = () => {
       setTimeout(() => {
         setUser(data.user);
       }, 1000);
-
+      
     } catch (error) {
       console.error('Login error:', error);
       showMessage('Network error. Please try again.', 'error');
@@ -451,12 +451,6 @@ const handleLogout = async () => {
   };
 
   if (user) {
-    const formatDate = (dateString) => {
-      if (!dateString) return 'N/A';
-      return new Date(dateString).toLocaleString();
-    };
-
-    
     navigate("/home");
   };
 

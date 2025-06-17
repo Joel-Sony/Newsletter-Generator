@@ -213,17 +213,16 @@ const NewsletterDashboard = () => {
   };
 
   const handleActionClick = (action, newsletterId) => {
-    // Handle different actions
     switch (action) {
       case 'Edit':
         navigate(`/editor/${newsletterId}`);
         break;
       case 'View':
         console.log(`View action clicked for newsletter ID: ${newsletterId}`);
-        navigate(`/preview/${newsletterId}`); // Assuming 'View' also goes to a preview-like page
+        navigate(`/preview/${newsletterId}`); 
         break;
-      case 'Preview': // <<< ADD THIS CASE
-        navigate(`/preview/${newsletterId}`); // Navigate to the dedicated preview route
+      case 'Preview': 
+        navigate(`/preview/${newsletterId}`); 
         break;
       case 'Delete':
         handleDeleteClick(newsletterId); // Call the new handler for delete

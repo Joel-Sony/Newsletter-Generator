@@ -386,11 +386,9 @@ async def upload_project():
             "json_path": public_url
         }
         
-        # print(f"DEBUG: Returning success response: {response_data}")
         return jsonify(response_data), 200
 
     except Exception as e:
-        # print(f"DEBUG: Top-level exception: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
 
@@ -408,8 +406,6 @@ def get_user_newsletters():
         
         if not user_id:
             return jsonify({"error": "Invalid user ID"}), 401
-
-        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
         
         result = supabase.table(PROJECTS_TABLE).select("*").eq('user_id', user_id).execute()
         
@@ -418,7 +414,6 @@ def get_user_newsletters():
             return jsonify({'error': 'Database query failed'}), 500
 
         newsletters = result.data
-        print(f"Retrieved newsletters: {newsletters}")  # Debug log 
         
         grouped = {
             'DRAFT': [],
@@ -672,37 +667,34 @@ def login():
         # print(f"Login error: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
-@main_bp.route('/api/auth/verify', methods=['GET'])
-@token_required
-def verify():
-    """Verify token and return user data"""
-    try:
-        user_id = request.current_user['user_id']
+# @main_bp.route('/api/auth/verify', methods=['GET'])
+# @token_required
+# def verify():
+#     """Verify token and return user data"""
+#     try:
+#         user_id = request.current_user['user_id']
         
-        # Get fresh user data from database
-        result = supabase.table('users').select('*').eq('id', user_id).execute()
+#         # Get fresh user data from database
+#         result = supabase.table('projects').select('*').eq('id', user_id).execute()
         
-        if not result.data:
-            return jsonify({'message': 'User not found'}), 404
+#         if not result.data:
+#             return jsonify({'message': 'User not found'}), 404
         
-        user = result.data[0]
+#         user = result.data[0]
         
-        # Prepare user data for response
-        user_response = {
-            'id': user['id'],
-            'email': user['email'],
-            'created_at': user['created_at'],
-            'last_login': user['last_login']
-        }
+#         # Prepare user data for response
+#         user_response = {
+#             'id': user['id'],
+#         }
         
-        return jsonify({
-            'message': 'Token is valid',
-            'user': user_response
-        }), 200
+#         return jsonify({
+#             'message': 'Token is valid',
+#             'user': user_response
+#         }), 200
         
-    except Exception as e:
-        # print(f"Verify error: {str(e)}")
-        return jsonify({'message': 'Internal server error'}), 500
+#     except Exception as e:
+#         # print(f"Verify error: {str(e)}")
+#         return jsonify({'message': 'Internal server error'}), 500
 
 @main_bp.route('/api/auth/logout', methods=['POST'])
 def logout():

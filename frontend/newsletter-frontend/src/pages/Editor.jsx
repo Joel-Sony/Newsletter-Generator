@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+
+  import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
@@ -30,7 +31,10 @@ const Modal = ({ isOpen, onClose, children, title }) => {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          backgroundColor:' #ffffff;',
+          backgroundImage:'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          backgroundRepeat:'no-repeat',
+          backgroundSize: 'cover',
           borderRadius: '16px',
           padding: '0',
           width: 'clamp(320px, 90vw, 500px)',
@@ -46,7 +50,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
         <div style={{
           padding: '24px 24px 16px',
           borderBottom: '1px solid rgba(226, 232, 240, 0.6)',
-          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+          backgroundColor: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{
@@ -61,7 +65,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
             <button
               onClick={onClose}
               style={{
-                background: 'none',
+                backgroundImage: "none",
                 border: 'none',
                 fontSize: '24px',
                 color: '#64748b',
@@ -208,7 +212,7 @@ const Select = ({ children, ...props }) => (
       fontSize: '14px',
       borderRadius: '10px',
       border: '1px solid #e2e8f0',
-      background: 'white',
+      backgroundColor: 'white',
       color: '#334155',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
@@ -242,7 +246,7 @@ const TextArea = ({ ...props }) => (
       fontSize: '14px',
       borderRadius: '10px',
       border: '1px solid #e2e8f0',
-      background: 'white',
+      backgroundColor: 'white',
       color: '#334155',
       resize: 'vertical',
       minHeight: '100px',
@@ -1045,4 +1049,4 @@ function Editor() {
   );
 }
 
-export default Editor;
+export default Editor;  
