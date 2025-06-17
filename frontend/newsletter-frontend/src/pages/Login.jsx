@@ -14,6 +14,16 @@ const Login = () => {
   const [showPasswordReqs, setShowPasswordReqs] = useState(false);
   const navigate=useNavigate();
 
+  useEffect(() => {
+    if (user) {
+      const navigationTimeout = setTimeout(() => {
+        navigate("/home");
+      }, 50); // Small delay, or remove for immediate nav
+      
+      return () => clearTimeout(navigationTimeout); // Cleanup on unmount
+    }
+  }, [user, navigate]); 
+
   // useEffect(() => {
   //   // Check if user is already authenticated on component mount
   //   checkAuthStatus();
@@ -450,9 +460,6 @@ const handleLogout = async () => {
     }
   };
 
-  if (user) {
-    navigate("/home");
-  };
 
   return (
     <div style={styles.container}>

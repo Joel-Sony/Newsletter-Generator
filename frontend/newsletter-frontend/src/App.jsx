@@ -3,9 +3,9 @@ import Editor from './pages/Editor.jsx';
 import NewsletterDashboard from './pages/NewsletterDashboard.jsx'; 
 import Login from './pages/Login.jsx'; 
 import NewsletterGenerator from './pages/NewsletterGenerator.jsx';
+import Preview from './pages/Preview.jsx';
 
 function App() {
-  // Function to check if the user is authenticated
   const isAuthenticated = () => {
     const token = localStorage.getItem('authToken');
     return token !== null && token !== 'null' && token !== 'undefined';
@@ -35,7 +35,12 @@ function App() {
         path="/generator"
         element={isAuthenticated() ? <NewsletterGenerator /> : <Navigate to="/login" replace />}
       />
-     
+
+      <Route 
+      path="/preview/:id"
+      element={isAuthenticated() ? <Preview /> : <Navigate to="/login" replace />}
+      />
+
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
