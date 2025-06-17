@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import { useNavigate } from 'react-router-dom';
 
 const NewsletterDashboard = () => {
@@ -27,72 +27,78 @@ const NewsletterDashboard = () => {
   // State for toast notification
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success'); // 'success' or 'error' for styling
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchNewsletters = async () => {
-      console.log("Fetching newsletters");
-      try {
-        setLoading(true);
-        const authToken = localStorage.getItem('authToken');
+  // Memoize fetchNewsletters using useCallback to avoid unnecessary re-renders/fetches
+  const fetchNewsletters = useCallback(async () => {
+    console.log("Fetching newsletters");
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem('authToken');
 
-        if (!authToken) {
-          throw new Error('Authentication required');
-        }
-
-        const response = await fetch('/api/newsletters-current', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch newsletters');
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch newsletters');
-        }
-
-        const transformedData = {
-          drafts: data.data.DRAFT.map(item => ({
-            id: item.id,
-            title: item.project_name || 'Untitled Newsletter',
-            status: 'draft',
-            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            image_path:item.image_path,
-            version: item.version || 'N/A' // Added version
-          })),
-          published: data.data.PUBLISHED.map(item => ({
-            id: item.id,
-            title: item.project_name || 'Published Newsletter',
-            status: 'published',
-            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            image_path:item.image_path,
-            version: item.version || 'N/A' // Added version
-          })),
-          archived: data.data.ARCHIVED.map(item => ({
-            id: item.id,
-            title: item.project_name || 'Archived Newsletter',
-            status: 'archived',
-            lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
-            image_path:item.image_path,
-            version: item.version || 'N/A' // Added version
-          }))
-        };
-
-        setNewsletters(transformedData);
-      } catch (err) {
-        console.error('Error fetching newsletters:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!authToken) {
+        throw new Error('Authentication required');
       }
-    };
 
+      const response = await fetch('/api/newsletters-current', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch newsletters');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch newsletters');
+      }
+
+      const transformedData = {
+        drafts: data.data.DRAFT.map(item => ({
+          id: item.id,
+          title: item.project_name || 'Untitled Newsletter',
+          status: 'draft',
+          lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+          image_path:item.image_path,
+          version: item.version || 'N/A'
+        })),
+        published: data.data.PUBLISHED.map(item => ({
+          id: item.id,
+          title: item.project_name || 'Published Newsletter',
+          status: 'published',
+          lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+          image_path:item.image_path,
+          version: item.version || 'N/A'
+        })),
+        archived: data.data.ARCHIVED.map(item => ({
+          id: item.id,
+          title: item.project_name || 'Archived Newsletter',
+          status: 'archived',
+          lastEdited: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+          image_path:item.image_path,
+          version: item.version || 'N/A'
+        }))
+      };
+
+      setNewsletters(transformedData);
+    } catch (err) {
+      console.error('Error fetching newsletters:', err);
+      setError(err.message);
+      setToastMessage(`Error loading newsletters: ${err.message}`);
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Empty dependency array for fetchNewsletters
+
+  // Trigger fetchNewsletters on component mount
+  useEffect(() => {
     fetchNewsletters();
-  }, []);
+  }, [fetchNewsletters]); // Dependency on memoized fetchNewsletters
 
   // Handle responsive design
   useEffect(() => {
@@ -116,6 +122,7 @@ const NewsletterDashboard = () => {
       timer = setTimeout(() => {
         setShowToast(false);
         setToastMessage('');
+        setToastType('success'); // Reset to default
       }, 3000); // Toast disappears after 3 seconds
     }
     return () => clearTimeout(timer); // Clean up the timer
@@ -160,7 +167,6 @@ const NewsletterDashboard = () => {
         throw new Error('Authentication required');
       }
 
-      // Replace with your actual delete API endpoint
       const response = await fetch(`/api/delete/${newsletterToDelete}`, {
         method: 'DELETE',
         headers: {
@@ -177,12 +183,10 @@ const NewsletterDashboard = () => {
         throw new Error(data.error || 'Failed to delete newsletter');
       }
 
-      const deletedNewsletterTitle = getNewsletterTitleById(newsletterToDelete); // Get the title BEFORE updating state
+      const deletedNewsletterTitle = getNewsletterTitleById(newsletterToDelete);
 
-      // Update the newsletters state to remove the deleted item
       setNewsletters(prevNewsletters => {
         const newNewsletters = { ...prevNewsletters };
-        // Find and remove the newsletter from all categories
         for (const section in newNewsletters) {
           newNewsletters[section] = newNewsletters[section].filter(
             (newsletter) => newsletter.id !== newsletterToDelete
@@ -191,14 +195,14 @@ const NewsletterDashboard = () => {
         return newNewsletters;
       });
 
-      // Show toast notification
       setToastMessage(`File '${deletedNewsletterTitle}' deleted successfully.`);
+      setToastType('success');
       setShowToast(true);
 
     } catch (err) {
       console.error('Error deleting newsletter:', err);
-      setError(err.message);
-      setToastMessage(`Error deleting newsletter: ${err.message}`); // Show error in toast too
+      setToastMessage(`Error deleting newsletter: ${err.message}`);
+      setToastType('error');
       setShowToast(true);
     } finally {
       setShowDeleteModal(false);
@@ -206,30 +210,54 @@ const NewsletterDashboard = () => {
     }
   };
 
-  const handleDuplicate = async(newsletterId) => {
-    const authToken = localStorage.getItem('authToken');
+  const handleDuplicate = async (newsletterId) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('Authentication required');
+      }
 
-    if (!authToken) {
-      throw new Error('Authentication required');
-    }
+      const originalNewsletterTitle = getNewsletterTitleById(newsletterId);
 
-    const response = await fetch(`/api/duplicate/${newsletterId}`, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        'ID': newsletterId
-      })
-    });
-    if (!response.ok) {
-      throw new Error('Failed to duplicate');
-    }
+      // Confirm with the user before duplicating
+      const confirmed = window.confirm(`Are you sure you want to duplicate "${originalNewsletterTitle}"?`);
+      if (!confirmed) {
+        return; // User cancelled
+      }
 
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to duplicate');
+      console.log(`Attempting to duplicate newsletter with ID: ${newsletterId}`);
+      const response = await fetch(`/api/${newsletterId}/duplicate`, { // Corrected endpoint to match Flask backend
+        method: 'POST', // Use POST method for duplication
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to duplicate newsletter.');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to duplicate newsletter.');
+      }
+
+      setToastMessage(`Newsletter '${data.originalNewsletterTitle}' duplicated successfully!`);
+      setToastType('success');
+      setShowToast(true);
+
+      // Re-fetch all newsletters to show the new duplicate
+      await fetchNewsletters();
+
+    } catch (err) {
+      console.error('Error duplicating newsletter:', err);
+      setToastMessage(`Error duplicating newsletter: ${err.message}`);
+      setToastType('error');
+      setShowToast(true);
     }
-  }
+  };
 
 
   // Function to cancel the delete action
@@ -254,8 +282,7 @@ const NewsletterDashboard = () => {
         handleDeleteClick(newsletterId); // Call the new handler for delete
         break;
       case 'Duplicate':
-        // Implement duplicate logic
-        console.log(`Duplicate action clicked for newsletter ID: ${newsletterId}`);
+        handleDuplicate(newsletterId); // Call the new handler for duplicate
         break;
       case 'Restore':
         // Implement restore logic
@@ -906,7 +933,7 @@ const NewsletterDashboard = () => {
       bottom: '30px',
       left: '50%',
       transform: 'translateX(-50%)',
-      backgroundColor: '#10b981', // Green for success
+      backgroundColor: '#10b981', // Default for success
       color: 'white',
       padding: '15px 25px',
       borderRadius: '10px',
@@ -933,7 +960,11 @@ const NewsletterDashboard = () => {
       fontSize: '14px',
       fontFamily: 'Inter, system-ui, sans-serif',
       marginTop: '4px' // Add some space below the title
-    }
+    },
+    // Added for error toast specific style
+    toastError: {
+        backgroundColor: '#ef4444', // Red for error
+    },
   };
 
   if (loading) {
@@ -1106,86 +1137,59 @@ const NewsletterDashboard = () => {
 
         <div style={styles.contentContainer}>
           <h2 style={styles.contentTitle}>{getSectionTitle()}</h2>
-          {error && <div style={{ color: '#ef4444', marginBottom: '20px' }}>Error: {error}</div>}
-          {getCurrentNewsletters().length === 0 && !loading && (
-            <div style={{ textAlign: 'center', color: '#a3a3a3', padding: '50px' }}>
-              No newsletters found in this section.
-            </div>
-          )}
           <div style={styles.grid}>
-            {getCurrentNewsletters().map((newsletter) => (
-              <div
-                key={newsletter.id}
-                style={styles.card}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
-                  e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 0, 0, 0.4)';
-                  if (newsletter.previewImage) {
-                    e.currentTarget.querySelector('img').style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.25)';
-                  if (newsletter.previewImage) {
-                    e.currentTarget.querySelector('img').style.transform = 'scale(1)';
-                  }
-                }}
-              >
-                <div style={styles.cardTopBorder}></div>
-                <div style={styles.cardImageContainer}>
-                  {newsletter.previewImage ? (
-                    <img src={newsletter.previewImage} alt={newsletter.title} style={styles.cardImage} />
-                  ) : (
-                    <div style={{
-                      ...styles.cardImage,
-                      backgroundColor: '#333',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#a3a3a3',
-                      fontSize: '18px',
-                      fontWeight: '600'
-                    }}>
-                      No Image
+            {getCurrentNewsletters().length > 0 ? (
+              getCurrentNewsletters().map(newsletter => (
+                <div
+                  key={newsletter.id}
+                  style={styles.card}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.4)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)'; }}
+                >
+                  <div style={styles.cardTopBorder}></div>
+                  <div style={styles.cardImageContainer}>
+                    <img
+                      src={newsletter.previewImage || 'https://via.placeholder.com/320x160?text=No+Preview'}
+                      alt={newsletter.title}
+                      style={styles.cardImage}
+                    />
+                  </div>
+                  <div style={styles.cardContent}>
+                    <h3 style={styles.cardTitle}>{newsletter.title}</h3>
+                    <p style={styles.versionText}>Version: {newsletter.version}</p>
+                    <div style={styles.cardMeta}>
+                      <span style={styles.cardDate}>Last Edited: {newsletter.lastEdited}</span>
+                      <span style={{ ...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status) }}>
+                        {newsletter.status}
+                      </span>
                     </div>
-                  )}
-                </div>
-                <div style={styles.cardContent}>
-                  <h3 style={styles.cardTitle}>{newsletter.title}</h3>
-                  <p style={styles.versionText}>Version: {newsletter.version}</p> {/* Display version here */}
-                  <div style={styles.cardMeta}>
-                    <span style={styles.cardDate}>Last Edited: {newsletter.lastEdited}</span>
-                    <span style={{ ...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status) }}>
-                      {newsletter.status}
-                    </span>
-                  </div>
-                  <p style={styles.cardPreview}>{newsletter.preview}</p>
-                  <div style={{ ...styles.cardActions, marginTop: 'auto' }}>
-                    {getActionButtons(newsletter.status).map((action) => (
-                      <button
-                        key={action}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent card click when button is clicked
-                          handleActionClick(action, newsletter.id);
-                        }}
-                        style={getActionButtonStyle(action)}
-                        onMouseEnter={(e) => {
-                          e.target.style.opacity = 0.8;
-                          e.target.style.transform = 'translateY(-1px)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.opacity = 1;
-                          e.target.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        {action}
-                      </button>
-                    ))}
+                    {/* <p style={styles.cardPreview}>
+                      {newsletter.description || 'No description available for this newsletter.'}
+                    </p> */}
+                    <div style={styles.cardActions}>
+                      {getActionButtons(newsletter.status).map(action => (
+                        <button
+                          key={action}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click event from firing
+                            handleActionClick(action, newsletter.id);
+                          }}
+                          style={getActionButtonStyle(action)}
+                          onMouseEnter={(e) => e.target.style.opacity = 0.9}
+                          onMouseLeave={(e) => e.target.style.opacity = 1}
+                        >
+                          {action}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p style={{ color: '#a3a3a3', textAlign: 'center', gridColumn: '1 / -1' }}>
+                No newsletters found in this section.
+              </p>
+            )}
           </div>
           {renderPagination()}
         </div>
@@ -1210,9 +1214,11 @@ const NewsletterDashboard = () => {
     {showDeleteModal && (
       <div style={styles.modalOverlay}>
         <div style={styles.modalContent}>
-          <h3 style={styles.modalTitle}>Confirm Deletion</h3>
+          <h2 style={styles.modalTitle}>Confirm Deletion</h2>
           <p style={styles.modalText}>
-            Are you sure you want to delete "{getNewsletterTitleById(newsletterToDelete)}"? This action cannot be undone.
+            Are you sure you want to delete <br />
+            <strong>"{getNewsletterTitleById(newsletterToDelete)}"</strong>?
+            <br />This action cannot be undone.
           </p>
           <div style={styles.modalActions}>
             <button
@@ -1235,11 +1241,15 @@ const NewsletterDashboard = () => {
     {/* Toast Notification */}
     <div style={{
       ...styles.toastContainer,
-      ...(showToast ? styles.toastContainerVisible : {})
+      ...(showToast ? styles.toastContainerVisible : {}),
+      ...(toastType === 'error' ? styles.toastError : {}),
     }}>
-      <span style={styles.toastIcon}>✅</span>
+      <span style={styles.toastIcon}>
+        {toastType === 'success' ? '✅' : '❌'}
+      </span>
       {toastMessage}
     </div>
+
   </div>
  );
 };

@@ -357,20 +357,7 @@ async def upload_project():
             "updated_at": timestamp
             }
             
-            # print(f"DEBUG: About to insert: {insert_data}")
-            
             insert_response = supabase.table("projects").insert(insert_data).execute()
-            
-            # print(f"DEBUG: Insert response type: {type(insert_response)}")
-            # print(f"DEBUG: Insert response: {insert_response}")
-            
-            # Check for database insert errors
-            if hasattr(insert_response, 'error') and insert_response.error:
-                error_msg = str(insert_response.error)
-                # print(f"DEBUG: Database insert failed: {error_msg}")
-                return jsonify({"error": f"Failed to save project: {error_msg}"}), 500
-            
-            # print("DEBUG: Database insert successful")
             
         except Exception as e:
             # print(f"DEBUG: Database insert exception: {str(e)}")
@@ -527,42 +514,52 @@ def delete(id):
 # DUPLICATION SECTION
 # =============================================================================
 
-# @main_bp.route("/api/duplicate/<string:id>")
-# def duplicate(id):
-#     try:
-#         auth_header = request.headers.get('Authorization')
-#         if not auth_header or not auth_header.startswith('Bearer '):
-#             return jsonify({"error": "Missing or invalid authorization token"}), 401
+@main_bp.route("/api/<string:id>/duplicate", methods=["POST"])
+async def duplicate(id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or invalid authorization token"}), 401
         
-#         auth_token = auth_header.split(' ')[1]
-#         user_id = get_user_id_from_supabase_token(auth_token)
+        auth_token = auth_header.split(' ')[1]
+        user_id = get_user_id_from_supabase_token(auth_token)
 
-#         if not user_id:
-#             return jsonify({"error": "Invalid user ID"}), 401
+        if not user_id:
+            return jsonify({"error": "Invalid user ID"}), 401
         
-#         result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','json_path').eq('id', id).execute()
-#         if result.data:
-#             row = result.data[0]
-#         else:
-#             return jsonify({"error":"Could not find file"})
+        result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','json_path','image_path').eq('id', id).eq('user_id',user_id).execute()
+        if result.data:
+            row = result.data[0]
+        else:
+            return jsonify({"error":"Could not find file"})
+        print(f"ROW: {row}")
+        row["project_id"] = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat()
+        row["project_name"] = f"Duplicated {row['project_name']}"
+        insert_data = {
+            "user_id":user_id,
+            "project_name": row["project_name"],
+            "project_id": row["project_id"],
+            "json_path": row["json_path"],
+            "image_path": row["image_path"],  # Store URL not bytes
+            "status": "DRAFT",
+            "version": 1,
+            "created_at": timestamp,
+            "updated_at": timestamp
+        }
+        print("BEFORE INSERT")
+        insert_response = supabase.table("projects").insert(insert_data).execute()
+        print(insert_response)
+        # Return success response
+        response_data = {
+            "success": True,
+            "message": "Project saved successfully",
+        }
+        
+        return jsonify(response_data), 201
 
-#         const insert_data = {
-#             "user_id": user_id,
-#             "project_name": f"Duplicated {row.project_name}" ,
-#             "project_id": row.,
-#             "json_path": public_url,
-#             "image_path": img_publicUrl,  # Store URL not bytes
-#             "status": status,
-#             "version": version,
-#             "created_at": timestamp,
-#             "updated_at": timestamp
-#         }
-
-
-
-#     except Exception as e:
-#             return jsonify({"Error":"Could not fetch single newsletter"})
-    
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
 
