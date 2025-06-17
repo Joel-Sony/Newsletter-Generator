@@ -4,7 +4,7 @@ from io import BytesIO
 import base64
 from app.config import IMAGEROUTER_API_KEY
 
-API_URL = "https://ir-api.myqa.cc/v1/openai/images/generations"
+API_URL = "https://api.imagerouter.io/v1/openai/images/generations"
 API_KEY = IMAGEROUTER_API_KEY
 
 
@@ -16,7 +16,7 @@ def generate_image(user_prompt):
 
     payload = {
         "prompt": user_prompt,
-        "model": "stabilityai/sdxl-turbo:free",
+        "model": "black-forest-labs/FLUX-1-schnell:free",
         "quality": "auto"
     }
 

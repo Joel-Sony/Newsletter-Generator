@@ -414,7 +414,7 @@ def get_user_newsletters():
             return jsonify({'error': 'Database query failed'}), 500
 
         newsletters = result.data
-        
+    
         grouped = {
             'DRAFT': [],
             'PUBLISHED': [],
@@ -433,6 +433,37 @@ def get_user_newsletters():
     except Exception as e:
         print(f"Error in get_user_newsletters: {str(e)}")  # Debug log
         return jsonify({'error': str(e)}), 500
+    
+@main_bp.route("/api/newsletters-current")
+def get_latest_project_versions_rpc():
+    """
+    Calls the 'get_latest_project_versions' PostgreSQL function
+    to retrieve entries with the highest version for each project_id.
+    """
+    try:
+        response = supabase.rpc('get_latest_project_versions', {}).execute()
+        data = response.data
+
+        grouped = {
+            'DRAFT': [],
+            'PUBLISHED': [],
+            'ARCHIVED': []
+        }
+
+
+        if data:
+            print("Successfully retrieved latest project versions:")
+            for project in data:
+                status = project.get('status').upper()
+                grouped[status].append(project)
+            return jsonify({'success': True, 'data': grouped}), 200
+        else:
+            print("No data found or function returned an empty set.")
+            return []
+
+    except Exception as e:
+        print(f"An error occurred during the RPC call: {e}")
+        return None
 
 
 @main_bp.route('/api/newsletters/<string:id>')
@@ -491,6 +522,50 @@ def delete(id):
     except Exception as e:
             return jsonify({"Error":"Could not fetch single newsletter"})
                 
+
+# =============================================================================
+# DUPLICATION SECTION
+# =============================================================================
+
+# @main_bp.route("/api/duplicate/<string:id>")
+# def duplicate(id):
+#     try:
+#         auth_header = request.headers.get('Authorization')
+#         if not auth_header or not auth_header.startswith('Bearer '):
+#             return jsonify({"error": "Missing or invalid authorization token"}), 401
+        
+#         auth_token = auth_header.split(' ')[1]
+#         user_id = get_user_id_from_supabase_token(auth_token)
+
+#         if not user_id:
+#             return jsonify({"error": "Invalid user ID"}), 401
+        
+#         result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','json_path').eq('id', id).execute()
+#         if result.data:
+#             row = result.data[0]
+#         else:
+#             return jsonify({"error":"Could not find file"})
+
+#         const insert_data = {
+#             "user_id": user_id,
+#             "project_name": f"Duplicated {row.project_name}" ,
+#             "project_id": row.,
+#             "json_path": public_url,
+#             "image_path": img_publicUrl,  # Store URL not bytes
+#             "status": status,
+#             "version": version,
+#             "created_at": timestamp,
+#             "updated_at": timestamp
+#         }
+
+
+
+#     except Exception as e:
+#             return jsonify({"Error":"Could not fetch single newsletter"})
+    
+
+
+
 
 @main_bp.route("/api/preview/<string:id>")
 def preview(id):

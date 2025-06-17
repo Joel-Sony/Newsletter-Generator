@@ -41,7 +41,7 @@ const NewsletterDashboard = () => {
           throw new Error('Authentication required');
         }
 
-        const response = await fetch('/api/newsletters', {
+        const response = await fetch('/api/newsletters-current', {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
@@ -205,6 +205,32 @@ const NewsletterDashboard = () => {
       setNewsletterToDelete(null);
     }
   };
+
+  const handleDuplicate = async(newsletterId) => {
+    const authToken = localStorage.getItem('authToken');
+
+    if (!authToken) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch(`/api/duplicate/${newsletterId}`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        'ID': newsletterId
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to duplicate');
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to duplicate');
+    }
+  }
+
 
   // Function to cancel the delete action
   const cancelDelete = () => {
