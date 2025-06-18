@@ -12,6 +12,7 @@
   "dependencies": {
     "@grapesjs/studio-sdk": "^1.0.46",
     "@grapesjs/studio-sdk-plugins": "^1.0.22",
+    "@supabase/supabase-js": "^2.50.0",
     "@tailwindcss/vite": "^4.1.8",
     "grapesjs": "^0.22.8",
     "grapesjs-preset-webpage": "^1.0.3",

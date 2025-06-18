@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import grapesjs from 'grapesjs';
-import './preview.css'; // Your custom styles for the preview container
+import './preview.css';
+import { supabase } from '../supabaseClient.js'; 
 
 function Preview() {
   const { id } = useParams();
@@ -9,32 +10,84 @@ function Preview() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('Loading Newsletter...');
-  
-  const editorRef = useRef(null); 
+
+  const editorRef = useRef(null);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewCss, setPreviewCss] = useState('');
 
-  const getAuthToken = () => {
+  const showToast = useCallback((message, isError = false) => {
+    // ... (your showToast implementation)
+    const toast = document.createElement('div');
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.padding = '12px 24px';
+    toast.style.backgroundColor = isError ? '#ef4444' : '#3b82f6';
+    toast.style.color = 'white';
+    toast.style.borderRadius = '8px';
+    toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+    toast.style.zIndex = '10000';
+    toast.style.fontFamily = 'sans-serif';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.gap = '10px';
+    toast.textContent = message;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  }, []);
+
+  const getAuthToken = useCallback(async () => {
+    if (typeof supabase === 'undefined' || !supabase.auth) {
+        console.error("Supabase client is not initialized or accessible.");
+        showToast('Supabase client error. Please refresh.', true);
+        return null;
+    }
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token || token === 'null' || token === 'undefined') {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Supabase getSession error:', error);
+        showToast('Authentication error. Please log in again.', true);
+        navigate('/login', { replace: true });
         return null;
       }
-      return token;
-    } catch (error) {
-      console.error('Error accessing localStorage:', error);
+      if (session) {
+        return session.access_token;
+      }
+      console.log("No active Supabase session found in getAuthToken, redirecting to login.");
+      showToast('Authentication required. Please log in.', true);
+      navigate('/login', { replace: true });
+      return null;
+    } catch (err) {
+      console.error('Unexpected error in getAuthToken:', err);
+      showToast('An unexpected authentication error occurred. Please try again.', true);
+      navigate('/login', { replace: true });
       return null;
     }
-  };
+  }, [navigate, showToast]);
+
 
   const initializeAndLoadProject = useCallback(async () => {
     setLoading(true);
     setError(null);
 
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      setLoading(false);
+      return;
+    }
+
     try {
       if (!editorRef.current) {
         editorRef.current = grapesjs.init({
-          container: document.createElement('div'), 
+          container: document.createElement('div'),
           fromElement: false,
           panels: { defaults: [] },
           blockManager: { custom: true },
@@ -48,10 +101,6 @@ function Preview() {
 
       if (id) {
         console.log("Fetching project data for ID:", id);
-        const authToken = getAuthToken();
-        if (!authToken) {
-          throw new Error('No authentication token found. Please log in.');
-        }
 
         const res = await fetch(`/api/newsletters/${id}`, {
           method: 'GET',
@@ -59,8 +108,13 @@ function Preview() {
         });
 
         if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || `Failed to fetch project: ${res.statusText}`);
+          if (res.status === 401 || res.status === 403) {
+            showToast('Session expired or unauthorized. Please log in again.', true);
+            navigate('/login', { replace: true });
+            return;
+          }
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || `Failed to fetch project: ${res.statusText} (${res.status})`);
         }
 
         const data = await res.json();
@@ -100,7 +154,7 @@ function Preview() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, getAuthToken, navigate, showToast]);
 
   useEffect(() => {
     initializeAndLoadProject();
@@ -114,11 +168,11 @@ function Preview() {
   }, [initializeAndLoadProject]);
 
   const handleGoBack = () => {
-    navigate('/home'); // Navigate to your home or dashboard page
+    navigate('/home');
   };
 
   const handleEdit = () => {
-    navigate(`/editor/${id}`); // Navigate to the editor for this project ID
+    navigate(`/editor/${id}`);
   };
 
   if (loading) {
@@ -132,7 +186,6 @@ function Preview() {
 
   return (
     <div className="preview-container">
-      {/* --- Preview Header --- */}
       <header className="preview-header">
         <div className="preview-header-content">
           <h1 className="preview-header-title">Preview: {projectName}</h1>
@@ -146,7 +199,6 @@ function Preview() {
           </div>
         </div>
       </header>
-      {/* --- End Preview Header --- */}
 
       {error && (
         <div className="preview-error-message">

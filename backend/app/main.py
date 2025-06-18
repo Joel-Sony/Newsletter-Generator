@@ -3,9 +3,9 @@ from flask import (
     request,
     send_from_directory,
     jsonify,
-    current_app
-    
+    current_app 
 )
+import asyncio
 import os
 import traceback
 import requests
@@ -16,19 +16,16 @@ from app.utils.transformText import transformText
 from app.utils.imageGeneration import generate_image
 from app.utils.templateUpload import generate
 from app.utils.htmlPreview import html_to_png_bytes
+from app.utils.JWTexpired import require_active_session # This remains crucial!
 from app.config import (
     OUTPUT_PATH,
-    SUPABASE_SERVICE_ROLE_KEY,
-    SUPABASE_URL,
-    SECRET_KEY,
-    JWT_SECRET_KEY
+    SUPABASE_SERVICE_ROLE_KEY, 
+    SUPABASE_URL,                         
 )
-from functools import wraps
+
 from supabase import create_client, Client
-import jwt
-from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash, check_password_hash
-import re
+from datetime import datetime 
+import re # This import seems unused in the provided code, but keeping it.
 import json
 import uuid
 
@@ -50,18 +47,22 @@ GENERATED_DIR = OUTPUT_PATH
 # API ROUTES (All prefixed with /api to avoid conflicts with React Router)
 # =============================================================================
 
+# Initialize Supabase client for backend/admin operations
+# This client uses the SERVICE_ROLE_KEY and is distinct from the client-side JS library.
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+
 @main_bp.route("/api/generate", methods=["POST"])
-async def generate_newsletter():
+@require_active_session
+def generate_newsletter():
     """
-    STEP 1: Convert the mixed GET/POST index route into a pure API endpoint
-    
-    What changed:
-    - Removed GET handling (React will handle page rendering)
-    - Removed redirects (React will handle navigation)
-    - Return JSON responses instead of redirects
-    - Added /api prefix to avoid conflicts with React Router
-    """ 
+    Handles newsletter generation, either with a PDF template or without.
+    Requires an active user session.
+    """
     try:
+        # Access user_id from the request context set by require_active_session
+        user_id = request.current_user_id
+
         # Handle PDF template upload case
         if request.files.get("pdf_file"):
             tone = request.form.get("tone", "Professional")
@@ -71,17 +72,17 @@ async def generate_newsletter():
             
             success, error_msg = convert_pdf_to_html(file)
             if success:
-                await generate(
+                asyncio.run(generate(
                     tone=tone,
                     topic=topic,
                     pdf_template=file,
                     content=user_prompt
-                )
+                ))
             
                 return jsonify({
                     "success": True,
                     "message": "Newsletter generated successfully with PDF template",
-                    "redirect_to": "/editor"  # React can use this for navigation
+                    "redirect_to": "/editor"
                 })
             else:
                 return jsonify({
@@ -95,35 +96,41 @@ async def generate_newsletter():
             topic = request.form.get("topic")
             user_prompt = request.form.get("user_prompt")
             
-            no_template_generation(
+            asyncio.run(no_template_generation(
                 user_prompt,
                 OUTPUT_PATH,
                 tone,
                 topic
-            )
+            ))
      
             return jsonify({
                 "success": True,
                 "message": "Newsletter generated successfully without template",
-                "redirect_to": "/editor"  # React can use this for navigation
+                "redirect_to": "/editor"
             })
             
     except Exception as e:
+        current_app.logger.error(f"Error in generate_newsletter: {e}", exc_info=True)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "Internal server error during generation"
         }), 500
 
 
 @main_bp.route("/api/generated_output.html")
 def serve_generated():
+    """Serves the latest generated HTML output file."""
     return send_from_directory(GENERATED_DIR, "generated_output.html")
 
 
 @main_bp.route("/api/transformText", methods=["POST"])
+@require_active_session
 def transform_text():
+    """
+    Transforms text based on provided tone and prompt.
+    Requires an active user session.
+    """
     data = request.json or {}
-    # print("Received data:", data)
     text = data.get("text", "").strip()
     tone = data.get("tone", "Formal").strip()
     prompt = data.get("prompt", "").strip()
@@ -133,26 +140,31 @@ def transform_text():
     
     try:
         transformed = transformText(text, tone, prompt)
-        # print(transformed)
         return jsonify({"transformed": transformed})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Error in transform_text: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error during text transformation"}), 500
 
 
 @main_bp.route("/api/generateImage", methods=["POST"])
 def generate_image_api():
+    """Generates an image based on a user prompt."""
     user_prompt = request.json.get("prompt")
+    if not user_prompt:
+        return jsonify({"error": "No prompt provided for image generation"}), 400
     try:
         result = generate_image(user_prompt)
         image_base64 = result["image_base64"]
         mime_type = result["mime_type"]
         return jsonify({"image_base64": image_base64, "mime_type": mime_type})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Error in generate_image_api: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error during image generation"}), 500
 
 
 @main_bp.route("/api/convertToPdf", methods=["POST"])
 def convert_to_pdf():
+    """Converts an HTML file to PDF."""
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
     
@@ -161,243 +173,211 @@ def convert_to_pdf():
         return jsonify({"error": "No selected file"}), 400
     
     filename = secure_filename(file.filename)
-    file_path = os.path.join("UPLOAD_FOLDER", filename)
-    os.makedirs("UPLOAD_FOLDER", exist_ok=True)
+    # Using hardcoded "UPLOAD_FOLDER", ensure this is configured properly in your app
+    file_path = os.path.join(current_app.config.get("UPLOAD_FOLDER", "UPLOAD_FOLDER"), filename)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True) # Ensure directory exists
     file.save(file_path)
     
     try:
-        pdf_path = convert_html_to_pdf(file_path, output_dir="CONVERTED_PDFS_FOLDER")
+        # Using hardcoded "CONVERTED_PDFS_FOLDER", ensure this is configured properly
+        pdf_path = convert_html_to_pdf(file_path, output_dir=current_app.config.get("CONVERTED_PDFS_FOLDER", "CONVERTED_PDFS_FOLDER"))
         return jsonify({
             "message": "File converted successfully",
             "pdf_path": pdf_path
         }), 200
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
+        current_app.logger.error(f"Error in convert_to_pdf: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error during PDF conversion"}), 500
 
 
 # =============================================================================
 # SAVING and DELETION SECTION
 # =============================================================================
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
 PROJECTS_TABLE = 'projects'
 
-def get_user_id_from_supabase_token(token):
-    """Extract user_id from Supabase JWT token"""
-    try:
-        # print(f"DEBUG: JWT_SECRET_KEY exists: {JWT_SECRET_KEY is not None}")
-        # print(f"DEBUG: JWT_SECRET_KEY length: {len(JWT_SECRET_KEY) if JWT_SECRET_KEY else 0}")
-        # print(f"DEBUG: Token length: {len(token)}")
-        # print(f"DEBUG: Token starts with: {token[:20]}...")
-        
-        # Try to decode without verification first to see the payload structure
-        unverified_payload = jwt.decode(token, options={"verify_signature": False})
-        # print(f"DEBUG: Unverified payload: {unverified_payload}")
-        
-        # Now try with verification
-        payload = jwt.decode(
-            token,
-            JWT_SECRET_KEY,
-            algorithms=['HS256'],
-            audience="authenticated"
-        )
-        # print(f"DEBUG: Verified payload: {payload}")
-        
-        user_id = payload.get('sub')
-        # print(f"DEBUG: Extracted user_id: {user_id}")
-        return user_id
-        
-    except jwt.ExpiredSignatureError:
-        # print("DEBUG: Token expired")
-        return None
-    except jwt.InvalidSignatureError:
-        # print("DEBUG: Invalid signature - JWT_SECRET_KEY might be wrong")
-        return None
-    except jwt.InvalidTokenError as e:
-        # print(f"DEBUG: Invalid token error: {str(e)}")
-        return None
-    except Exception as e:
-        # print(f"DEBUG: Unexpected error: {str(e)}")
-        return None
-    
 
 @main_bp.route("/api/upload-project", methods=["POST"])
-async def upload_project():
-    try:
-        # Get authorization token from header
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
-        
-        auth_token = auth_header.split(' ')[1]
-        
-        # Extract user_id from authToken
-        user_id = get_user_id_from_supabase_token(auth_token)
-        if not user_id:
-            return jsonify({"error": "Invalid or expired token"}), 401
-        
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-
-        project_name = data.get("project_name")
-        project_data = data.get("project_data")
-        status = data.get("status", "DRAFT")
-        incoming_project_id = data.get("project_id")
-        fullHtml = data.get("project_fullHtml")
-        
-        
-        # Validate required fields
-        if not project_name:
-            return jsonify({"error": "project_name is required"}), 400
-        if not project_data:
-            return jsonify({"error": "project_data is required"}), 400
-
-        timestamp = datetime.utcnow().isoformat()
-
-        # Determine if this is a new project or update
-        if not incoming_project_id:
-            project_id = str(uuid.uuid4())
-            version = 1
-        else:
-            project_id = incoming_project_id
+@require_active_session
+def upload_project():
+        """
+        Uploads or updates a project (newsletter) to Supabase Storage and Database.
+        Requires an active user session.
+        """
+        try:
+            user_id = request.current_user_id 
             
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+
+            project_name = data.get("project_name")
+            project_data = data.get("project_data")
+            status = data.get("status", "DRAFT")
+            incoming_project_id = data.get("project_id")
+            fullHtml = data.get("project_fullHtml")
+            
+            if not project_name:
+                return jsonify({"error": "project_name is required"}), 400
+            if not project_data:
+                return jsonify({"error": "project_data is required"}), 400
+
+            timestamp = datetime.utcnow().isoformat()
+
+            if not incoming_project_id:
+                project_id = str(uuid.uuid4())
+                version = 1
+            else:
+                project_id = incoming_project_id
+                
+                try:
+                    query = supabase.table(PROJECTS_TABLE)\
+                        .select("version")\
+                        .eq("project_id", project_id)\
+                        .eq("user_id", user_id)\
+                        .order("version", desc=True)\
+                        .limit(1)\
+                        .execute()
+                    
+                    if hasattr(query, 'error') and query.error:
+                        current_app.logger.error(f"Supabase query error (upload-project version fetch): {query.error}", exc_info=True)
+                        return jsonify({"error": "Failed to fetch project version from database"}), 500
+                    
+                    if not query.data:
+                        # This means incoming_project_id was provided but no existing project found for this user
+                        return jsonify({"error": "Project not found or access denied for update"}), 404
+                    
+                    latest_version = query.data[0]["version"]
+                    version = latest_version + 1
+                    
+                except Exception as e:
+                    current_app.logger.error(f"Error fetching project version: {e}", exc_info=True)
+                    return jsonify({"error": f"Database query failed: {str(e)}"}), 500
+                
+            # Create filename for storage
+            filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
+            filename_img = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.png"
+
             try:
-                query = supabase.table("projects")\
-                    .select("version")\
-                    .eq("project_id", project_id)\
-                    .eq("user_id", user_id)\
-                    .order("version", desc=True)\
-                    .limit(1)\
-                    .execute()
+                # Convert project data to appropriate datatype
+                json_bytes = json.dumps(project_data, indent=2).encode("utf-8")
+                image_bytes = asyncio.run(html_to_png_bytes(fullHtml, width = 600, height = 400))
                 
-                if hasattr(query, 'error') and query.error:
-                    return jsonify({"error": "Failed to fetch project version"}), 500
+                # Upload JSON file to Supabase Storage
+                upload_response = supabase.storage.from_("templates").upload(
+                    f"projects/{filename}",
+                    json_bytes,
+                    {"content-type": "application/json"},
+                )
+
+                # Check if upload_response has an error (Supabase-py client returns an object with 'error' attr)
+                if hasattr(upload_response, 'error') and upload_response.error:
+                    current_app.logger.error(f"JSON upload failed: {upload_response.error}", exc_info=True)
+                    return jsonify({"error": f"JSON upload failed: {upload_response.error.get('message', 'Unknown upload error')}"}), 500
                 
-                if not query.data:
-                    return jsonify({"error": "Project not found or access denied"}), 404
+                img_upload = supabase.storage.from_("templates").upload(
+                    f"projects/{filename_img}",
+                    image_bytes,
+                    {"content-type": "image/png"}
+                )
+
+                if hasattr(img_upload, 'error') and img_upload.error:
+                    current_app.logger.error(f"Image upload failed: {img_upload.error}", exc_info=True)
+                    return jsonify({"error": f"Image upload failed: {img_upload.error.get('message', 'Unknown image upload error')}"}), 500
+        
+            except Exception as e:
+                current_app.logger.error(f"File preparation/upload failed: {e}", exc_info=True)
+                return jsonify({"error": f"File upload failed: {str(e)}"}), 500
+
+            try:
+                # Get public URL for the uploaded file
+                public_url_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")
+                img_publicUrl_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename_img}")
                 
-                latest_version = query.data[0]["version"]
-                version = latest_version + 1
+                # Handle different response formats for public URL
+                public_url = None
+                if hasattr(public_url_response, 'publicUrl'):
+                    public_url = public_url_response.publicUrl
+                elif hasattr(public_url_response, 'public_url'):
+                    public_url = public_url_response.public_url
+                elif isinstance(public_url_response, dict):
+                    public_url = public_url_response.get('publicUrl') or public_url_response.get('public_url')
+                elif isinstance(public_url_response, str): # Direct string might be returned in some versions
+                    public_url = public_url_response
+                
+                img_publicUrl = None
+                if hasattr(img_publicUrl_response, 'publicUrl'):
+                    img_publicUrl = img_publicUrl_response.publicUrl
+                elif hasattr(img_publicUrl_response, 'public_url'):
+                    img_publicUrl = img_publicUrl_response.public_url
+                elif isinstance(img_publicUrl_response, dict):
+                    img_publicUrl = img_publicUrl_response.get('publicUrl') or img_publicUrl_response.get('public_url')
+                elif isinstance(img_publicUrl_response, str):
+                    img_publicUrl = img_publicUrl_response
+                
+                if not public_url or not img_publicUrl:
+                    current_app.logger.error("Failed to extract public URL for JSON or Image.")
+                    return jsonify({"error": "Failed to generate public URLs for files"}), 500
                 
             except Exception as e:
-                return jsonify({"error": f"Database query failed: {str(e)}"}), 500
-            
-        # Create filename for storage
-        filename = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.json"
-        filename_img = f"{project_id}_v{version}_{int(datetime.utcnow().timestamp())}.png"
+                current_app.logger.error(f"Error getting public URLs: {e}", exc_info=True)
+                return jsonify({"error": f"Failed to get public URLs: {str(e)}"}), 500
 
-        try:
-            # Convert project data to appropriate datatype
-            json_bytes = json.dumps(project_data, indent=2).encode("utf-8")
-            image_bytes = await html_to_png_bytes(fullHtml, width = 600, height = 400)
-            
-            # Upload JSON file to Supabase Storage
-            upload_response = supabase.storage.from_("templates").upload(
-                f"projects/{filename}",
-                json_bytes,
-                {"content-type": "application/json"},
-            )
+            try:
+                # Insert new row in database
+                insert_data = {
+                    "user_id": user_id,
+                    "project_name": project_name,
+                    "project_id": project_id,
+                    "json_path": public_url,
+                    "image_path": img_publicUrl,
+                    "status": status,
+                    "version": version,
+                    "created_at": timestamp,
+                    "updated_at": timestamp
+                }
+                
+                insert_response = supabase.table(PROJECTS_TABLE).insert(insert_data).execute()
 
-            
-            img_upload = supabase.storage.from_("templates").upload(
-                f"projects/{filename_img}",
-                image_bytes,
-                {"content-type": "image/png"}
-            )
+                if hasattr(insert_response, 'error') and insert_response.error:
+                    current_app.logger.error(f"Database insert failed: {insert_response.error}", exc_info=True)
+                    return jsonify({"error": f"Database insert failed: {insert_response.error.get('message', 'Unknown database error')}"}), 500
+                
+            except Exception as e:
+                current_app.logger.error(f"Database insert operation failed: {e}", exc_info=True)
+                return jsonify({"error": f"Database insert failed: {str(e)}"}), 500
 
-            if hasattr(img_upload, 'error') and img_upload.error:
-                return jsonify({"error": f"Image upload failed: {img_upload.error}"}), 500
-    
-        except Exception as e:
-            return jsonify({"error": f"File upload failed: {str(e)}"}), 500
-
-        try:
-
-            # Get public URL for the uploaded file
-            public_url_response = supabase.storage.from_("templates").get_public_url(f"projects/{filename}")
-            img_publicUrl = supabase.storage.from_("templates").get_public_url(f"projects/{filename_img}")
-            
-            # Handle different response formats for public URL
-            public_url = None
-            if hasattr(public_url_response, 'publicUrl'):
-                public_url = public_url_response.publicUrl
-            elif hasattr(public_url_response, 'public_url'):
-                public_url = public_url_response.public_url
-            elif isinstance(public_url_response, dict):
-                public_url = public_url_response.get('publicUrl') or public_url_response.get('public_url')
-            elif isinstance(public_url_response, str):
-                public_url = public_url_response
-            
-            if not public_url:
-                # print("DEBUG: Could not extract public URL from response")
-                return jsonify({"error": "Failed to generate public URL"}), 500
-            
-
-            
-        except Exception as e:
-            # print(f"DEBUG: Get public URL exception: {str(e)}")
-            return jsonify({"error": f"Failed to get public URL: {str(e)}"}), 500
-
-        try:
-            # Insert new row in database
-            insert_data = {
-            "user_id": user_id,
-            "project_name": project_name,
-            "project_id": project_id,
-            "json_path": public_url,
-            "image_path": img_publicUrl,  # Store URL not bytes
-            "status": status,
-            "version": version,
-            "created_at": timestamp,
-            "updated_at": timestamp
+            # Return success response
+            response_data = {
+                "success": True,
+                "message": "Project saved successfully",
+                "project_id": project_id,
+                "version": version,
+                "status": status,
+                "json_path": public_url
             }
             
-            insert_response = supabase.table("projects").insert(insert_data).execute()
-            
+            return jsonify(response_data), 200
+
         except Exception as e:
-            # print(f"DEBUG: Database insert exception: {str(e)}")
-            return jsonify({"error": f"Database insert failed: {str(e)}"}), 500
-
-        # Return success response
-        response_data = {
-            "success": True,
-            "message": "Project saved successfully",
-            "project_id": project_id,
-            "version": version,
-            "status": status,
-            "json_path": public_url
-        }
+            current_app.logger.error(f"Internal server error in upload_project: {e}", exc_info=True)
+            return jsonify({"error": f"Internal server error: {str(e)}"}), 500
         
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-    
-
 
 @main_bp.route('/api/newsletters', methods=['GET'])
+@require_active_session
 def get_user_newsletters():
-    """Fetch all newsletters for the logged-in user based on user_id"""
+    """
+    Fetches all newsletters for the logged-in user based on user_id.
+    Requires an active user session.
+    """
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
-        
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
-        
-        if not user_id:
-            return jsonify({"error": "Invalid user ID"}), 401
+        user_id = request.current_user_id # Get user ID from decorator
         
         result = supabase.table(PROJECTS_TABLE).select("*").eq('user_id', user_id).execute()
         
         if hasattr(result, 'error') and result.error:
-            print(f"Supabase error: {result.error}")  # Debug log
+            current_app.logger.error(f"Supabase error fetching user newsletters: {result.error}", exc_info=True)
             return jsonify({'error': 'Database query failed'}), 500
 
         newsletters = result.data
@@ -411,25 +391,33 @@ def get_user_newsletters():
         for newsletter in newsletters:
             status = newsletter.get('status', 'DRAFT').upper()
             if status not in grouped:
-                status = 'DRAFT'
+                status = 'DRAFT' # Default to DRAFT if status is unrecognized
             grouped[status].append(newsletter)
 
-        # print(f"Grouped newsletters: {grouped}")  # Debug log
         return jsonify({'success': True, 'data': grouped}), 200
 
     except Exception as e:
-        print(f"Error in get_user_newsletters: {str(e)}")  # Debug log
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error(f"Error in get_user_newsletters: {e}", exc_info=True)
+        return jsonify({'error': "Internal server error fetching newsletters"}), 500
     
 @main_bp.route("/api/newsletters-current")
+@require_active_session
 def get_latest_project_versions_rpc():
     """
     Calls the 'get_latest_project_versions' PostgreSQL function
     to retrieve entries with the highest version for each project_id.
+    Requires an active user session.
     """
     try:
-        response = supabase.rpc('get_latest_project_versions', {}).execute()
+    
+        user_id = request.current_user_id 
+        response = supabase.rpc('get_latest_project_versions', {'p_user_id': user_id}).execute()
         data = response.data
+
+        if hasattr(response, 'error') and response.error:
+            current_app.logger.error(f"Supabase RPC error: {response.error}", exc_info=True)
+            return jsonify({'error': 'RPC call failed'}), 500
+
 
         grouped = {
             'DRAFT': [],
@@ -437,51 +425,59 @@ def get_latest_project_versions_rpc():
             'ARCHIVED': []
         }
 
-
         if data:
-            print("Successfully retrieved latest project versions:")
             for project in data:
-                status = project.get('status').upper()
+                status = project.get('status', 'DRAFT').upper() # Default to DRAFT
+                if status not in grouped:
+                    status = 'DRAFT' # Fallback
                 grouped[status].append(project)
             return jsonify({'success': True, 'data': grouped}), 200
         else:
-            print("No data found or function returned an empty set.")
-            return []
+            current_app.logger.info("No data found or RPC function returned an empty set for latest versions.")
+            return jsonify({'success': True, 'data': grouped}), 200 # Return empty grouped object
 
     except Exception as e:
-        print(f"An error occurred during the RPC call: {e}")
-        return None
+        current_app.logger.error(f"An error occurred during the RPC call: {e}", exc_info=True)
+        return jsonify({'error': "Internal server error during RPC call"}), 500
 
 
 @main_bp.route('/api/newsletters/<string:id>')
+@require_active_session
 def get_newsletter_using_id(id):
+    """
+    Fetches a specific newsletter by its primary key 'id'.
+    Requires an active user session and validates user ownership.
+    """
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
-        
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
-
-        if not user_id:
-            return jsonify({"error": "Invalid user ID"}), 401
-
-        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
+        user_id = request.current_user_id # Get user ID from decorator
         
         result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','version','json_path').eq('id', id).eq('user_id',user_id).execute()
+        if hasattr(result, 'error') and result.error:
+            current_app.logger.error(f"Supabase query error (get_newsletter_using_id): {result.error}", exc_info=True)
+            return jsonify({"error": "Database query failed"}), 500
+
         if result.data:
             row = result.data[0]
             json_path = row.get("json_path")
+            
+            # Fetch JSON content from the public URL
             response = requests.get(json_path)
             if response.status_code != 200:
+                current_app.logger.error(f"Failed to fetch JSON from Supabase storage for ID {id}: Status {response.status_code}", exc_info=True)
                 return jsonify({"error": "Failed to fetch JSON from Supabase storage"}), 500
 
-            row["json_path"] = response.json()
-            return jsonify(row)
+            try:
+                row["json_path"] = response.json() # Replace path with actual JSON content
+            except json.JSONDecodeError:
+                current_app.logger.error(f"Failed to decode JSON from {json_path}", exc_info=True)
+                return jsonify({"error": "Failed to decode project data"}), 500
+
+            return jsonify(row), 200
         else:
-             return jsonify({"error":"Could not find file"})
+             return jsonify({"error":"Could not find file or access denied"}), 404 # Return 404 if not found
     except Exception as e:
-            return jsonify({"Error":"Could not fetch single newsletter"})
+        current_app.logger.error(f"Error in get_newsletter_using_id: {e}", exc_info=True)
+        return jsonify({"error":"Internal server error when fetching newsletter"}), 500
                 
 
 # =============================================================================
@@ -489,25 +485,41 @@ def get_newsletter_using_id(id):
 # =============================================================================
 
 @main_bp.route("/api/delete/<string:id>", methods=["DELETE"])
+@require_active_session
 def delete(id):
+    """
+    Deletes a specific newsletter entry by its primary key 'id'.
+    Requires an active user session and validates user ownership.
+    """
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
-        
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
+        user_id = request.current_user_id # Get user ID from decorator
 
-        if not user_id:
-            return jsonify({"error": "Invalid user ID"}), 401
+        # Check if the project exists and belongs to the user before attempting deletion
+        # This prevents a user from deleting another user's project if they somehow guess the ID
+        check_ownership_result = supabase.table(PROJECTS_TABLE).select('id').eq('id', id).eq('user_id', user_id).execute()
 
+        if hasattr(check_ownership_result, 'error') and check_ownership_result.error:
+            current_app.logger.error(f"Supabase ownership check error (delete): {check_ownership_result.error}", exc_info=True)
+            return jsonify({"error": "Database error during ownership check"}), 500
+            
+        if not check_ownership_result.data:
+            return jsonify({"error": "File not found or access denied"}), 404
+
+        # If ownership confirmed, proceed with deletion
         result = supabase.table(PROJECTS_TABLE).delete().eq('id', id).execute()
+        
+        if hasattr(result, 'error') and result.error:
+            current_app.logger.error(f"Supabase deletion error: {result.error}", exc_info=True)
+            return jsonify({"error": "File deletion failed"}), 500
+
+        # Supabase delete returns data if successful, empty list if no rows matched
         if result.data:
-            return jsonify({"success":"File deletion successful!"})
+            return jsonify({"success": True, "message":"File deletion successful!"}), 200
         else:
-             return jsonify({"error":"Could not find file"})
+            return jsonify({"success": False, "message":"File not found or already deleted"}), 404 # Should be caught by ownership check, but as a fallback
     except Exception as e:
-            return jsonify({"Error":"Could not fetch single newsletter"})
+        current_app.logger.error(f"Error in delete route: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error during deletion"}), 500
                 
 
 # =============================================================================
@@ -515,118 +527,124 @@ def delete(id):
 # =============================================================================
 
 @main_bp.route("/api/<string:id>/duplicate", methods=["POST"])
+@require_active_session
 async def duplicate(id):
+    """
+    Duplicates an existing newsletter project for the logged-in user.
+    Requires an active user session and validates user ownership.
+    """
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        user_id = request.current_user_id # Get user ID from decorator
         
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
-
-        if not user_id:
-            return jsonify({"error": "Invalid user ID"}), 401
-        
+        # Fetch the original project data
         result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','json_path','image_path').eq('id', id).eq('user_id',user_id).execute()
+        if hasattr(result, 'error') and result.error:
+            current_app.logger.error(f"Supabase query error (duplicate): {result.error}", exc_info=True)
+            return jsonify({"error": "Database query failed"}), 500
+
         if result.data:
             row = result.data[0]
         else:
-            return jsonify({"error":"Could not find file"})
+            return jsonify({"error":"Original project not found or access denied"}), 404
         
-
-        row["project_id"] = str(uuid.uuid4())
+        # Generate a new unique project_id for the duplicate
+        new_project_id = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat()
 
-        newProjectName = get_unique_project_name(row["project_name"],user_id)
+        # Helper function (assuming it's defined elsewhere or will be defined)
+        # Placeholder for get_unique_project_name, if it's not defined in the code you provided
+        # You'll need to ensure this function exists and works correctly.
+        # Example (define if it doesn't exist):
+        # def get_unique_project_name(base_name, user_id_param, current_project_id=None):
+        #     # Simple example: adds " (copy)" and a number if needed
+        #     # In a real app, you might query Supabase to ensure uniqueness for the user
+        #     unique_name = f"{base_name} (copy)"
+        #     # Add logic here to ensure true uniqueness for the user if necessary
+        #     return unique_name
+        
+        new_project_name = get_unique_project_name(row["project_name"], user_id, current_project_id=None)
+        
         insert_data = {
-            "user_id":user_id,
-            "project_name": newProjectName,
-            "project_id": row["project_id"],
-            "json_path": row["json_path"],
-            "image_path": row["image_path"], 
-            "status": "DRAFT",
-            "version": 1,
+            "user_id": user_id,
+            "project_name": new_project_name,
+            "project_id": new_project_id, # Use new project_id
+            "json_path": row["json_path"], # Reuse same JSON/image paths (assuming content is static or duplicated on storage if needed)
+            "image_path": row["image_path"],
+            "status": "DRAFT", # New duplicate starts as DRAFT
+            "version": 1, # New duplicate starts at version 1
             "created_at": timestamp,
             "updated_at": timestamp
         }
-        print("BEFORE INSERT")
-        insert_response = supabase.table("projects").insert(insert_data).execute()
-        print(insert_response)
-        # Return success response
+        
+        insert_response = supabase.table(PROJECTS_TABLE).insert(insert_data).execute()
+        
+        if hasattr(insert_response, 'error') and insert_response.error:
+            current_app.logger.error(f"Database insert for duplicate failed: {insert_response.error}", exc_info=True)
+            return jsonify({"error": f"Failed to create duplicate project: {insert_response.error.get('message', 'Unknown database error')}"}), 500
+
         response_data = {
             "success": True,
-            "message": "Project saved successfully",
-            "name":newProjectName
+            "message": "Project duplicated successfully",
+            "name": new_project_name,
+            "new_project_id": new_project_id # Return new ID for frontend use
         }
         
         return jsonify(response_data), 201
 
     except Exception as e:
+        current_app.logger.error(f"Internal server error in duplicate route: {e}", exc_info=True)
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
-
 @main_bp.route("/api/preview/<string:id>")
+@require_active_session
 def preview(id):
+    """
+    Fetches a specific newsletter by its primary key 'id' for preview.
+    Requires an active user session and validates user ownership.
+    """
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
-        
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
+        user_id = request.current_user_id # Get user ID from decorator
 
-        if not user_id:
-            return jsonify({"error": "Invalid user ID"}), 401
-
-        # print(f"Fetching newsletters for user: {user_id}")  # Debug log
-        
         result = supabase.table(PROJECTS_TABLE).select('project_id','project_name','status','version','json_path').eq('id', id).eq('user_id',user_id).execute()
+        if hasattr(result, 'error') and result.error:
+            current_app.logger.error(f"Supabase query error (preview): {result.error}", exc_info=True)
+            return jsonify({"error": "Database query failed"}), 500
+
         if result.data:
             row = result.data[0]
             json_path = row.get("json_path")
+            
+            # Fetch JSON content from the public URL
             response = requests.get(json_path)
             if response.status_code != 200:
+                current_app.logger.error(f"Failed to fetch JSON from Supabase storage for ID {id}: Status {response.status_code}", exc_info=True)
                 return jsonify({"error": "Failed to fetch JSON from Supabase storage"}), 500
-
-            row["json_path"] = response.json()
-            return jsonify(row)
+            
+            try:
+                row["json_path"] = response.json() # Replace path with actual JSON content
+            except json.JSONDecodeError:
+                current_app.logger.error(f"Failed to decode JSON from {json_path}", exc_info=True)
+                return jsonify({"error": "Failed to decode project data"}), 500
+            
+            return jsonify(row), 200
         else:
-             return jsonify({"error":"Could not find file"})
+             return jsonify({"error":"Could not find file or access denied"}), 404
     except Exception as e:
-            return jsonify({"Error":"Could not fetch single newsletter"})
+        current_app.logger.error(f"Error in preview route: {e}", exc_info=True)
+        return jsonify({"error":"Internal server error when fetching newsletter for preview"}), 500
 
 
 @main_bp.route("/api/newsletters/<string:project_id>/versions", methods=["GET"])
+@require_active_session
 def get_newsletter_versions(project_id):
     """
     Fetches all versions of a specific newsletter identified by its project_id.
-    Versions are ordered from newest to oldest.
-
-    Args:
-        project_id (str): The common project_id UUID for all versions of a newsletter.
-
-    Returns:
-        JSON response with success status, message, and a list of newsletter versions.
-        Returns 401 if authentication fails.
-        Returns 500 for internal server errors or database query failures.
+    Versions are ordered from newest to oldest. Requires an active user session.
     """
     try:
-        # 1. Authentication and User ID extraction
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"error": "Missing or invalid authorization token"}), 401
+        user_id = request.current_user_id # Get user ID from decorator
         
-        auth_token = auth_header.split(' ')[1]
-        user_id = get_user_id_from_supabase_token(auth_token)
-
-        if not user_id:
-            return jsonify({"error": "Invalid user ID or expired token"}), 401
-        
-        # 2. Query Supabase for all versions of the given project_id for the current user
-        # We assume 'project_id' in your table refers to the common identifier across versions,
-        # and 'id' is the unique primary key for each specific version row.
-        # 'version' is an integer column for ordering.
         result = supabase.table(PROJECTS_TABLE) \
             .select('id, project_id, project_name, status, version, created_at, updated_at, image_path, json_path') \
             .eq('project_id', project_id) \
@@ -634,13 +652,10 @@ def get_newsletter_versions(project_id):
             .order('version', desc=True) \
             .execute()
         
-        # 3. Handle Supabase query errors
-        # The Supabase client's .execute() can return a response object with an 'error' attribute
         if hasattr(result, 'error') and result.error:
-            print(f"Supabase query error for project_id {project_id}: {result.error}")
+            current_app.logger.error(f"Supabase query error for project_id {project_id}: {result.error}", exc_info=True)
             return jsonify({"error": f"Failed to fetch versions from database: {result.error.get('message', 'Unknown Supabase error')}"}), 500
 
-        # Extract data from the result. It will be an empty list if no rows match.
         versions_data = result.data if result.data else []
 
         if not versions_data:
@@ -649,161 +664,8 @@ def get_newsletter_versions(project_id):
         return jsonify({"success": True, "message": "Newsletter versions fetched successfully.", "versions": versions_data}), 200
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"Internal server error while fetching newsletter versions for project_id {project_id}: {e}")
+        current_app.logger.error(f"Internal server error while fetching newsletter versions for project_id {project_id}: {e}", exc_info=True)
         return jsonify({"error": f"Internal server error: {str(e)}. Check server logs for details."}), 500
-
-
-# =============================================================================
-# LOGIN SECTION
-# =============================================================================
-def validate_email(email):
-    """Validate email format"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-def validate_password(password):
-    """Validate password strength"""
-    if len(password) < 6:
-        return False, "Password must be at least 6 characters long"
-    return True, "Password is valid"
-
-def generate_token(user_id, email):
-    """Generate JWT token"""
-    payload = {
-        'user_id': user_id,
-        'email': email,
-        'exp': datetime.utcnow() + timedelta(days=7),  # Token expires in 7 days
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-
-def verify_token(token):
-    """Verify JWT token"""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-def token_required(f):
-    """Decorator to require valid token"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        auth_header = request.headers.get('Authorization')
-        
-        if auth_header:
-            try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
-            except IndexError:
-                return jsonify({'message': 'Invalid token format'}), 401
-        
-        if not token:
-            return jsonify({'message': 'Token is missing'}), 401
-        
-        payload = verify_token(token)
-        if payload is None:
-            return jsonify({'message': 'Token is invalid or expired'}), 401
-        
-        request.current_user = payload
-        return f(*args, **kwargs)
-    
-    return decorated
-
-
-@main_bp.route('/api/auth/register', methods=['POST'])
-def register():
-    """Register a new user using Supabase Auth (let DB trigger create public.users row)"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not email or not password:
-            return jsonify({'message': 'Email and password are required'}), 400
-        
-        # Call Supabase Auth to sign up
-        auth_response = supabase.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-
-
-        if auth_response.user is None:
-            print("Signup error response:", auth_response)
-            return jsonify({'message': 'User creation failed'}), 500
-
-        # Get the created user
-        user = auth_response.user
-        if not user:
-            return jsonify({'message': 'User creation failed'}), 500
-
-        # Let the Supabase trigger handle inserting into public.users
-        return jsonify({
-            'message': 'Account created! Check your email to verify.',
-            'requiresVerification': True,
-            'user': {
-                'id': user.id,
-                'email': user.email
-            }
-        }), 201
-
-    except Exception as e:
-        # print(f"Registration error: {str(e)}")
-        return jsonify({'message': 'Internal server error'}), 500
-
-@main_bp.route('/api/auth/login', methods=['POST'])
-def login():
-    try:    
-        data = request.get_json()
-
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-
-        if not email or not password:
-            return jsonify({'message': 'Email and password are required'}), 400
-
-        # Authenticate via Supabase Auth
-        auth_response = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-
-        if getattr(auth_response, 'error', None):
-            return jsonify({'message': auth_response.error.message}), 401
-
-        session = auth_response.session
-        user = auth_response.user
-
-        return jsonify({
-            'message': 'Login successful',
-            'token': session.access_token,
-            'user': {
-                'id': user.id,
-                'email': user.email
-            }
-        }), 200
-
-    except Exception as e:
-        # print(f"Login error: {str(e)}")
-        return jsonify({'message': 'Internal server error'}), 500
-
-
-@main_bp.route('/api/auth/logout', methods=['POST'])
-def logout():
-    return jsonify({'message': 'Logged out successfully'}), 200
-
 
 
 
@@ -815,10 +677,7 @@ def logout():
 @main_bp.route("/<path:path>")
 def serve_react_app(path):
     """
-    How it works:
-    - If path has extension (.css, .js, .png, etc.) → serve static file
-    - If path is just a route (/editor, /login, etc.) → serve index.html
-    - React Router will then handle the routing on the client side
+    Serves static files for the React app or index.html for client-side routing.
     """
     # Check if it's a static file (has file extension)
     if path and "." in path:
@@ -829,8 +688,6 @@ def serve_react_app(path):
     # For all other routes (including /editor, /login, etc.), 
     # serve index.html and let React Router handle it
     return send_from_directory(BUILD_DIR, "index.html")
-
-
 
 
 # =============================================================================
@@ -856,7 +713,13 @@ def get_unique_project_name(desired_project_name: str, user_id: str, current_pro
         base_name = desired_project_name
 
     # Step 2: Query for existing projects by this user that might conflict
-    existing_projects_query = supabase.table(PROJECTS_TABLE).select('project_name', 'project_id').ilike('project_name', f"{base_name}%") .eq('user_id', user_id) .execute()
+    # Using 'ilike' for case-insensitive matching if your DB supports it,
+    # otherwise use 'like' or adjust as needed.
+    existing_projects_query = supabase.table(PROJECTS_TABLE)\
+        .select('project_name', 'project_id')\
+        .ilike('project_name', f"{base_name}%")\
+        .eq('user_id', user_id)\
+        .execute()
     
     existing_names_by_user = []
     if existing_projects_query.data:
@@ -878,22 +741,34 @@ def get_unique_project_name(desired_project_name: str, user_id: str, current_pro
     if is_conflict_found:
         highest_num = 0
         duplicate_pattern_with_num = re.compile(r" \(Duplicate (\d+)\)$")
-        duplicate_pattern_no_num = re.compile(r" \(Duplicate\)$")
+        # Ensure the pattern for " (Duplicate)" without a number is also handled
+        duplicate_pattern_no_num = re.compile(r" \(Duplicate\)$") 
 
+        # Iterate through existing names to find the highest duplicate number
         for name in existing_names_by_user:
-            match_num = duplicate_pattern_with_num.search(name)
-            if match_num:
-                num = int(match_num.group(1))
-                if num > highest_num:
-                    highest_num = num
-            elif duplicate_pattern_no_num.search(name) and highest_num == 0:
-                highest_num = 0 # Ensures it starts from 0 for the first numbered duplicate
+            match_with_num = duplicate_pattern_with_num.search(name)
+            match_no_num = duplicate_pattern_no_num.search(name)
+
+            if match_with_num:
+                try:
+                    num = int(match_with_num.group(1))
+                    if num > highest_num:
+                        highest_num = num
+                except ValueError:
+                    continue # Skip if number part is not an int
+            elif match_no_num:
+                # If " (Duplicate)" exists without a number, treat it as highest_num = 1
+                # unless a higher numbered duplicate is found.
+                if highest_num == 0:
+                    highest_num = 1
         
-        if highest_num == 0 and any(duplicate_pattern_no_num.search(name) for name in existing_names_by_user):
-            suggested_name = f"{base_name} (Duplicate 1)"
-        elif highest_num > 0:
-            suggested_name = f"{base_name} (Duplicate {highest_num + 1})"
-        else:
-            suggested_name = f"{base_name} (Duplicate)"
-            
+        # Suggest the next available duplicate number
+        new_duplicate_num = highest_num + 1
+        suggested_name = f"{base_name} (Duplicate {new_duplicate_num})"
+        
+        # Recursively check if the newly suggested name also conflicts
+        # This handles cases where "My Project (Duplicate 1)" and "My Project (Duplicate 2)" exist,
+        # and we need to suggest "My Project (Duplicate 3)".
+        return get_unique_project_name(suggested_name, user_id, current_project_id)
+    
     return suggested_name

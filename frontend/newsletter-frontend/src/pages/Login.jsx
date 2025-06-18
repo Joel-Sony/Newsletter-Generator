@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../supabaseClient.js';
 
 const Login = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); // Keep this for clarity, but navigation logic primarily relies on auth state listener
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
@@ -12,60 +13,64 @@ const Login = () => {
     confirmPassword: ''
   });
   const [showPasswordReqs, setShowPasswordReqs] = useState(false);
-  const navigate=useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      const navigationTimeout = setTimeout(() => {
-        navigate("/home");
-      }, 50); // Small delay, or remove for immediate nav
-      
-      return () => clearTimeout(navigationTimeout); // Cleanup on unmount
-    }
-  }, [user, navigate]); 
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // useEffect(() => {
-  //   // Check if user is already authenticated on component mount
-  //   checkAuthStatus();
-  // }, []);
-
-  // const checkAuthStatus = async () => {
-  //   try {
-  //     const token = localStorage.getItem('authToken');
-  //     if (!token) return;
-
-  //     const response = await fetch('/api/auth/verify', {
-  //       method: 'GET',
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-
-  //     if (response.ok) {
-  //       const userData = await response.json();
-  //       setUser(userData.user);
-  //     } else {
-  //       // Token is invalid, remove it
-  //       localStorage.removeItem('authToken');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error checking auth status:', error);
-  //     localStorage.removeItem('authToken');
-  //   }
-  // };
-
-  const showMessage = (text, type) => {
+  // --- Message Handling (moved up for use in useCallback) ---
+  const showMessage = useCallback((text, type) => {
     setMessage({ text, type });
-    
-    // Auto-hide success and info messages
+    // Auto-hide success/info messages after 5 seconds
     if (type === 'success' || type === 'info') {
       setTimeout(() => {
         setMessage(null);
       }, 5000);
     }
-  };
+  }, []); // No dependencies for this simple function
 
+  // --- Supabase Session Management and Navigation ---
+  useEffect(() => {
+    let navigationTimeoutId; // Store timeout ID for cleanup
+
+    const handleAuthState = async (session) => {
+      const currentUser = session ? session.user : null;
+      setUser(currentUser); // Update local user state
+
+      // If a user is authenticated AND the current path is '/login',
+      // then navigate to '/home'.
+      if (currentUser && location.pathname === '/login') {
+        // Only navigate if we are currently on the login page
+        // Delay navigation to allow success message to show
+        navigationTimeoutId = setTimeout(() => {
+          navigate("/home", { replace: true }); // Use replace to prevent back button to login
+        }, 1500); // Increased delay to 1.5 seconds for better visibility of message
+      }
+    };
+
+    // 1. Initial check when the component mounts
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthState(session);
+    });
+
+
+    // 2. Listen for authentication state changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        handleAuthState(session); // Re-use the handler
+    });
+
+    // Cleanup function for useEffect
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (navigationTimeoutId) {
+        clearTimeout(navigationTimeoutId); // Clear any pending navigation
+      }
+    };
+  }, [navigate, location.pathname, showMessage]); // Dependencies: Add showMessage if used within handleAuthState for consistency
+
+
+  // --- Form Handling ---
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -76,8 +81,8 @@ const Login = () => {
 
   const switchMode = (mode) => {
     setIsLoginMode(mode === 'login');
-    setMessage(null);
-    setFormData({
+    setMessage(null); // Clear messages when switching modes
+    setFormData({ // Clear form data when switching modes
       email: '',
       password: '',
       confirmPassword: ''
@@ -86,7 +91,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const { email, password, confirmPassword } = formData;
 
     if (!email || !password) {
@@ -94,13 +99,11 @@ const Login = () => {
       return;
     }
 
-    // Validate passwords match in signup mode
     if (!isLoginMode && password !== confirmPassword) {
       showMessage('Passwords do not match', 'error');
       return;
     }
 
-    // Validate password strength
     if (!isLoginMode && password.length < 6) {
       showMessage('Password must be at least 6 characters long', 'error');
       return;
@@ -115,8 +118,8 @@ const Login = () => {
         await handleSignup(email, password);
       }
     } catch (error) {
-      console.error('Auth error:', error);
-      showMessage('Something went wrong. Please try again.', 'error');
+      console.error('Auth handler error:', error);
+      showMessage('An unexpected error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -124,119 +127,86 @@ const Login = () => {
 
   const handleLogin = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password
-        })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        showMessage(data.message || 'Invalid email or password', 'error');
+      if (error) {
+        showMessage(error.message || 'Login failed. Please check your credentials.', 'error');
         return;
       }
 
-      // Store the token
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
+      if (data.user && data.session) {
+        showMessage('Login successful! Welcome back!', 'success');
+        // Do NOT navigate here. The useEffect listener will handle it after the state updates.
+      } else {
+        showMessage('Login failed. Please check your credentials or verify your email.', 'error');
       }
-
-      showMessage('Login successful! Welcome back!', 'success');
-      
-      setTimeout(() => {
-        setUser(data.user);
-      }, 1000);
-      
     } catch (error) {
-      console.error('Login error:', error);
-      showMessage('Network error. Please try again.', 'error');
+      console.error('Network or unexpected login error:', error);
+      showMessage('Network error or unexpected login issue. Please try again.', 'error');
     }
   };
 
-const handleSignup = async (email, password) => {
-  try {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+  const handleSignup = async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email: email,
-        password: password
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      showMessage(data.message || 'Registration failed', 'error');
-      return;
-    }
-
-    if (data.requiresVerification) {
-      showMessage('Account created! Please check your email for verification.', 'info');
-      setTimeout(() => {
-        switchMode('login');
-        setFormData(prev => ({ ...prev, email: email }));
-      }, 3000);
-    } else {
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-      }
-      showMessage('Account created successfully! Welcome!', 'success');
-      setTimeout(() => {
-        setUser(data.user);
-      }, 1000);
-    }
-
-  } catch (error) {
-    console.error('Signup error:', error);
-    showMessage('Network error. Please try again.', 'error');
-  }
-};
-
-
-const handleLogout = async () => {
-  const token = localStorage.getItem('authToken');
-  try {
-    // Call logout API only if token exists
-    if (token) {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+        password: password,
+        options: {
+          emailRedirectTo: 'http://127.0.0.1:5000/login',
         }
       });
 
-      // If token is invalid/expired, treat it as already logged out
-      if (!response.ok && response.status !== 401) {
-        console.warn('Logout failed:', await response.text());
+      if (error) {
+        showMessage(error.message || 'Registration failed.', 'error');
+        return;
       }
+
+      if (data.user && !data.session) {
+        showMessage('Account created! Please check your email for a verification link.', 'info');
+        // Do not switch mode or pre-fill email immediately if relying on auth state change
+        // You might still want to switch mode to 'login' after a delay for UX
+        setTimeout(() => {
+          switchMode('login');
+          setFormData(prev => ({ ...prev, email: email }));
+        }, 3000);
+      } else if (data.user && data.session) {
+        showMessage('Account created successfully! Welcome!', 'success');
+        // Do NOT navigate here. useEffect will handle.
+      }
+    } catch (error) {
+      console.error('Network or unexpected signup error:', error);
+      showMessage('Network error or unexpected signup issue. Please try again.', 'error');
     }
-  } catch (error) {
-    console.error('Logout error:', error);
-  } finally {
-    // Always clear client state and token
-    localStorage.removeItem('authToken');
-    setUser(null);
-    setFormData({
-      email: '',
-      password: '',
-      confirmPassword: ''
-    });
-    setMessage(null);
-    switchMode('login');
-  }
-};
+  };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
 
+      if (error) {
+        console.error('Logout error:', error.message);
+        showMessage(error.message, 'error');
+      } else {
+        showMessage('Successfully logged out!', 'info');
+      }
+    } catch (error) {
+      console.error('Network error during logout:', error);
+      showMessage('Network error during logout. Please try again.', 'error');
+    } finally {
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setMessage(null);
+      switchMode('login');
+    }
+  };
+
+  // --- Inline Styles (Moved to a separate object for clarity) ---
   const styles = {
     container: {
       minHeight: '100vh',
@@ -337,9 +307,12 @@ const handleLogout = async () => {
       color: '#737373',
       marginTop: '8px',
       paddingLeft: '4px',
-      opacity: showPasswordReqs ? 1 : 0,
+      opacity: 0, // Default to hidden
       transition: 'opacity 0.3s ease',
       fontFamily: 'Inter, system-ui, sans-serif'
+    },
+    passwordReqsVisible: { // New style for visible password requirements
+        opacity: 1
     },
     createButton: {
       background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
@@ -471,7 +444,7 @@ const handleLogout = async () => {
         <p style={styles.subtitle}>
           {isLoginMode ? 'Sign in to your account' : 'Join us today and get started'}
         </p>
-        
+
         <div style={styles.tabsContainer}>
           <button
             style={{
@@ -492,7 +465,7 @@ const handleLogout = async () => {
             Sign Up
           </button>
         </div>
-        
+
         {message && (
           <div style={{
             ...styles.message,
@@ -503,7 +476,7 @@ const handleLogout = async () => {
             {message.text}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
             <input
@@ -516,7 +489,7 @@ const handleLogout = async () => {
               required
             />
           </div>
-          
+
           <div style={styles.formGroup}>
             <input
               type="password"
@@ -531,12 +504,12 @@ const handleLogout = async () => {
               minLength="6"
             />
             {!isLoginMode && (
-              <div style={styles.passwordReqs}>
+              <div style={{ ...styles.passwordReqs, ...(showPasswordReqs ? styles.passwordReqsVisible : {}) }}>
                 Password must be at least 6 characters long
               </div>
             )}
           </div>
-          
+
           {!isLoginMode && (
             <div style={styles.formGroup}>
               <input
@@ -551,7 +524,7 @@ const handleLogout = async () => {
               />
             </div>
           )}
-          
+
           <button
             type="submit"
             style={{
@@ -561,39 +534,39 @@ const handleLogout = async () => {
             disabled={isLoading}
           >
             {isLoading && <span style={styles.spinner}></span>}
-            {isLoading 
+            {isLoading
               ? (isLoginMode ? 'Signing In...' : 'Creating Account...')
               : (isLoginMode ? 'Sign In' : 'Create Account')
             }
           </button>
         </form>
       </div>
-      
-      <style jsx = "true">{`
+
+      <style jsx="true">{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
-        
+
         input::placeholder {
           color: #737373;
         }
-        
+
         input:focus {
           background: #262626 !important;
           border-color: #666666 !important;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
         }
-        
+
         button:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4) !important;
         }
-        
+
         button:active:not(:disabled) {
           transform: translateY(-1px);
         }
-        
+
         .card:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
@@ -603,4 +576,4 @@ const handleLogout = async () => {
   );
 };
 
-export default Login;
+export default Login; 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react'; // Added useCallback
 import { Upload, Send, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient.js'; // <<< IMPORTANT: Import your Supabase client
 
 const NewsletterGenerator = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +13,54 @@ const NewsletterGenerator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  // --- Reusable Toast Function (Consider moving this to a central utility) ---
+  const showToast = useCallback((message, type) => { // 'success', 'error', 'info'
+    // This is a basic implementation of a toast. For a robust solution,
+    // consider creating a dedicated React Toast component.
+    setSuccessMessage(''); // Clear previous success message
+    setError('');         // Clear previous error message
+
+    if (type === 'success' || type === 'info') {
+      setSuccessMessage(message);
+    } else if (type === 'error') {
+      setError(message);
+    }
+
+    setTimeout(() => {
+      setSuccessMessage('');
+      setError('');
+    }, 5000); // Messages disappear after 5 seconds
+  }, []);
+
+
+  // --- Auth Token Retrieval Logic (Reused from other components) ---
+  const getAuthToken = useCallback(async () => {
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("Supabase getSession error:", sessionError);
+        showToast('Authentication error. Please log in again.', 'error');
+        navigate('/login', { replace: true });
+        return null;
+      }
+      if (session) {
+        return session.access_token;
+      }
+      // No session means not logged in
+      console.warn("No active Supabase session found. Redirecting to login.");
+      showToast('Authentication required. Please log in.', 'info');
+      navigate('/login', { replace: true });
+      return null;
+    } catch (err) {
+      console.error('Unexpected error in getAuthToken:', err);
+      showToast('An unexpected authentication error occurred. Please try again.', 'error');
+      navigate('/login', { replace: true });
+      return null;
+    }
+  }, [navigate, showToast]); // Dependencies for useCallback
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -31,15 +79,23 @@ const NewsletterGenerator = () => {
     setError('');
     setSuccessMessage('');
 
+    // --- AUTH FIX: Get token using Supabase SDK ---
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      // getAuthToken already handles navigation/toast
+      setIsLoading(false); // Stop loading if no token
+      return;
+    }
+
     try {
       // Create FormData for multipart/form-data
       const data = new FormData();
-      
+
       // Add form fields
       data.append('topic', formData.topic);
       data.append('tone', formData.tone || 'Professional');
       data.append('user_prompt', formData.user_prompt);
-      
+
       // Add PDF file if selected
       if (selectedFile) {
         data.append('pdf_file', selectedFile);
@@ -48,13 +104,26 @@ const NewsletterGenerator = () => {
       // Make API call to Flask backend
       const response = await fetch('/api/generate', {
         method: 'POST',
+        // --- AUTH FIX: Add Authorization header ---
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        },
         body: data,
       });
+
+      // --- AUTH FIX: Handle 401/403 responses ---
+      if (response.status === 401 || response.status === 403) {
+          console.error("Backend authentication failed during generation:", response.status, response.statusText);
+          showToast('Session expired or unauthorized. Please log in again.', 'error');
+          await supabase.auth.signOut(); // Ensure client-side session is cleared
+          navigate('/login');
+          return;
+      }
 
       const result = await response.json();
 
       if (response.ok && result.success) {
-        setSuccessMessage(result.message);
+        showToast(result.message, 'success'); // Use showToast for success
         
         // Reset form after successful submission
         setFormData({ topic: '', tone: '', user_prompt: '' });
@@ -62,27 +131,28 @@ const NewsletterGenerator = () => {
         
         // Navigate to editor if redirect_to is provided
         if (result.redirect_to) {
-          // You can use React Router here if available
-          // For now, we'll use window.location
+          // --- REACT ROUTER FIX: Use navigate from react-router-dom ---
           setTimeout(() => {
-            window.location.href = result.redirect_to;
-          }, 1500);
+            navigate(result.redirect_to); // Use navigate instead of window.location.href
+          }, 1500); // Delay navigation to allow message to be seen
         }
         
       } else {
         // Handle API errors
-        setError(result.error || 'Failed to generate newsletter. Please try again.');
+        showToast(result.error || 'Failed to generate newsletter. Please try again.', 'error'); // Use showToast for error
       }
       
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError('Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error'); // Use showToast for network error
     } finally {
       setIsLoading(false);
     }
   };
 
   // Keyframes for animations
+  // NOTE: These keyframes should ideally be in a separate CSS file or handled by a CSS-in-JS library.
+  // Including them directly in a <style> tag like this will work but is not typical for React inline styles.
   const pulseKeyframes = `
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -109,8 +179,8 @@ const NewsletterGenerator = () => {
         overflow: 'hidden',
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }}>
-        <button 
-        onClick={() => navigate('/home')} 
+        <button
+        onClick={() => navigate('/home')}
         style={{
           position: 'absolute',
           top: '1.5rem',
@@ -141,7 +211,7 @@ const NewsletterGenerator = () => {
       >
         ← Home
       </button>
-        
+
         {/* Animated Background Elements */}
         <div style={{ position: 'absolute', inset: 0 }}>
           <div style={{
@@ -188,7 +258,7 @@ const NewsletterGenerator = () => {
           padding: '1.5rem'
         }}>
           <div style={{ width: '100%', maxWidth: '64rem' }}>
-            
+
             {/* Header Section */}
             <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <h1 style={{
@@ -233,7 +303,7 @@ const NewsletterGenerator = () => {
               padding: 'clamp(2rem, 5vw, 3rem)',
               boxShadow: '0 25px 50px -12px rgba(59, 130, 246, 0.1)'
             }}>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {/* Topic and Tone Row */}
                 <div style={{
@@ -281,7 +351,7 @@ const NewsletterGenerator = () => {
                       }}
                     />
                   </div>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <label style={{
                       display: 'block',
@@ -473,8 +543,8 @@ const NewsletterGenerator = () => {
                   style={{
                     width: '100%',
                     padding: '1rem 2rem',
-                    background: isLoading || !formData.topic || !formData.user_prompt 
-                      ? 'rgba(55, 65, 81, 0.5)' 
+                    background: isLoading || !formData.topic || !formData.user_prompt
+                      ? 'rgba(55, 65, 81, 0.5)'
                       : 'linear-gradient(45deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
                     color: 'white',
                     fontWeight: 'bold',
