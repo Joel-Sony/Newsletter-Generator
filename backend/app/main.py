@@ -479,7 +479,64 @@ def get_newsletter_using_id(id):
         current_app.logger.error(f"Error in get_newsletter_using_id: {e}", exc_info=True)
         return jsonify({"error":"Internal server error when fetching newsletter"}), 500
                 
+@main_bp.route("/api/restore/<uuid:newsletter_id>", methods=["POST"])
+@require_active_session # This remains crucial for authentication
+def restore_newsletter(newsletter_id):
+    """
+    Restores an archived newsletter to draft status.
+    Requires an active user session and ownership of the newsletter.
+    """
+    # Access user_id from the request context set by require_active_session
+    # Based on your upload_project and get_user_newsletters, it's `request.current_user_id`
+    current_user_id = request.current_user_id
+    current_app.logger.info(f"Restore request for newsletter ID: {newsletter_id} by user ID: {current_user_id}")
 
+    try:
+        # Use the Supabase client to perform the update
+        # We need to filter by id, user_id, AND current status to ensure secure and correct operation.
+        update_response = supabase.table(PROJECTS_TABLE) \
+            .update({"status": "DRAFT", "updated_at": datetime.utcnow().isoformat()}) \
+            .eq("id", str(newsletter_id)) \
+            .eq("user_id", str(current_user_id)) \
+            .eq("status", "ARCHIVED") \
+            .execute()
+
+        # Check for errors from the Supabase client
+        if hasattr(update_response, 'error') and update_response.error:
+            current_app.logger.error(f"Supabase update error during restore: {update_response.error}", exc_info=True)
+            return jsonify({
+                "success": False,
+                "error": f"Database error during restore operation: {update_response.error.get('message', 'Unknown Supabase error')}"
+            }), 500
+
+        # The Supabase client's `execute()` method returns a response object.
+        # The updated data is in `update_response.data`.
+        # If `data` is an empty list, it means no rows were updated.
+        if update_response.data:
+            restored_data = update_response.data[0] # Get the first (and only) updated row
+            current_app.logger.info(f"Newsletter '{restored_data.get('project_name')}' (ID: {restored_data.get('id')}) restored by user {current_user_id}.")
+            return jsonify({
+                "success": True,
+                "message": f"Newsletter '{restored_data.get('project_name', 'Unnamed Newsletter')}' restored successfully.",
+                "name": restored_data.get('project_name'),
+                "id": str(restored_data.get('id'))
+            }), 200
+        else:
+            # This means no row matched the WHERE clauses (id, user_id, and status=ARCHIVED)
+            current_app.logger.warning(f"Restore failed for newsletter ID: {newsletter_id} (user: {current_user_id}). Not found, unauthorized, or not archived.")
+            return jsonify({
+                "success": False,
+                "error": "Failed to restore: Newsletter not found, unauthorized, or not in archived status."
+            }), 404
+
+    except Exception as e:
+        current_app.logger.error(f"An unexpected error occurred during restore for user {current_user_id}: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": "An internal server error occurred during newsletter restore."
+        }), 500
+
+            
 # =============================================================================
 # DELETION SECTION
 # =============================================================================

@@ -2,6 +2,78 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Make sure this import is correct
 
+// Assuming you have this Toast component. If not, paste the basic Toast component
+// from the previous response here or create a separate file for it (e.g., components/Toast.jsx)
+// import Toast from './Toast'; // Adjust path if needed
+
+// --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
+import { XCircle, CheckCircle, Info } from 'lucide-react'; // Assuming you have lucide-react for icons
+
+const Toast = ({ message, type, onClose }) => {
+  if (!message) return null;
+
+  let bgColor = '';
+  let icon = null;
+  let textColor = 'white';
+
+  switch (type) {
+    case 'success':
+      bgColor = 'rgba(5, 150, 105, 0.9)'; // Green
+      icon = <CheckCircle size={20} />;
+      break;
+    case 'error':
+      bgColor = 'rgba(153, 27, 27, 0.9)'; // Red
+      icon = <XCircle size={20} />;
+      break;
+    case 'info':
+      bgColor = 'rgba(59, 130, 246, 0.9)'; // Blue
+      icon = <Info size={20} />;
+      break;
+    default:
+      bgColor = 'rgba(55, 65, 81, 0.9)'; // Gray/Default
+      icon = <Info size={20} />;
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      backgroundColor: bgColor,
+      color: textColor,
+      padding: '12px 25px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+      transition: 'opacity 0.3s ease-in-out',
+      opacity: message ? 1 : 0,
+      pointerEvents: message ? 'auto' : 'none'
+    }}>
+      {icon}
+      <span>{message}</span>
+      <button
+        onClick={onClose}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: textColor,
+          cursor: 'pointer',
+          fontSize: '1.2em',
+          marginLeft: '10px'
+        }}
+      >
+        &times;
+      </button>
+    </div>
+  );
+};
+// --- END Basic Toast Component ---
+
+
 const NewsletterDashboard = () => {
   const [activeSection, setActiveSection] = useState('drafts');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -28,9 +100,21 @@ const NewsletterDashboard = () => {
   // State for toast notification
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success'); // 'success' or 'error' for styling
+  const [toastType, setToastType] = useState('success'); // 'success', 'error', 'info' for styling
 
   const navigate = useNavigate();
+
+  // Reusable toast display function (added for consistency)
+  const displayToast = useCallback((message, type) => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+      setToastMessage('');
+      setToastType('success'); // Reset to default
+    }, 3500); // Toast disappears after 3.5 seconds
+  }, []);
 
   // Memoized fetchNewsletters using useCallback
   const fetchNewsletters = useCallback(async () => {
@@ -43,6 +127,7 @@ const NewsletterDashboard = () => {
 
       if (sessionError) {
         console.error("Error getting session:", sessionError);
+        displayToast('Authentication error. Please log in again.', 'error'); // Use displayToast
         navigate('/login'); // Redirect on session error
         throw new Error(`Failed to get session: ${sessionError.message}`);
       }
@@ -51,6 +136,7 @@ const NewsletterDashboard = () => {
         // If no session or no access token after attempting to get it,
         // it means the user is genuinely not logged in or the session is truly invalid.
         console.warn("No active session or access token found. Redirecting to login.");
+        displayToast('Authentication required. Please log in.', 'info'); // Use displayToast
         navigate('/login');
         throw new Error('Authentication required. Session expired or not found.');
       }
@@ -114,13 +200,11 @@ const NewsletterDashboard = () => {
     } catch (err) {
       console.error('Error fetching newsletters:', err);
       setError(err.message);
-      setToastMessage(`Error loading newsletters: ${err.message}`);
-      setToastType('error');
-      setShowToast(true);
+      displayToast(`Error loading newsletters: ${err.message}`, 'error'); // Use displayToast
     } finally {
       setLoading(false);
     }
-  }, [navigate]); // navigate is a dependency because it's used inside useCallback
+  }, [navigate, displayToast]); // navigate and displayToast are dependencies
 
   // Trigger fetchNewsletters on component mount
   useEffect(() => {
@@ -142,18 +226,14 @@ const NewsletterDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Effect to hide toast after a few seconds
+  // Effect to hide toast after a few seconds (simplified, now handled by displayToast)
+  // This useEffect is no longer strictly necessary if displayToast manages auto-hide
   useEffect(() => {
-    let timer;
-    if (showToast) {
-      timer = setTimeout(() => {
-        setShowToast(false);
-        setToastMessage('');
-        setToastType('success'); // Reset to default
-      }, 3000); // Toast disappears after 3 seconds
-    }
-    return () => clearTimeout(timer); // Clean up the timer
-  }, [showToast]);
+    // This useEffect can be removed if displayToast handles auto-hide
+    // If you want a separate mechanism for clearing toasts, keep it.
+    // For now, displayToast handles it for simplicity.
+  }, [showToast]); // Keep for now to be safe, but can be reconsidered
+
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
@@ -193,6 +273,7 @@ const NewsletterDashboard = () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("Error getting session for delete:", sessionError);
+        displayToast('Authentication error. Please log in again.', 'error');
         navigate('/login');
         throw new Error(`Failed to get session for delete: ${sessionError.message}`);
       }
@@ -212,6 +293,11 @@ const NewsletterDashboard = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401 || response.status === 403) {
+            await supabase.auth.signOut();
+            navigate('/login');
+            throw new Error('Session expired or unauthorized. Please log in again.');
+        }
         throw new Error(errorData.error || 'Failed to delete newsletter');
       }
 
@@ -232,20 +318,16 @@ const NewsletterDashboard = () => {
         return newNewsletters;
       });
 
-      setToastMessage(`File '${deletedNewsletterTitle}' deleted successfully.`);
-      setToastType('success');
-      setShowToast(true);
+      displayToast(`File '${deletedNewsletterTitle}' deleted successfully.`, 'success'); // Use displayToast
 
     } catch (err) {
       console.error('Error deleting newsletter:', err);
-      setToastMessage(`Error deleting newsletter: ${err.message}`);
-      setToastType('error');
-      setShowToast(true);
+      displayToast(`Error deleting newsletter: ${err.message}`, 'error'); // Use displayToast
     } finally {
       setShowDeleteModal(false);
       setNewsletterToDelete(null);
     }
-  }, [newsletterToDelete, navigate, getNewsletterTitleById]); // newsletterToDelete, navigate and getNewsletterTitleById are dependencies
+  }, [newsletterToDelete, navigate, getNewsletterTitleById, displayToast]); // newsletterToDelete, navigate, getNewsletterTitleById, displayToast are dependencies
 
   const handleDuplicate = useCallback(async (newsletterId) => {
     try {
@@ -253,6 +335,7 @@ const NewsletterDashboard = () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("Error getting session for duplicate:", sessionError);
+        displayToast('Authentication error. Please log in again.', 'error'); // Use displayToast
         navigate('/login');
         throw new Error(`Failed to get session for duplicate: ${sessionError.message}`);
       }
@@ -282,6 +365,11 @@ const NewsletterDashboard = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401 || response.status === 403) {
+            await supabase.auth.signOut();
+            navigate('/login');
+            throw new Error('Session expired or unauthorized. Please log in again.');
+        }
         throw new Error(errorData.message || 'Failed to duplicate newsletter.');
       }
 
@@ -290,20 +378,78 @@ const NewsletterDashboard = () => {
         throw new Error(data.error || 'Failed to duplicate newsletter.');
       }
 
-      setToastMessage(`Newsletter '${data.name}' duplicated successfully!`);
-      setToastType('success');
-      setShowToast(true);
+      displayToast(`Newsletter '${data.name}' duplicated successfully!`, 'success'); // Use displayToast
 
       // Re-fetch all newsletters to show the new duplicate
       await fetchNewsletters();
 
     } catch (err) {
       console.error('Error duplicating newsletter:', err);
-      setToastMessage(`Error duplicating newsletter: ${err.message}`);
-      setToastType('error');
-      setShowToast(true);
+      displayToast(`Error duplicating newsletter: ${err.message}`, 'error'); // Use displayToast
     }
-  }, [navigate, fetchNewsletters, getNewsletterTitleById]); // navigate, fetchNewsletters, getNewsletterTitleById are dependencies
+  }, [navigate, fetchNewsletters, getNewsletterTitleById, displayToast]); // navigate, fetchNewsletters, getNewsletterTitleById, displayToast are dependencies
+
+
+  // NEW: Function to handle restoring a newsletter
+  const handleRestore = useCallback(async (newsletterId) => {
+    try {
+      // --- AUTHENTICATION: Get session from Supabase ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("Error getting session for restore:", sessionError);
+        displayToast('Authentication error. Please log in again.', 'error');
+        navigate('/login');
+        throw new Error(`Failed to get session for restore: ${sessionError.message}`);
+      }
+      if (!session || !session.access_token) {
+        await supabase.auth.signOut();
+        navigate('/login');
+        throw new Error('Authentication required to restore. Please log in again.');
+      }
+      const authToken = session.access_token; // Use the fresh token
+
+      const newsletterTitle = getNewsletterTitleById(newsletterId); // Get title for toast message
+
+      // Optional: Add a confirmation prompt for restore if desired
+      // const confirmed = window.confirm(`Are you sure you want to restore "${newsletterTitle}"?`);
+      // if (!confirmed) {
+      //   return; // User cancelled
+      // }
+
+      console.log(`Attempting to restore newsletter with ID: ${newsletterId}`);
+      const response = await fetch(`/api/restore/${newsletterId}`, {
+        method: 'POST', // Use POST method for restore
+        headers: {
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${authToken}`
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401 || response.status === 403) {
+            await supabase.auth.signOut();
+            navigate('/login');
+            throw new Error('Session expired or unauthorized. Please log in again.');
+        }
+        throw new Error(errorData.error || 'Failed to restore newsletter.');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to restore newsletter.');
+      }
+
+      displayToast(`Newsletter '${newsletterTitle}' restored successfully.`, 'success');
+
+      // IMPORTANT: Re-fetch all newsletters to update the UI (e.g., move from archived to drafts)
+      await fetchNewsletters();
+
+    } catch (err) {
+      console.error('Error restoring newsletter:', err);
+      displayToast(`Error restoring newsletter: ${err.message}`, 'error');
+    }
+  }, [newsletterToDelete, navigate, fetchNewsletters, getNewsletterTitleById, displayToast]); // newsletterToDelete, navigate, fetchNewsletters, getNewsletterTitleById, displayToast are dependencies
 
 
   // Function to cancel the delete action
@@ -331,14 +477,7 @@ const NewsletterDashboard = () => {
         handleDuplicate(newsletterId); // Call the new handler for duplicate
         break;
       case 'Restore':
-        // Restore logic here, assuming you have an API endpoint for it
-        // For demonstration, let's assume it calls an API to change status to DRAFT
-        console.log(`Restore action clicked for newsletter ID: ${newsletterId}`);
-        // Example: await fetch(`/api/restore/${newsletterId}`, { method: 'POST', headers: { Authorization: `Bearer ${authToken}` } });
-        // After successful API call, you'd likely refetch newsletters or update state directly
-        setToastMessage(`Restore functionality for ID ${newsletterId} is not yet implemented.`);
-        setToastType('info'); // You might want an 'info' type for toast
-        setShowToast(true);
+        handleRestore(newsletterId); // Call the new handler for restore
         break;
       case 'Versions':
         navigate(`/versions/${projectId}`);
@@ -976,232 +1115,151 @@ const NewsletterDashboard = () => {
       gap: '16px',
       maxWidth: '1200px',
       margin: '0 auto',
-      flexWrap: 'wrap',
-      flexDirection: isMobile ? 'column' : 'row',
-      textAlign: isMobile ? 'center' : 'left'
-    },
-    footerLinks: {
-      display: 'flex',
-      gap: '32px',
-      flexWrap: 'wrap',
-      justifyContent: isMobile ? 'center' : 'flex-start',
-    },
-    footerLink: {
-      fontSize: '14px',
-      color: '#a3a3a3',
-      textDecoration: 'none',
-      transition: 'color 0.3s ease',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      ':hover': {
-        color: '#ffffff'
-      }
-    },
-    copyright: {
-      fontSize: '14px',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    // Modal Styles
-    modalOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.85)', // Slightly darker overlay
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      animation: 'fadeIn 0.3s ease-out forwards',
-    },
-    modalContent: {
-      backgroundColor: '#1f1f1f',
-      borderRadius: '16px',
-      padding: '32px',
-      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)',
-      textAlign: 'center',
-      maxWidth: '400px',
-      width: '90%',
-      border: '1px solid #404040',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px',
-      animation: 'scaleIn 0.3s ease-out forwards',
-    },
-    modalTitle: {
-      fontSize: '24px',
-      fontWeight: '700',
-      color: '#ffffff',
-      marginBottom: '8px',
-      fontFamily: 'Inter, system-ui, sans-serif',
-    },
-    modalText: {
-      color: '#d4d4d4',
-      fontSize: '16px',
-      lineHeight: '1.6',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      marginBottom: '20px'
-    },
-    modalActions: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '16px',
-      flexWrap: 'wrap', // Allow buttons to wrap on smaller modals
-    },
-    modalButton: {
-      padding: '12px 24px',
-      borderRadius: '10px',
-      fontSize: '16px',
-      fontWeight: '600',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      flex: '1 1 auto', // Allow buttons to grow/shrink
-      minWidth: '120px', // Minimum width for buttons
-    },
-    modalButtonConfirm: {
-      backgroundColor: '#ef4444',
-      color: 'white',
-      ':hover': {
-        backgroundColor: '#dc2626',
-      },
-    },
-    modalButtonCancel: {
-      backgroundColor: '#374151',
-      color: '#d1d5db',
-      ':hover': {
-        backgroundColor: '#4b5563',
-      },
-    },
-    // Toast Notification Styles
-    toast: {
-      position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      padding: '16px 24px',
-      borderRadius: '12px',
-      fontWeight: '500',
-      fontSize: '14px',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      zIndex: 1001,
-      boxShadow: '0 8px 20px rgba(0, 0, 0, 0.4)',
-      animation: 'slideIn 0.3s forwards',
-    },
-    toastSuccess: {
-      backgroundColor: '#1f2937', // Darker background
-      color: '#22c55e',
-      border: '1px solid #16a34a',
-    },
-    toastError: {
-      backgroundColor: '#1f2937', // Darker background
-      color: '#ef4444',
-      border: '1px solid #dc2626',
-    },
-    toastInfo: {
-      backgroundColor: '#1f2937', // Darker background
-      color: '#3b82f6',
-      border: '1px solid #2563eb',
-    },
+    }
   };
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <div style={styles.logo}>AI Newsletter</div>
-        <div style={styles.nav}>
-          {/* Consider if these links are actually needed here, or if sidebar is sufficient */}
-          {/* <a href="#" style={styles.navLink}>Dashboard</a>
-          <a href="#" style={styles.navLink}>Settings</a> */}
-        </div>
+        <div style={styles.logo}>SwiftScribe</div>
+        <nav style={styles.nav}>
+          <a href="#" style={styles.navLink}>Dashboard</a>
+          <a href="#" style={styles.navLink}>Templates</a>
+          <a href="#" style={styles.navLink}>Settings</a>
+        </nav>
         <div style={styles.headerRight}>
-          <button style={styles.mobileMenuBtn} onClick={toggleSidebar}>
-            ☰
-          </button>
+          <button style={styles.mobileMenuBtn} onClick={toggleSidebar}>☰</button>
           <div style={styles.avatar}>JS</div>
         </div>
       </header>
 
       <div style={styles.mainContainer}>
-        {/* Sidebar */}
-        <div className="sidebar" style={styles.sidebar}>
-          <p style={styles.sectionTitle}>Navigation</p>
+        <aside className="sidebar" style={styles.sidebar}>
+          <div style={styles.sectionTitle}>Newsletters</div>
+          <ul style={styles.sidebarList}>
+            <li style={styles.sidebarItem}>
+              <button
+                onClick={() => handleSectionChange('drafts')}
+                style={{
+                  ...styles.sidebarButton,
+                  ...(activeSection === 'drafts' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                }}
+              >
+                <i className="lucide lucide-file-text"></i>
+                Drafts
+              </button>
+            </li>
+            <li style={styles.sidebarItem}>
+              <button
+                onClick={() => handleSectionChange('published')}
+                style={{
+                  ...styles.sidebarButton,
+                  ...(activeSection === 'published' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                }}
+              >
+                <i className="lucide lucide-globe"></i>
+                Published
+              </button>
+            </li>
+            <li style={styles.sidebarItem}>
+              <button
+                onClick={() => handleSectionChange('archived')}
+                style={{
+                  ...styles.sidebarButton,
+                  ...(activeSection === 'archived' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                }}
+              >
+                <i className="lucide lucide-archive"></i>
+                Archived
+              </button>
+            </li>
+            <li style={styles.sidebarItem}>
+              <button
+                onClick={() => handleSectionChange('all')}
+                style={{
+                  ...styles.sidebarButton,
+                  ...(activeSection === 'all' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                }}
+              >
+                <i className="lucide lucide-layout-grid"></i>
+                All
+              </button>
+            </li>
+          </ul>
+
+          <div style={styles.sectionTitle}>Tools</div>
           <ul style={styles.sidebarList}>
             <li style={styles.sidebarItem}>
               <button
                 style={{
                   ...styles.sidebarButton,
-                  ...(activeSection === 'drafts' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                  ...styles.sidebarButtonInactive
                 }}
-                onClick={() => handleSectionChange('drafts')}
               >
-                📝 Drafts
+                <i className="lucide lucide-palette"></i>
+                Templates
               </button>
             </li>
             <li style={styles.sidebarItem}>
               <button
                 style={{
                   ...styles.sidebarButton,
-                  ...(activeSection === 'published' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
+                  ...styles.sidebarButtonInactive
                 }}
-                onClick={() => handleSectionChange('published')}
               >
-                🚀 Published
-              </button>
-            </li>
-            <li style={styles.sidebarItem}>
-              <button
-                style={{
-                  ...styles.sidebarButton,
-                  ...(activeSection === 'archived' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
-                }}
-                onClick={() => handleSectionChange('archived')}
-              >
-                🗄️ Archived
-              </button>
-            </li>
-            <li style={styles.sidebarItem}>
-              <button
-                style={{
-                  ...styles.sidebarButton,
-                  ...(activeSection === 'all' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
-                }}
-                onClick={() => handleSectionChange('all')}
-              >
-                📁 All Newsletters
+                <i className="lucide lucide-chart-bar"></i>
+                Analytics
               </button>
             </li>
           </ul>
-          {/* Add a logout button to the sidebar or header if not already present */}
-          <button
-            style={{ ...styles.sidebarButton, ...styles.sidebarButtonInactive, marginTop: 'auto' }}
-            onClick={async () => {
-              const { error } = await supabase.auth.signOut();
-              if (error) {
-                console.error('Logout error:', error.message);
-                setToastMessage(`Logout failed: ${error.message}`);
-                setToastType('error');
-                setShowToast(true);
-              } else {
-                setToastMessage('Successfully logged out!');
-                setToastType('info');
-                setShowToast(true);
-                navigate('/login'); // Redirect to login page after logout
-              }
-            }}
-          >
-            🚪 Logout
-          </button>
-        </div>
+        </aside>
 
-        {/* Main Content */}
         <main style={styles.main}>
           <h1 style={styles.mainTitle}>Dashboard</h1>
-          <p style={styles.mainSubtitle}>Manage your AI-generated newsletters</p>
+          <p style={styles.mainSubtitle}>Manage your newsletters and content</p>
 
           <div style={styles.createButtonContainer}>
             <button style={styles.createButton} onClick={createNewsletter}>
-              ✨ Create New Newsletter
+              + Create New Newsletter
+            </button>
+          </div>
+
+          <div style={styles.tabsContainer}>
+            <button
+              onClick={() => handleSectionChange('drafts')}
+              style={{
+                ...styles.tab,
+                ...(activeSection === 'drafts' ? styles.tabActive : styles.tabInactive)
+              }}
+            >
+              Drafts
+            </button>
+            <button
+              onClick={() => handleSectionChange('published')}
+              style={{
+                ...styles.tab,
+                ...(activeSection === 'published' ? styles.tabActive : styles.tabInactive)
+              }}
+            >
+              Published
+            </button>
+            <button
+              onClick={() => handleSectionChange('archived')}
+              style={{
+                ...styles.tab,
+                ...(activeSection === 'archived' ? styles.tabActive : styles.tabInactive)
+              }}
+            >
+              Archived
+            </button>
+            <button
+              onClick={() => handleSectionChange('all')}
+              style={{
+                ...styles.tab,
+                ...(activeSection === 'all' ? styles.tabActive : styles.tabInactive)
+              }}
+            >
+              All
             </button>
           </div>
 
@@ -1212,43 +1270,40 @@ const NewsletterDashboard = () => {
             ) : error ? (
               <p style={{ color: '#ef4444', textAlign: 'center' }}>Error: {error}</p>
             ) : getCurrentNewsletters().length === 0 ? (
-              <p style={{ color: '#a3a3a3', textAlign: 'center' }}>No newsletters found in this section.</p>
+              <p style={{ color: '#a3a3a3', textAlign: 'center' }}>No newsletters in this section.</p>
             ) : (
               <div style={styles.grid}>
-                {getCurrentNewsletters().map((newsletter) => (
+                {getCurrentNewsletters().map(newsletter => (
                   <div key={newsletter.id} style={styles.card}>
-                    <div style={styles.cardTopBorder}></div> {/* Top border */}
                     <div style={styles.cardImageContainer}>
-                      {newsletter.image_path ? (
-                        <img src={newsletter.image_path} alt={newsletter.title} style={styles.cardImage} />
-                      ) : (
-                        <div style={{ ...styles.cardImage, backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1d5db' }}>
-                          No Image
-                        </div>
-                      )}
+                      <div style={styles.cardTopBorder}></div>
+                      <img
+                        src={newsletter.image_path || 'https://via.placeholder.com/400x180?text=No+Image'}
+                        alt={newsletter.title}
+                        style={styles.cardImage}
+                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x180?text=Image+Error'; }}
+                      />
                     </div>
                     <div style={styles.cardContent}>
+                      <h3 style={styles.cardTitle}>{newsletter.title}</h3>
                       <div style={styles.cardMeta}>
-                        <span style={styles.cardDate}>{newsletter.lastEdited}</span>
+                        <span style={styles.cardDate}>Last Edited: {newsletter.lastEdited}</span>
                         <span style={{ ...styles.statusBadge, ...getStatusBadgeStyle(newsletter.status) }}>
                           {newsletter.status}
                         </span>
                       </div>
-                      <h3 style={styles.cardTitle}>{newsletter.title}</h3>
-                      {/* You might not have preview text directly, but leaving placeholder */}
                       <p style={styles.cardPreview}>
-                        {/* Short snippet of content or placeholder */}
-                        Leverage AI to create stunning newsletters effortlessly.
+                        Version: {newsletter.version}
                       </p>
                       <div style={styles.cardActions}>
-                        {getActionButtons(newsletter.status).map((action) => (
+                        {getActionButtons(newsletter.status).map(action => (
                           <button
                             key={action}
-                            style={getActionButtonStyle(action)}
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent card click event from firing
+                              e.stopPropagation(); // Prevent card click if button is clicked
                               handleActionClick(action, newsletter.id, newsletter.project_id);
                             }}
+                            style={getActionButtonStyle(action)}
                           >
                             {action}
                           </button>
@@ -1264,20 +1319,49 @@ const NewsletterDashboard = () => {
         </main>
       </div>
 
+      <footer style={styles.footer}>
+        <div style={styles.footerContent}>
+          <span>&copy; {new Date().getFullYear()} SwiftScribe. All rights reserved.</span>
+          <span>Privacy Policy | Terms of Service</span>
+        </div>
+      </footer>
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Confirm Deletion</h3>
-            <p style={styles.modalText}>
-              Are you sure you want to delete "{getNewsletterTitleById(newsletterToDelete)}"? This action cannot be undone.
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#1f1f1f', padding: '30px', borderRadius: '15px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.4)', maxWidth: '450px', width: '90%',
+            border: '1px solid #404040', color: 'white', textAlign: 'center'
+          }}>
+            <h3 style={{ fontSize: '24px', marginBottom: '15px' }}>Confirm Delete</h3>
+            <p style={{ fontSize: '16px', marginBottom: '30px', color: '#a3a3a3' }}>
+              Are you sure you want to permanently delete "{getNewsletterTitleById(newsletterToDelete)}"? This action cannot be undone.
             </p>
-            <div style={styles.modalActions}>
-              <button style={{ ...styles.modalButton, ...styles.modalButtonCancel }} onClick={cancelDelete}>
-                Cancel
-              </button>
-              <button style={{ ...styles.modalButton, ...styles.modalButtonConfirm }} onClick={confirmDelete}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  padding: '12px 25px', borderRadius: '8px', border: 'none',
+                  backgroundColor: '#ef4444', color: 'white', cursor: 'pointer',
+                  fontSize: '16px', fontWeight: '600', transition: 'background-color 0.2s'
+                }}
+              >
                 Delete
+              </button>
+              <button
+                onClick={cancelDelete}
+                style={{
+                  padding: '12px 25px', borderRadius: '8px', border: '1px solid #6b7280',
+                  backgroundColor: 'transparent', color: '#a3a3a3', cursor: 'pointer',
+                  fontSize: '16px', fontWeight: '600', transition: 'background-color 0.2s'
+                }}
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -1286,85 +1370,12 @@ const NewsletterDashboard = () => {
 
       {/* Toast Notification */}
       {showToast && (
-        <div style={{
-          ...styles.toast,
-          ...(toastType === 'success' ? styles.toastSuccess : {}),
-          ...(toastType === 'error' ? styles.toastError : {}),
-          ...(toastType === 'info' ? styles.toastInfo : {})
-        }}>
-          {toastMessage}
-        </div>
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)} // Allow closing manually
+        />
       )}
-
-      <footer style={styles.footer}>
-        <div style={styles.footerContent}>
-          <div style={styles.copyright}>
-            &copy; {new Date().getFullYear()} AI Newsletter Generator. All rights reserved.
-          </div>
-          <div style={styles.footerLinks}>
-            <a href="#" style={styles.footerLink}>Privacy Policy</a>
-            <a href="#" style={styles.footerLink}>Terms of Service</a>
-            <a href="#" style={styles.footerLink}>Contact Us</a>
-          </div>
-        </div>
-      </footer>
-
-      {/* Global CSS for animations and pseudo-classes */}
-      <style jsx="true">{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        
-        /* General hover effects for buttons/links using CSS-in-JS pseudo-classes */
-        button:hover, a:hover {
-          /* These will be handled by the specific :hover definitions in styles object */
-        }
-
-        /* Specific hover styles for elements rendered via inline styles */
-        .sidebar button:hover {
-            background-color: rgba(59, 130, 246, 0.1);
-            color: #d4d4d4;
-        }
-
-        /* Override specific active state hover for sidebar */
-        .sidebar button.sidebar-button-active:hover {
-            background-color: #3b82f6 !important; /* Keep active color */
-            color: white !important;
-            transform: translateX(4px) !important;
-        }
-
-        /* Hover for tab buttons */
-        .tabs-container button:hover {
-            background-color: #262626; /* Example hover for inactive tabs */
-            color: #ffffff;
-        }
-        .tabs-container button.tab-active:hover {
-            background-color: #3b82f6; /* Maintain active color */
-            color: white;
-        }
-
-        /* Hover for newsletter cards */
-        .newsletter-card:hover .card-image {
-          transform: scale(1.05);
-        }
-
-        /* For the modal buttons */
-        .modal-button-confirm:hover {
-          background-color: #dc2626;
-        }
-        .modal-button-cancel:hover {
-          background-color: #4b5563;
-        }
-      `}</style>
     </div>
   );
 };
