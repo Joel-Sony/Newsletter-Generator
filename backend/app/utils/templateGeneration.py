@@ -48,7 +48,28 @@ User prompt is: {user_prompt}. Topic is {topic} RETURN ONLY THE UPDATED PROMPT. 
   html_string = ""
   while(not isHTML(html_string)):
     print(tone)
-    generate_template=f""""Generate a complete HTML code snippet for a professional newsletter template, rigidly fixed at 790px width and 1250px height. All elements must be absolutely positioned using CSS position: absolute; and top, left, width, height properties for GrapesJS compatibility, ensuring no floating or overlapping. Randomly select one layout from hero-first, card-style, stacked-content, column-grid, sidebar-left, or sidebar-right. Include absolutely positioned company branding (logo from https://via.placeholder.com/100x50?text=Logo and name), 3-5 navigation items, a hero section (headline, subtitle, CTA button), alternating image-text content blocks (images from https://via.placeholder.com/200x150?text=Image), an inspirational quote/announcement section, an optional sidebar (if the layout requires), and a footer with social icons and legal text, all with consistent padding and spacing. Generate a cohesive color scheme and a serif/sans-serif font pairing. Implement mobile responsiveness by adjusting the absolute positioning and dimensions of internal elements via @media queries for smaller viewports, while the main container remains fixed. Do not use Lorem Ipsum, but use meaningful content or leave empty, incorporating {polished_prompt} in a {tone}. Embed all CSS within a single <style> tag, and output only the clean HTML code."""
+    generate_template=f""""Create a Professional HTML Newsletter Template 
+Design a responsive newsletter layout (790px x 1250px) with embedded CSS styling. Requirements:
+Select one random layout: hero-first, card-style, stacked-content, column-grid, sidebar-left, or sidebar-right
+Company branding: logo and name (top-left or centered)
+Navigation with 3-5 menu items
+Hero section: headline, subtitle, call-to-action button
+Alternating image-text content blocks
+Inspirational quote or announcement section
+Optional sidebar (if layout requires)
+Footer with social icons and legal text
+Generate cohesive color scheme and font pairing (serif/sans-serif mix)
+Clean, professional appearance with consistent spacing
+Mobile-responsive design
+GrapesJS editor compatibility (no floating/overlapping elements)
+Div-based layout structure (no tables)
+Placeholder images from via.placeholder.com
+Generate a complete HTML file with inline CSS for a responsive newsletter template, ensuring all main layout sections (header, hero, content blocks, quote section, footer) are structured as block-level elements that stack naturally within the vertical document flow. Crucially, avoid using position: absolute on these primary layout divs to prevent content reflow or collapse when individual elements are potentially manipulated by external tools like a drag-and-drop editor; instead, utilize display: flex or display: grid for internal arrangement within sections, and incorporate media queries for responsive adjustments (e.g., flex-direction: column on smaller screens), making sure the overall design maintains its integrity and flowing nature
+Single <style> tag with embedded CSS
+No <html>, <head>, or <body> wrapper tags
+No placeholder text (Lorem Ipsum) - use meaningful content or leave empty
+Include user-provided content: {polished_prompt} in specified tone: {tone}
+Output: Clean HTML code only, no explanations or comments."""
     
     html_response = client.chat.completions.create(
       extra_headers={

@@ -30,8 +30,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          backgroundColor:' #ffffff;',
-          backgroundImage:'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          background:'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
           backgroundRepeat:'no-repeat',
           backgroundSize: 'cover',
           borderRadius: '16px',

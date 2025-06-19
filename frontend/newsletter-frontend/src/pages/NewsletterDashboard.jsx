@@ -481,6 +481,9 @@ const NewsletterDashboard = () => {
   const handleActionClick = (action, newsletterId, projectId) => {
     switch (action) {
       case 'Edit':
+        // Invalidate session storage cache to force re-fetch when returning to dashboard after editing
+        sessionStorage.removeItem('newslettersData');
+        hasFetchedDataOnce.current = false; // Reset the ref to force re-fetch
         navigate(`/editor/${newsletterId}`);
         break;
       case 'View':
@@ -780,619 +783,619 @@ const NewsletterDashboard = () => {
     );
   };
 
-  const styles = {
-    container: {
-      height: '100%',
-      minHeight: '100vh',
-      background: '#0a0a0a',
-      color: '#ffffff',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    },
-    header: {
-      backgroundColor: '#111111',
-      borderBottom: '1px solid #262626',
-      padding: '1rem 1.5rem', // 16px 24px
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      position: 'sticky',
-      top: 0,
-      zIndex: 50,
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
-    },
-    logo: {
-      fontSize: '1.75rem', // 28px
-      fontWeight: '800',
-      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      letterSpacing: '-0.025em'
-    },
-    nav: {
-      display: 'flex',
-      gap: '2rem', // 32px
-      alignItems: 'center'
-    },
-    navLink: {
-      color: '#a3a3a3',
-      fontWeight: '500',
-      textDecoration: 'none',
-      transition: 'color 0.3s ease, transform 0.3s ease',
-      fontSize: '0.9375rem', // 15px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      padding: '0.5rem 1rem', // 8px 16px
-      borderRadius: '8px',
-      '&:hover': {
+    const styles = {
+      container: {
+        height: '100%',
+        minHeight: '100vh',
+        background: '#0a0a0a',
         color: '#ffffff',
-        transform: 'translateY(-2px)'
-      }
-    },
-    headerRight: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '1rem', // 16px
-      position: 'relative', // For dropdown positioning
-    },
-    mobileMenuBtn: {
-      fontSize: '1.5rem', // 24px
-      color: '#3b82f6',
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      display: 'none', // Controlled by JS
-      padding: '0.5rem'
-    },
-    accountIconContainer: { // New style for account icon wrapper
-      position: 'relative',
-    },
-    accountIcon: { // New style for account icon button
-      width: '2.75rem', // 44px
-      height: '2.75rem', // 44px
-      borderRadius: '0.75rem', // 12px
-      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'white',
-      fontWeight: '700',
-      cursor: 'pointer',
-      fontSize: '1rem', // 16px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-      '&:hover': {
-        transform: 'scale(1.05)',
-        boxShadow: '0 6px 16px rgba(59, 130, 246, 0.5)'
-      }
-    },
-    accountDropdown: { // New style for account dropdown
-      position: 'absolute',
-      top: 'calc(100% + 10px)', // Below the icon
-      right: '0',
-      backgroundColor: '#1e1e1e',
-      border: '1px solid #333',
-      borderRadius: '8px',
-      boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
-      minWidth: '200px',
-      zIndex: 100,
-      padding: '10px 0',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-    },
-    dropdownEmail: { // New style for email in dropdown
-      padding: '8px 15px',
-      color: '#a3a3a3',
-      fontSize: '0.9rem',
-      borderBottom: '1px solid #262626',
-      marginBottom: '5px',
-      fontWeight: '500',
-    },
-    dropdownButton: { // New style for logout button in dropdown
-      width: '100%',
-      padding: '10px 15px',
-      backgroundColor: 'transparent',
-      border: 'none',
-      color: '#d1d5db',
-      textAlign: 'left',
-      cursor: 'pointer',
-      fontSize: '0.95rem',
-      fontWeight: '500',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      transition: 'background-color 0.2s ease, color 0.2s ease',
-      '&:hover': {
-        backgroundColor: '#262626',
-        color: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       },
-    },
-    mainContainer: {
-      display: 'flex',
-      flex: 1,
-      overflow: 'hidden'
-    },
-    sidebar: {
-      width: '280px',
-      backgroundColor: '#111111',
-      borderRight: '1px solid #262626',
-      padding: '1.5rem', // 24px
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'transform 0.3s ease',
-      position: 'static',
-      zIndex: 40,
-      overflowY: 'auto',
-    },
-    sectionTitle: {
-      fontSize: '0.75rem', // 12px
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '0.1em',
-      color: '#737373',
-      marginBottom: '1rem', // 16px
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    sidebarList: {
-      listStyle: 'none',
-      padding: 0,
-      margin: 0,
-      marginBottom: '2rem' // 32px
-    },
-    sidebarItem: {
-      marginBottom: '0.25rem' // 4px
-    },
-    sidebarButton: {
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem', // 12px
-      padding: '0.75rem 1rem', // 12px 16px
-      borderRadius: '10px',
-      border: 'none',
-      cursor: 'pointer',
-      fontWeight: '500',
-      transition: 'all 0.3s ease',
-      fontSize: '0.875rem', // 14px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      '&:hover': {
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        color: '#d4d4d4'
-      }
-    },
-    sidebarButtonActive: {
-      backgroundColor: '#3b82f6',
-      color: 'white',
-      transform: 'translateX(4px)',
-      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-      '&:hover': {
-        backgroundColor: '#3b82f6',
-        color: 'white',
-        transform: 'translateX(4px)'
-      }
-    },
-    sidebarButtonInactive: {
-      backgroundColor: 'transparent',
-      color: '#a3a3a3'
-    },
-    // New style for the create button container in sidebar
-    createButtonSidebarContainer: {
-      paddingBottom: '1.5rem', // Space below the button
-      borderBottom: '1px solid #262626', // Separator
-      marginBottom: '1.5rem', // Space below the separator
-      display: 'flex',
-      justifyContent: 'center',
-    },
-    createButton: {
-      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-      color: 'white',
-      padding: '1.125rem 2.25rem', // 18px 36px
-      borderRadius: '12px',
-      fontSize: '1rem', // 16px
-      fontWeight: '600',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
-      marginTop: '1rem', // Space from top of sidebar content
-      width: '90%', // Make it take most of the sidebar width
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '8px',
-      '&:hover': {
-        transform: 'translateY(-3px)',
-        boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)'
-      }
-    },
-    main: {
-      flex: 1,
-      padding: '2rem', // 32px
-      backgroundColor: '#0a0a0a',
-      paddingBottom: '4rem', // 64px
-      overflowY: 'auto'
-    },
-    mainTitle: {
-      fontSize: '2.625rem', // 42px
-      fontWeight: '800',
-      color: '#ffffff',
-      marginBottom: '0.5rem', // 8px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      letterSpacing: '-0.025em'
-    },
-    mainSubtitle: {
-      color: '#a3a3a3',
-      fontSize: '1.125rem', // 18px
-      marginBottom: '2rem', // 32px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      fontWeight: '400'
-    },
-    tabsContainer: {
-      display: 'flex',
-      gap: '0.375rem', // 6px
-      marginBottom: '2rem', // 32px
-      backgroundColor: '#171717',
-      borderRadius: '0.875rem', // 14px
-      padding: '0.375rem', // 6px
-      border: '1px solid #262626'
-    },
-    tab: {
-      flex: 1,
-      padding: '0.875rem 1.25rem', // 14px 20px
-      borderRadius: '10px',
-      fontWeight: '500',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      fontSize: '0.875rem' // 14px
-    },
-    tabActive: {
-      backgroundColor: '#3b82f6',
-      color: 'white',
-      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-      '&:hover': {
-        backgroundColor: '#3b82f6', // Keep active color on hover
-        color: 'white'
-      }
-    },
-    tabInactive: {
-      backgroundColor: 'transparent',
-      color: '#a3a3a3',
-      '&:hover': {
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        color: '#d4d4d4'
-      }
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-      gap: '1.5rem', // 24px
-      paddingBottom: '1.25rem' // 20px
-    },
-    newsletterCard: {
-      backgroundColor: '#171717',
-      borderRadius: '1rem', // 16px
-      overflow: 'hidden',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
-      border: '1px solid #262626',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-      '&:hover': {
-        transform: 'translateY(-8px)',
-        boxShadow: '0 15px 40px rgba(0, 0, 0, 0.35)'
-      }
-    },
-    cardImage: {
-      width: '100%',
-      height: '11.25rem', // 180px
-      objectFit: 'cover',
-      borderBottom: '1px solid #262626'
-    },
-    cardContent: {
-      padding: '1.25rem', // 20px
-      display: 'flex',
-      flexDirection: 'column',
-      flexGrow: 1
-    },
-    cardTitle: {
-      fontSize: '1.125rem', // 18px
-      fontWeight: '600',
-      color: '#ffffff',
-      marginBottom: '0.5rem', // 8px
-      fontFamily: 'Inter, system-ui, sans-serif',
-      lineHeight: '1.4em'
-    },
-    cardMeta: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '1rem', // 16px
-      fontSize: '0.8125rem', // 13px
-      color: '#a3a3a3',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    cardActions: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '0.6rem', // Increased gap slightly for better separation
-      marginTop: 'auto', // Push actions to the bottom
-      justifyContent: 'flex-start',
-    },
-    searchBarContainer: {
-      position: 'relative',
-      width: '100%',
-      marginBottom: '1.5rem', // space below search bar
-    },
-    searchInput: {
-      width: '100%',
-      padding: '0.875rem 1rem 0.875rem 3rem', // Add left padding for icon
-      borderRadius: '8px',
-      border: '1px solid #333',
-      backgroundColor: '#1e1e1e',
-      color: '#d1d5db',
-      fontSize: '1rem',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      outline: 'none',
-      transition: 'border-color 0.2s ease',
-      '&:focus': {
-        borderColor: '#3b82f6',
+      header: {
+        backgroundColor: '#111111',
+        borderBottom: '1px solid #262626',
+        padding: '1rem 1.5rem', // 16px 24px
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
       },
-      '&::placeholder': {
+      logo: {
+        fontSize: '1.75rem', // 28px
+        fontWeight: '800',
+        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        letterSpacing: '-0.025em'
+      },
+      nav: {
+        display: 'flex',
+        gap: '2rem', // 32px
+        alignItems: 'center'
+      },
+      navLink: {
         color: '#a3a3a3',
-      }
-    },
-    searchIcon: {
-      position: 'absolute',
-      left: '1rem',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      color: '#a3a3a3',
-    },
-    paginationContainer: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: '0.5rem', // 8px
-      marginTop: '2rem', // 32px
-      marginBottom: '1.25rem', // 20px
-      flexWrap: 'wrap'
-    },
-    paginationButton: {
-      backgroundColor: '#1f2937',
-      color: '#d1d5db',
-      border: '1px solid #374151',
-      padding: '0.625rem 1rem', // 10px 16px
-      borderRadius: '8px',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      fontSize: '0.875rem', // 14px
-      fontWeight: '500',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      '&:hover': {
-        backgroundColor: '#374151',
-        color: '#ffffff'
-      }
-    },
-    paginationButtonActive: {
-      backgroundColor: '#3b82f6',
-      borderColor: '#3b82f6',
-      color: 'white',
-      fontWeight: '600',
-      '&:hover': {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
-      }
-    },
-    paginationButtonDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed',
-      backgroundColor: '#1f2937',
-      color: '#d1d5db',
-    },
-    emptyState: {
-      textAlign: 'center',
-      padding: '3.75rem 1.25rem', // 60px 20px
-      backgroundColor: '#171717',
-      borderRadius: '1rem', // 16px
-      border: '1px solid #262626',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '1.25rem', // 20px
-      minHeight: '18.75rem' // 300px
-    },
-    emptyStateText: {
-      fontSize: '1.25rem', // 20px
-      color: '#a3a3a3',
-      fontWeight: '500'
-    },
-    emptyStateSubText: {
-      fontSize: '1rem', // 16px
-      color: '#737373',
-      maxWidth: '500px',
-      lineHeight: '1.6'
-    },
-    loadingOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1001,
-      color: 'white',
-      fontSize: '1.5rem' // 24px
-    },
-    errorState: {
-      textAlign: 'center',
-      padding: '3.75rem 1.25rem', // 60px 20px
-      backgroundColor: '#171717',
-      borderRadius: '1rem', // 16px
-      border: '1px solid #262626',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '1.25rem', // 20px
-      minHeight: '18.75rem', // 300px
-      color: '#ef4444'
-    },
-    deleteModalOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    },
-    deleteModalContent: {
-      backgroundColor: '#1e1e1e',
-      padding: '1.875rem', // 30px
-      borderRadius: '12px',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-      textAlign: 'center',
-      maxWidth: '400px',
-      width: '90%',
-      border: '1px solid #333'
-    },
-    deleteModalTitle: {
-      fontSize: '1.5rem', // 24px
-      fontWeight: '700',
-      color: '#ef4444',
-      marginBottom: '0.9375rem' // 15px
-    },
-    deleteModalMessage: {
-      fontSize: '1rem', // 16px
-      color: '#a3a3a3',
-      marginBottom: '1.5625rem', // 25px
-      lineHeight: '1.6'
-    },
-    deleteModalButtons: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '0.9375rem' // 15px
-    },
-    deleteModalConfirmBtn: {
-      backgroundColor: '#ef4444',
-      color: 'white',
-      padding: '0.75rem 1.5625rem', // 12px 25px
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '1rem', // 16px
-      fontWeight: '600',
-      transition: 'background-color 0.3s ease',
-      '&:hover': {
-        backgroundColor: '#dc2626'
-      }
-    },
-    deleteModalCancelBtn: {
-      backgroundColor: '#374151',
-      color: 'white',
-      padding: '0.75rem 1.5625rem', // 12px 25px
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '1rem', // 16px
-      fontWeight: '600',
-      transition: 'background-color 0.3s ease',
-      '&:hover': {
-        backgroundColor: '#4b5563'
-      }
-    },
-    // NEW Styles for the Create Options Modal
-    createOptionsModalOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    },
-    createOptionsModalContent: {
-      backgroundColor: '#1e1e1e',
-      padding: '2rem',
-      borderRadius: '12px',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-      textAlign: 'center',
-      maxWidth: '500px',
-      width: '90%',
-      border: '1px solid #333',
-      position: 'relative',
-    },
-    createOptionsModalTitle: {
-      fontSize: '1.6rem',
-      fontWeight: '700',
-      color: '#ffffff',
-      marginBottom: '1.5rem',
-    },
-    createOptionsButtonContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem',
-    },
-    createOptionButton: {
-      background: '#374151',
-      color: 'white',
-      padding: '1rem 1.5rem',
-      borderRadius: '8px',
-      fontSize: '1.1rem',
-      fontWeight: '600',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '10px',
-      '&:hover': {
-        backgroundColor: '#4b5563',
-        transform: 'translateY(-2px)',
-      },
-    },
-    createOptionButtonPrimary: {
-        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-        boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+        fontWeight: '500',
+        textDecoration: 'none',
+        transition: 'color 0.3s ease, transform 0.3s ease',
+        fontSize: '0.9375rem', // 15px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        padding: '0.5rem 1rem', // 8px 16px
+        borderRadius: '8px',
         '&:hover': {
-            background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
-            transform: 'translateY(-2px)',
-        },
-    },
-    modalCloseButton: {
-        position: 'absolute',
-        top: '10px',
-        right: '10px',
+          color: '#ffffff',
+          transform: 'translateY(-2px)'
+        }
+      },
+      headerRight: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem', // 16px
+        position: 'relative', // For dropdown positioning
+      },
+      mobileMenuBtn: {
+        fontSize: '1.5rem', // 24px
+        color: '#3b82f6',
         background: 'none',
         border: 'none',
-        color: '#a3a3a3',
-        fontSize: '1.8rem',
         cursor: 'pointer',
-        padding: '5px',
-        borderRadius: '50%',
+        display: 'none', // Controlled by JS
+        padding: '0.5rem'
+      },
+      accountIconContainer: { // New style for account icon wrapper
+        position: 'relative',
+      },
+      accountIcon: { // New style for account icon button
+        width: '2.75rem', // 44px
+        height: '2.75rem', // 44px
+        borderRadius: '0.75rem', // 12px
+        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontWeight: '700',
+        cursor: 'pointer',
+        fontSize: '1rem', // 16px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
         '&:hover': {
-            backgroundColor: '#262626',
-            color: '#ffffff',
+          transform: 'scale(1.05)',
+          boxShadow: '0 6px 16px rgba(59, 130, 246, 0.5)'
+        }
+      },
+      accountDropdown: { // New style for account dropdown
+        position: 'absolute',
+        top: 'calc(100% + 10px)', // Below the icon
+        right: '0',
+        backgroundColor: '#1e1e1e',
+        border: '1px solid #333',
+        borderRadius: '8px',
+        boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+        minWidth: '200px',
+        zIndex: 100,
+        padding: '10px 0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+      },
+      dropdownEmail: { // New style for email in dropdown
+        padding: '8px 15px',
+        color: '#a3a3a3',
+        fontSize: '0.9rem',
+        borderBottom: '1px solid #262626',
+        marginBottom: '5px',
+        fontWeight: '500',
+      },
+      dropdownButton: { // New style for logout button in dropdown
+        width: '100%',
+        padding: '10px 15px',
+        backgroundColor: 'transparent',
+        border: 'none',
+        color: '#d1d5db',
+        textAlign: 'left',
+        cursor: 'pointer',
+        fontSize: '0.95rem',
+        fontWeight: '500',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        transition: 'background-color 0.2s ease, color 0.2s ease',
+        '&:hover': {
+          backgroundColor: '#262626',
+          color: '#ffffff',
         },
-    }
-  };
+      },
+      mainContainer: {
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden'
+      },
+      sidebar: {
+        width: '280px',
+        backgroundColor: '#111111',
+        borderRight: '1px solid #262626',
+        padding: '1.5rem', // 24px
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 0.3s ease',
+        position: 'static',
+        zIndex: 40,
+        overflowY: 'auto',
+      },
+      sectionTitle: {
+        fontSize: '0.75rem', // 12px
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        color: '#737373',
+        marginBottom: '1rem', // 16px
+        fontFamily: 'Inter, system-ui, sans-serif'
+      },
+      sidebarList: {
+        listStyle: 'none',
+        padding: 0,
+        margin: 0,
+        marginBottom: '2rem' // 32px
+      },
+      sidebarItem: {
+        marginBottom: '0.25rem' // 4px
+      },
+      sidebarButton: {
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem', // 12px
+        padding: '0.75rem 1rem', // 12px 16px
+        borderRadius: '10px',
+        border: 'none',
+        cursor: 'pointer',
+        fontWeight: '500',
+        transition: 'all 0.3s ease',
+        fontSize: '0.875rem', // 14px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        '&:hover': {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          color: '#d4d4d4'
+        }
+      },
+      sidebarButtonActive: {
+        backgroundColor: '#3b82f6',
+        color: 'white',
+        transform: 'translateX(4px)',
+        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+        '&:hover': {
+          backgroundColor: '#3b82f6',
+          color: 'white',
+          transform: 'translateX(4px)'
+        }
+      },
+      sidebarButtonInactive: {
+        backgroundColor: 'transparent',
+        color: '#a3a3a3'
+      },
+      // New style for the create button container in sidebar
+      createButtonSidebarContainer: {
+        paddingBottom: '1.5rem', // Space below the button
+        borderBottom: '1px solid #262626', // Separator
+        marginBottom: '1.5rem', // Space below the separator
+        display: 'flex',
+        justifyContent: 'center',
+      },
+      createButton: {
+        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+        color: 'white',
+        padding: '1.125rem 2.25rem', // 18px 36px
+        borderRadius: '12px',
+        fontSize: '1rem', // 16px
+        fontWeight: '600',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+        marginTop: '1rem', // Space from top of sidebar content
+        width: '90%', // Make it take most of the sidebar width
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        '&:hover': {
+          transform: 'translateY(-3px)',
+          boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)'
+        }
+      },
+      main: {
+        flex: 1,
+        padding: '2rem', // 32px
+        backgroundColor: '#0a0a0a',
+        paddingBottom: '4rem', // 64px
+        overflowY: 'auto'
+      },
+      mainTitle: {
+        fontSize: '2.625rem', // 42px
+        fontWeight: '800',
+        color: '#ffffff',
+        marginBottom: '0.5rem', // 8px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        letterSpacing: '-0.025em'
+      },
+      mainSubtitle: {
+        color: '#a3a3a3',
+        fontSize: '1.125rem', // 18px
+        marginBottom: '2rem', // 32px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontWeight: '400'
+      },
+      tabsContainer: {
+        display: 'flex',
+        gap: '0.375rem', // 6px
+        marginBottom: '2rem', // 32px
+        backgroundColor: '#171717',
+        borderRadius: '0.875rem', // 14px
+        padding: '0.375rem', // 6px
+        border: '1px solid #262626'
+      },
+      tab: {
+        flex: 1,
+        padding: '0.875rem 1.25rem', // 14px 20px
+        borderRadius: '10px',
+        fontWeight: '500',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '0.875rem' // 14px
+      },
+      tabActive: {
+        backgroundColor: '#3b82f6',
+        color: 'white',
+        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+        '&:hover': {
+          backgroundColor: '#3b82f6', // Keep active color on hover
+          color: 'white'
+        }
+      },
+      tabInactive: {
+        backgroundColor: 'transparent',
+        color: '#a3a3a3',
+        '&:hover': {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          color: '#d4d4d4'
+        }
+      },
+      grid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: '1.5rem', // 24px
+        paddingBottom: '1.25rem' // 20px
+      },
+      newsletterCard: {
+        backgroundColor: '#171717',
+        borderRadius: '1rem', // 16px
+        overflow: 'hidden',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+        border: '1px solid #262626',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 15px 40px rgba(0, 0, 0, 0.35)'
+        }
+      },
+      cardImage: {
+        width: '100%',
+        height: '11.25rem', // 180px
+        objectFit: 'cover',
+        borderBottom: '1px solid #262626'
+      },
+      cardContent: {
+        padding: '1.25rem', // 20px
+        display: 'flex',
+        flexDirection: 'column',
+        flexGrow: 1
+      },
+      cardTitle: {
+        fontSize: '1.125rem', // 18px
+        fontWeight: '600',
+        color: '#ffffff',
+        marginBottom: '0.5rem', // 8px
+        fontFamily: 'Inter, system-ui, sans-serif',
+        lineHeight: '1.4em'
+      },
+      cardMeta: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1rem', // 16px
+        fontSize: '0.8125rem', // 13px
+        color: '#a3a3a3',
+        fontFamily: 'Inter, system-ui, sans-serif'
+      },
+      cardActions: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.6rem', // Increased gap slightly for better separation
+        marginTop: 'auto', // Push actions to the bottom
+        justifyContent: 'flex-start',
+      },
+      searchBarContainer: {
+        position: 'relative',
+        width: '100%',
+        marginBottom: '1.5rem', // space below search bar
+      },
+      searchInput: {
+        width: '100%',
+        padding: '0.875rem 1rem 0.875rem 3rem', // Add left padding for icon
+        borderRadius: '8px',
+        border: '1px solid #333',
+        backgroundColor: '#1e1e1e',
+        color: '#d1d5db',
+        fontSize: '1rem',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        outline: 'none',
+        transition: 'border-color 0.2s ease',
+        '&:focus': {
+          borderColor: '#3b82f6',
+        },
+        '&::placeholder': {
+          color: '#a3a3a3',
+        }
+      },
+      searchIcon: {
+        position: 'absolute',
+        left: '1rem',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        color: '#a3a3a3',
+      },
+      paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '0.5rem', // 8px
+        marginTop: '2rem', // 32px
+        marginBottom: '1.25rem', // 20px
+        flexWrap: 'wrap'
+      },
+      paginationButton: {
+        backgroundColor: '#1f2937',
+        color: '#d1d5db',
+        border: '1px solid #374151',
+        padding: '0.625rem 1rem', // 10px 16px
+        borderRadius: '8px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        fontSize: '0.875rem', // 14px
+        fontWeight: '500',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        '&:hover': {
+          backgroundColor: '#374151',
+          color: '#ffffff'
+        }
+      },
+      paginationButtonActive: {
+        backgroundColor: '#3b82f6',
+        borderColor: '#3b82f6',
+        color: 'white',
+        fontWeight: '600',
+        '&:hover': {
+          backgroundColor: '#2563eb',
+          borderColor: '#2563eb',
+        }
+      },
+      paginationButtonDisabled: {
+        opacity: 0.5,
+        cursor: 'not-allowed',
+        backgroundColor: '#1f2937',
+        color: '#d1d5db',
+      },
+      emptyState: {
+        textAlign: 'center',
+        padding: '3.75rem 1.25rem', // 60px 20px
+        backgroundColor: '#171717',
+        borderRadius: '1rem', // 16px
+        border: '1px solid #262626',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '1.25rem', // 20px
+        minHeight: '18.75rem' // 300px
+      },
+      emptyStateText: {
+        fontSize: '1.25rem', // 20px
+        color: '#a3a3a3',
+        fontWeight: '500'
+      },
+      emptyStateSubText: {
+        fontSize: '1rem', // 16px
+        color: '#737373',
+        maxWidth: '500px',
+        lineHeight: '1.6'
+      },
+      loadingOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1001,
+        color: 'white',
+        fontSize: '1.5rem' // 24px
+      },
+      errorState: {
+        textAlign: 'center',
+        padding: '3.75rem 1.25rem', // 60px 20px
+        backgroundColor: '#171717',
+        borderRadius: '1rem', // 16px
+        border: '1px solid #262626',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '1.25rem', // 20px
+        minHeight: '18.75rem', // 300px
+        color: '#ef4444'
+      },
+      deleteModalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000
+      },
+      deleteModalContent: {
+        backgroundColor: '#1e1e1e',
+        padding: '1.875rem', // 30px
+        borderRadius: '12px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+        textAlign: 'center',
+        maxWidth: '400px',
+        width: '90%',
+        border: '1px solid #333'
+      },
+      deleteModalTitle: {
+        fontSize: '1.5rem', // 24px
+        fontWeight: '700',
+        color: '#ef4444',
+        marginBottom: '0.9375rem' // 15px
+      },
+      deleteModalMessage: {
+        fontSize: '1rem', // 16px
+        color: '#a3a3a3',
+        marginBottom: '1.5625rem', // 25px
+        lineHeight: '1.6'
+      },
+      deleteModalButtons: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '0.9375rem' // 15px
+      },
+      deleteModalConfirmBtn: {
+        backgroundColor: '#ef4444',
+        color: 'white',
+        padding: '0.75rem 1.5625rem', // 12px 25px
+        borderRadius: '8px',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '1rem', // 16px
+        fontWeight: '600',
+        transition: 'background-color 0.3s ease',
+        '&:hover': {
+          backgroundColor: '#dc2626'
+        }
+      },
+      deleteModalCancelBtn: {
+        backgroundColor: '#374151',
+        color: 'white',
+        padding: '0.75rem 1.5625rem', // 12px 25px
+        borderRadius: '8px',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '1rem', // 16px
+        fontWeight: '600',
+        transition: 'background-color 0.3s ease',
+        '&:hover': {
+          backgroundColor: '#4b5563'
+        }
+      },
+      // NEW Styles for the Create Options Modal
+      createOptionsModalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000
+      },
+      createOptionsModalContent: {
+        backgroundColor: '#1e1e1e',
+        padding: '2rem',
+        borderRadius: '12px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+        textAlign: 'center',
+        maxWidth: '500px',
+        width: '90%',
+        border: '1px solid #333',
+        position: 'relative',
+      },
+      createOptionsModalTitle: {
+        fontSize: '1.6rem',
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: '1.5rem',
+      },
+      createOptionsButtonContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+      },
+      createOptionButton: {
+        background: '#374151',
+        color: 'white',
+        padding: '1rem 1.5rem',
+        borderRadius: '8px',
+        fontSize: '1.1rem',
+        fontWeight: '600',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        '&:hover': {
+          backgroundColor: '#4b5563',
+          transform: 'translateY(-2px)',
+        },
+      },
+      createOptionButtonPrimary: {
+          background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+          boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+          '&:hover': {
+              background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
+              transform: 'translateY(-2px)',
+          },
+      },
+      modalCloseButton: {
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          background: 'none',
+          border: 'none',
+          color: '#a3a3a3',
+          fontSize: '1.8rem',
+          cursor: 'pointer',
+          padding: '5px',
+          borderRadius: '50%',
+          '&:hover': {
+              backgroundColor: '#262626',
+              color: '#ffffff',
+          },
+      }
+    };
 
   if (loading && !hasFetchedDataOnce.current) { // Only show full loading if no cached data
     return (
@@ -1406,7 +1409,7 @@ const NewsletterDashboard = () => {
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <div style={styles.logo}>SwiftScribe</div>
+          <div style={styles.logo}>Newsletter Generator</div>
           <button style={{ ...styles.mobileMenuBtn, display: isMobile ? 'block' : 'none' }} onClick={toggleSidebar}><Menu size={24} /></button>
           <div style={styles.headerRight}>
             <div style={styles.accountIconContainer} ref={accountRef}>
@@ -1451,7 +1454,7 @@ const NewsletterDashboard = () => {
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.logo}>SwiftScribe</div>
+        <div style={styles.logo}>Newsletter Generator</div>
         <button className="mobile-menu-btn" style={{ ...styles.mobileMenuBtn, display: isMobile ? 'block' : 'none' }} onClick={toggleSidebar}><Menu size={24} /></button>
         <div style={styles.headerRight}>
           <div style={styles.accountIconContainer} ref={accountRef}>
