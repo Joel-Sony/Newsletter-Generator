@@ -1,0 +1,387 @@
+<style>
+    /* Global Styles */
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Open Sans', Arial, sans-serif;
+        background-color: #f7f7f7;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        box-sizing: border-box;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Merriweather', Georgia, serif;
+        margin: 0;
+        padding: 0;
+        color: #333333;
+    }
+
+    a {
+        text-decoration: none;
+        color: #7B68EE;
+    }
+
+    .newsletter-container {
+        max-width: 790px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    /* Header Section */
+    .header-section {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .header-section .logo {
+        max-width: 150px;
+        height: auto;
+        display: block;
+        margin: 0 auto 10px auto;
+    }
+
+    .header-section .company-name {
+        font-size: 28px;
+        color: #333333;
+        font-family: 'Merriweather', Georgia, serif;
+        margin-bottom: 15px;
+    }
+
+    .header-section .navigation {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding: 10px 0;
+    }
+
+    .header-section .navigation a {
+        color: #555555;
+        font-weight: bold;
+        padding: 5px 15px;
+        margin: 0 5px;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+
+    .header-section .navigation a:hover {
+        background-color: #f0f0f0;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        background-color: #36454F; /* Dark Slate Grey - Mysterious */
+        color: #ffffff;
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .hero-section .headline {
+        font-size: 40px;
+        margin-bottom: 15px;
+        line-height: 1.2;
+        color: #FFD700; /* Gold */
+    }
+
+    .hero-section .subtitle {
+        font-size: 20px;
+        margin-bottom: 30px;
+        line-height: 1.5;
+        color: #E0E0E0;
+    }
+
+    .hero-section .cta-button {
+        display: inline-block;
+        background-color: #7B68EE; /* Medium Slate Blue */
+        color: #ffffff;
+        padding: 15px 30px;
+        border-radius: 5px;
+        font-size: 18px;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+
+    .hero-section .cta-button:hover {
+        background-color: #6A5ACD; /* Darker Slate Blue */
+    }
+
+    /* Content Blocks */
+    .content-block {
+        padding: 40px 20px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .content-block:last-of-type {
+        border-bottom: none;
+    }
+
+    .content-block-inner {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        flex-wrap: wrap;
+    }
+
+    .content-block .image-container {
+        flex: 1;
+        min-width: 250px;
+        text-align: center;
+    }
+
+    .content-block .image-container img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .content-block .text-container {
+        flex: 2;
+        min-width: 300px;
+    }
+
+    .content-block .text-container h3 {
+        font-size: 26px;
+        margin-bottom: 15px;
+        color: #555555;
+    }
+
+    .content-block .text-container p {
+        font-size: 16px;
+        line-height: 1.6;
+        color: #666666;
+        margin-bottom: 10px;
+    }
+
+    /* Reverse content block for alternating layout */
+    .content-block.reverse .content-block-inner {
+        flex-direction: row-reverse;
+    }
+
+    /* Quote/Announcement Section */
+    .quote-section {
+        background-color: #E6E6FA; /* Lavender Blish - Light, Magical */
+        padding: 50px 20px;
+        text-align: center;
+        border-bottom: 1px solid #eee;
+    }
+
+    .quote-section blockquote {
+        font-size: 24px;
+        font-style: italic;
+        color: #483D8B; /* Dark Slate Blue */
+        margin: 0 auto;
+        max-width: 600px;
+        line-height: 1.5;
+    }
+
+    .quote-section .author {
+        font-size: 18px;
+        color: #555555;
+        margin-top: 15px;
+        display: block;
+    }
+
+    /* Footer Section */
+    .footer-section {
+        background-color: #333333;
+        color: #cccccc;
+        text-align: center;
+        padding: 40px 20px;
+        font-size: 14px;
+    }
+
+    .footer-section .social-icons {
+        margin-bottom: 20px;
+    }
+
+    .footer-section .social-icons img {
+        width: 32px;
+        height: 32px;
+        margin: 0 8px;
+        vertical-align: middle;
+    }
+
+    .footer-section .legal-text {
+        line-height: 1.6;
+        font-size: 13px;
+        color: #aaaaaa;
+    }
+
+    .footer-section .legal-text a {
+        color: #7B68EE;
+        text-decoration: underline;
+    }
+
+    /* Mobile Responsive Adjustments */
+    @media only screen and (max-width: 600px) {
+        .newsletter-container {
+            width: 100%;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .header-section .company-name {
+            font-size: 24px;
+        }
+
+        .header-section .navigation a {
+            font-size: 14px;
+            padding: 5px 10px;
+            margin: 0 2px;
+        }
+
+        .hero-section {
+            padding: 40px 15px;
+        }
+
+        .hero-section .headline {
+            font-size: 30px;
+        }
+
+        .hero-section .subtitle {
+            font-size: 18px;
+        }
+
+        .hero-section .cta-button {
+            padding: 12px 25px;
+            font-size: 16px;
+        }
+
+        .content-block {
+            padding: 30px 15px;
+        }
+
+        .content-block-inner {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .content-block.reverse .content-block-inner {
+            flex-direction: column;
+        }
+
+        .content-block .image-container,
+        .content-block .text-container {
+            min-width: unset;
+            width: 100%;
+            text-align: left;
+        }
+
+        .content-block .image-container img {
+            margin: 0 auto;
+        }
+
+        .content-block .text-container h3 {
+            font-size: 22px;
+        }
+
+        .content-block .text-container p {
+            font-size: 15px;
+        }
+
+        .quote-section {
+            padding: 30px 15px;
+        }
+
+        .quote-section blockquote {
+            font-size: 20px;
+        }
+
+        .footer-section {
+            padding: 30px 15px;
+        }
+    }
+
+    @media only screen and (max-width: 480px) {
+        .header-section .navigation {
+            flex-direction: column;
+            align-items: center;
+        }
+        .header-section .navigation a {
+            margin: 5px 0;
+            width: 80%;
+            text-align: center;
+        }
+    }
+</style>
+
+<div class="newsletter-container">
+    <div class="header-section">
+        <a href="#"><img src="https://via.placeholder.com/150x50?text=Logo" alt="Company Logo" class="logo"></a>
+        <h1 class="company-name">The Wizarding Daily</h1>
+        <div class="navigation">
+            <a href="#">Mysteries</a>
+            <a href="#">Charms</a>
+            <a href="#">Creatures</a>
+            <a href="#">History</a>
+        </div>
+    </div>
+
+    <div class="hero-section">
+        <h2 class="headline">Harry Potter: Exploring the Beloved Wizarding World.</h2>
+        <p class="subtitle">Unravel the enchanting secrets, delve into forgotten spells, and rediscover the magic that binds us all. Prepare for an adventure beyond your wildest dreams!</p>
+        <a href="#" class="cta-button">Begin Your Journey</a>
+    </div>
+
+    <div class="content-block">
+        <div class="content-block-inner">
+            <div class="image-container">
+                <img src="https://via.placeholder.com/350x250?text=Ancient+Scrolls" alt="Ancient Scrolls">
+            </div>
+            <div class="text-container">
+                <h3>The Lore of Ancient Magick</h3>
+                <p>Journey back through time to uncover the foundational principles of magic. From the arcane rituals of forgotten civilizations to the whispers of ancient enchantments, this section reveals the deep, mysterious roots of our world's most powerful abilities.</p>
+                <p>Discover artifacts, legendary figures, and the very first spells that shaped the magical landscape.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-block reverse">
+        <div class="content-block-inner">
+            <div class="image-container">
+                <img src="https://via.placeholder.com/350x250?text=Mythical+Creature" alt="Mythical Creature">
+            </div>
+            <div class="text-container">
+                <h3>Encounters with Magical Beasts</h3>
+                <p>Step into the untamed wilds where extraordinary creatures roam. From the majestic Hippogriffs soaring above enchanted forests to the elusive Nifflers hidden in the shadows, each encounter is a unique blend of wonder and peril.</p>
+                <p>Learn about their habitats, behaviors, and the secrets to interacting with these magnificent, sometimes dangerous, beings.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-block">
+        <div class="content-block-inner">
+            <div class="image-container">
+                <img src="https://via.placeholder.com/350x250?text=Hidden+Chamber" alt="Hidden Chamber">
+            </div>
+            <div class="text-container">
+                <h3>Unlocking Hidden Chambers</h3>
+                <p>Explore the concealed passages and secret rooms that lie beneath the surface of the wizarding world. These mysterious spaces often hold ancient relics, forbidden knowledge, or pathways to untold adventures.</p>
+                <p>Are you brave enough to decipher the clues and unlock what lies within?</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="quote-section">
+        <blockquote>"It is our choices, Harry, that show what we truly are, far more than our abilities."</blockquote>
+        <span class="author">― Albus Dumbledore</span>
+    </div>
+
+    <div class="footer-section">
+        <div class="social-icons">
+            <a href="#"><img src="https://via.placeholder.com/32x32?text=FB" alt="Facebook"></a>
+            <a href="#"><img src="https://via.placeholder.com/32x32?text=TW" alt="Twitter"></a>
+            <a href="#"><img src="https://via.placeholder.com/32x32?text=IG" alt="Instagram"></a>
+            <a href="#"><img src="https://via.placeholder.com/32x32?text=YT" alt="YouTube"></a>
+        </div>
+        <div class="legal-text">
+            &copy; 2023 The Wizarding Daily. All rights reserved.<br>
+            <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a> | <a href="#">Unsubscribe</a>
+        </div>
+    </div>
+</div>
