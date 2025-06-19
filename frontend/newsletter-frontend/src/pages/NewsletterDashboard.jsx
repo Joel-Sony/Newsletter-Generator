@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Make sure this import is correct
 
-// --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
-import { XCircle, CheckCircle, Info } from 'lucide-react'; // Assuming you have lucide-react for icons
+// Lucide-react icons
+// IMPORTANT: Ensure you have lucide-react installed: npm install lucide-react or yarn add lucide-react
+import { XCircle, CheckCircle, Info, Menu, UserRound, LogOut, FileText, LayoutList, Archive, PlusCircle, PenTool, Eye, Copy, Trash2, RotateCcw, GitBranch, Search } from 'lucide-react';
 
+// --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
 const Toast = ({ message, type, onClose }) => {
   if (!message) return null;
 
@@ -81,6 +83,8 @@ const NewsletterDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userEmail, setUserEmail] = useState(''); // State for user email
+  const [searchTerm, setSearchTerm] = useState(''); // New state for search term
 
   const [pagination, setPagination] = useState({
     drafts: { currentPage: 1, itemsPerPage: 6 },
@@ -97,6 +101,12 @@ const NewsletterDashboard = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success'); // 'success', 'error', 'info' for styling
+
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false); // State for account dropdown
+  const accountRef = useRef(null); // Ref for account icon/dropdown
+
+  // NEW: State for the "Create New Newsletter" options modal
+  const [showCreateOptionsModal, setShowCreateOptionsModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -158,6 +168,9 @@ const NewsletterDashboard = () => {
         throw new Error('Authentication required. Session expired or not found.');
       }
 
+      // Set user email
+      setUserEmail(session.user?.email || '');
+
       const authToken = session.access_token;
 
       const response = await fetch('/api/newsletters-current', {
@@ -168,10 +181,10 @@ const NewsletterDashboard = () => {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-            console.error("Backend authentication failed:", response.status, response.statusText);
-            await supabase.auth.signOut();
-            navigate('/login');
-            throw new Error('Session expired or unauthorized. Please log in again.');
+          console.error("Backend authentication failed:", response.status, response.statusText);
+          await supabase.auth.signOut();
+          navigate('/login');
+          throw new Error('Session expired or unauthorized. Please log in again.');
         }
         const errorData = await response.json();
         throw new Error(errorData.error || `Failed to fetch newsletters: ${response.statusText}`);
@@ -246,6 +259,8 @@ const NewsletterDashboard = () => {
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
+    // Reset search term when changing sections
+    setSearchTerm('');
     if (isMobile) {
       setSidebarOpen(false);
     }
@@ -303,9 +318,9 @@ const NewsletterDashboard = () => {
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 401 || response.status === 403) {
-            await supabase.auth.signOut();
-            navigate('/login');
-            throw new Error('Session expired or unauthorized. Please log in again.');
+          await supabase.auth.signOut();
+          navigate('/login');
+          throw new Error('Session expired or unauthorized. Please log in again.');
         }
         throw new Error(errorData.error || 'Failed to delete newsletter');
       }
@@ -371,9 +386,9 @@ const NewsletterDashboard = () => {
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 401 || response.status === 403) {
-            await supabase.auth.signOut();
-            navigate('/login');
-            throw new Error('Session expired or unauthorized. Please log in again.');
+          await supabase.auth.signOut();
+          navigate('/login');
+          throw new Error('Session expired or unauthorized. Please log in again.');
         }
         throw new Error(errorData.message || 'Failed to duplicate newsletter.');
       }
@@ -436,9 +451,9 @@ const NewsletterDashboard = () => {
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 401 || response.status === 403) {
-            await supabase.auth.signOut();
-            navigate('/login');
-            throw new Error('Session expired or unauthorized. Please log in again.');
+          await supabase.auth.signOut();
+          navigate('/login');
+          throw new Error('Session expired or unauthorized. Please log in again.');
         }
         throw new Error(errorData.error || 'Failed to restore newsletter.');
       }
@@ -473,13 +488,9 @@ const NewsletterDashboard = () => {
   const handleActionClick = (action, newsletterId, projectId) => {
     switch (action) {
       case 'Edit':
-        // No need to clear cache here unless editing directly changes the list
         navigate(`/editor/${newsletterId}`);
         break;
       case 'View':
-        console.log(`View action clicked for newsletter ID: ${newsletterId}`);
-        navigate(`/preview/${newsletterId}`);
-        break;
       case 'Preview':
         navigate(`/preview/${newsletterId}`);
         break;
@@ -500,29 +511,82 @@ const NewsletterDashboard = () => {
     }
   };
 
+  // MODIFIED: This function now opens the modal instead of navigating directly
   const createNewsletter = () => {
-    // Clear cache if creating a new newsletter, as it will change the list
+    setShowCreateOptionsModal(true);
+  };
+
+  // NEW: Handlers for each creation option
+  const handleCreateBlank = () => {
     sessionStorage.removeItem('newslettersData');
     hasFetchedDataOnce.current = false;
-    navigate('/generator');
+    setShowCreateOptionsModal(false); // Close modal
+    navigate('/generator'); // Navigate to blank template creation
   };
+
+  const handleCreateFromUpload = () => {
+    // Logic for uploading a template (e.g., navigate to a dedicated upload page)
+    sessionStorage.removeItem('newslettersData');
+    hasFetchedDataOnce.current = false;
+    setShowCreateOptionsModal(false); // Close modal
+    navigate('/upload-template'); // Example route for template upload
+    displayToast('Redirecting to template upload page...', 'info');
+  };
+
+  const handleChooseTemplate = () => {
+    // Logic for choosing from predefined templates (e.g., navigate to a template gallery)
+    sessionStorage.removeItem('newslettersData');
+    hasFetchedDataOnce.current = false;
+    setShowCreateOptionsModal(false); // Close modal
+    navigate('/templates'); // Example route for predefined templates
+    displayToast('Redirecting to template gallery...', 'info');
+  };
+
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      // Clear all session storage relevant to newsletters
+      sessionStorage.removeItem('newslettersData');
+      hasFetchedDataOnce.current = false; // Reset the ref
+      setUserEmail(''); // Clear user email
+      displayToast('Logged out successfully!', 'success');
+      navigate('/login'); // Redirect to login page
+    } catch (error) {
+      console.error('Error logging out:', error.message);
+      displayToast(`Logout failed: ${error.message}`, 'error');
+    } finally {
+      setShowAccountDropdown(false); // Close dropdown after action
+    }
+  };
+
+  // Close dropdown, sidebar, and new create options modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isMobile && sidebarOpen &&
-          !event.target.closest('.sidebar') &&
-          !event.target.closest('.mobile-menu-btn')) {
+        !event.target.closest('.sidebar') &&
+        !event.target.closest('.mobile-menu-btn')) {
         setSidebarOpen(false);
+      }
+      if (accountRef.current && !accountRef.current.contains(event.target)) {
+        setShowAccountDropdown(false);
+      }
+      // NEW: Close Create Options Modal
+      if (showCreateOptionsModal && !event.target.closest('.create-options-modal-content') && !event.target.closest('.create-button')) {
+        setShowCreateOptionsModal(false);
       }
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [sidebarOpen, isMobile]);
+  }, [sidebarOpen, isMobile, showCreateOptionsModal]);
 
 
   const getStatusBadgeStyle = (status) => {
@@ -534,13 +598,29 @@ const NewsletterDashboard = () => {
     }
   };
 
+  // Modified to separate "Versions" button
   const getActionButtons = (status) => {
+    let mainActions = [];
+    let versionAction = null;
+
     switch (status) {
-      case 'draft': return ['Edit', 'Preview', 'Delete', 'Versions'];
-      case 'published': return ['View', 'Duplicate', 'Versions'];
-      case 'archived': return ['View', 'Restore', 'Versions'];
-      default: return ['View'];
+      case 'draft':
+        mainActions = [{ name: 'Edit', icon: <PenTool size={16} /> }, { name: 'Preview', icon: <Eye size={16} /> }, { name: 'Delete', icon: <Trash2 size={16} /> }];
+        versionAction = { name: 'Versions', icon: <GitBranch size={16} /> };
+        break;
+      case 'published':
+        mainActions = [{ name: 'View', icon: <Eye size={16} /> }, { name: 'Duplicate', icon: <Copy size={16} /> }];
+        versionAction = { name: 'Versions', icon: <GitBranch size={16} /> };
+        break;
+      case 'archived':
+        mainActions = [{ name: 'View', icon: <Eye size={16} /> }, { name: 'Restore', icon: <RotateCcw size={16} /> }];
+        versionAction = { name: 'Versions', icon: <GitBranch size={16} /> };
+        break;
+      default:
+        mainActions = [{ name: 'View', icon: <Eye size={16} /> }];
+        versionAction = { name: 'Versions', icon: <GitBranch size={16} /> };
     }
+    return { mainActions, versionAction };
   };
 
   const getCurrentNewsletters = () => {
@@ -551,7 +631,17 @@ const NewsletterDashboard = () => {
       all: [...newsletters.drafts, ...newsletters.published, ...newsletters.archived]
     };
 
-    const sectionNewsletters = allNewsletters[activeSection] || [];
+    let sectionNewsletters = allNewsletters[activeSection] || [];
+
+    // Filter by search term
+    if (searchTerm) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      sectionNewsletters = sectionNewsletters.filter(newsletter =>
+        newsletter.title.toLowerCase().includes(lowerCaseSearchTerm)
+      );
+    }
+
+    // Apply pagination AFTER filtering
     const currentPagination = pagination[activeSection];
     const startIndex = (currentPagination.currentPage - 1) * currentPagination.itemsPerPage;
     const endIndex = startIndex + currentPagination.itemsPerPage;
@@ -570,7 +660,16 @@ const NewsletterDashboard = () => {
       all: [...newsletters.drafts, ...newsletters.published, ...newsletters.archived]
     };
 
-    const sectionNewsletters = allNewsletters[section] || [];
+    let sectionNewsletters = allNewsletters[section] || [];
+
+    // Filter by search term for total pages calculation as well
+    if (searchTerm) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      sectionNewsletters = sectionNewsletters.filter(newsletter =>
+        newsletter.title.toLowerCase().includes(lowerCaseSearchTerm)
+      );
+    }
+
     return Math.ceil(sectionNewsletters.length / pagination[section].itemsPerPage);
   };
 
@@ -586,16 +685,19 @@ const NewsletterDashboard = () => {
 
   const getActionButtonStyle = (action) => {
     const baseStyle = {
-      padding: '6px 10px',
+      padding: '8px 14px', // Slightly more compact, adjusted padding
       borderRadius: '6px',
-      fontSize: '12px',
+      fontSize: '13.5px', // Slightly smaller font, adjusted for better look
       fontWeight: '500',
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
       fontFamily: 'Inter, system-ui, sans-serif',
-      flexShrink: 0,
-      whiteSpace: 'nowrap',
+      flexShrink: 0, // Prevent buttons from shrinking
+      whiteSpace: 'nowrap', // Prevent text from wrapping
+      display: 'flex', // Enable flexbox for icon and text
+      alignItems: 'center',
+      gap: '6px', // Space between icon and text
     };
 
     switch (action) {
@@ -605,7 +707,7 @@ const NewsletterDashboard = () => {
       case 'Delete': return { ...baseStyle, backgroundColor: '#ef4444', color: '#ffffff', '&:hover': { backgroundColor: '#dc2626' } };
       case 'Duplicate': return { ...baseStyle, backgroundColor: '#10b981', color: '#ffffff', '&:hover': { backgroundColor: '#047857' } };
       case 'Restore': return { ...baseStyle, backgroundColor: '#f59e0b', color: '#ffffff', '&:hover': { backgroundColor: '#d97706' } };
-      case 'Versions': return { ...baseStyle, backgroundColor: '#525252', color: '#ffffff', '&:hover': { backgroundColor: '#3f3f46' } };
+      case 'Versions': return { ...baseStyle, backgroundColor: '#525252', color: '#ffffff', '&:hover': { backgroundColor: '#3f3f46' } }; // Removed flexBasis: '100%'
       default: return { ...baseStyle, backgroundColor: '#6b7280', color: '#ffffff' };
     }
   };
@@ -708,17 +810,17 @@ const NewsletterDashboard = () => {
     header: {
       backgroundColor: '#111111',
       borderBottom: '1px solid #262626',
-      padding: '16px 24px',
+      padding: '1rem 1.5rem', // 16px 24px
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)'
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
     },
     logo: {
-      fontSize: '28px',
+      fontSize: '1.75rem', // 28px
       fontWeight: '800',
       background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899)',
       WebkitBackgroundClip: 'text',
@@ -728,7 +830,7 @@ const NewsletterDashboard = () => {
     },
     nav: {
       display: 'flex',
-      gap: '32px',
+      gap: '2rem', // 32px
       alignItems: 'center'
     },
     navLink: {
@@ -736,12 +838,11 @@ const NewsletterDashboard = () => {
       fontWeight: '500',
       textDecoration: 'none',
       transition: 'color 0.3s ease, transform 0.3s ease',
-      fontSize: '15px',
+      fontSize: '0.9375rem', // 15px
       fontFamily: 'Inter, system-ui, sans-serif',
-      padding: '8px 16px',
+      padding: '0.5rem 1rem', // 8px 16px
       borderRadius: '8px',
-      // Add hover effect
-      ':hover': {
+      '&:hover': {
         color: '#ffffff',
         transform: 'translateY(-2px)'
       }
@@ -749,21 +850,25 @@ const NewsletterDashboard = () => {
     headerRight: {
       display: 'flex',
       alignItems: 'center',
-      gap: '16px'
+      gap: '1rem', // 16px
+      position: 'relative', // For dropdown positioning
     },
     mobileMenuBtn: {
-      fontSize: '24px',
+      fontSize: '1.5rem', // 24px
       color: '#3b82f6',
       background: 'none',
       border: 'none',
       cursor: 'pointer',
-      display: 'none',
-      padding: '8px'
+      display: 'none', // Controlled by JS
+      padding: '0.5rem'
     },
-    avatar: {
-      width: '44px',
-      height: '44px',
-      borderRadius: '12px',
+    accountIconContainer: { // New style for account icon wrapper
+      position: 'relative',
+    },
+    accountIcon: { // New style for account icon button
+      width: '2.75rem', // 44px
+      height: '2.75rem', // 44px
+      borderRadius: '0.75rem', // 12px
       background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
       display: 'flex',
       alignItems: 'center',
@@ -771,14 +876,56 @@ const NewsletterDashboard = () => {
       color: 'white',
       fontWeight: '700',
       cursor: 'pointer',
-      fontSize: '16px',
+      fontSize: '1rem', // 16px
       fontFamily: 'Inter, system-ui, sans-serif',
       boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
       transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-      ':hover': {
+      '&:hover': {
         transform: 'scale(1.05)',
         boxShadow: '0 6px 16px rgba(59, 130, 246, 0.5)'
       }
+    },
+    accountDropdown: { // New style for account dropdown
+      position: 'absolute',
+      top: 'calc(100% + 10px)', // Below the icon
+      right: '0',
+      backgroundColor: '#1e1e1e',
+      border: '1px solid #333',
+      borderRadius: '8px',
+      boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+      minWidth: '200px',
+      zIndex: 100,
+      padding: '10px 0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+    },
+    dropdownEmail: { // New style for email in dropdown
+      padding: '8px 15px',
+      color: '#a3a3a3',
+      fontSize: '0.9rem',
+      borderBottom: '1px solid #262626',
+      marginBottom: '5px',
+      fontWeight: '500',
+    },
+    dropdownButton: { // New style for logout button in dropdown
+      width: '100%',
+      padding: '10px 15px',
+      backgroundColor: 'transparent',
+      border: 'none',
+      color: '#d1d5db',
+      textAlign: 'left',
+      cursor: 'pointer',
+      fontSize: '0.95rem',
+      fontWeight: '500',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      transition: 'background-color 0.2s ease, color 0.2s ease',
+      '&:hover': {
+        backgroundColor: '#262626',
+        color: '#ffffff',
+      },
     },
     mainContainer: {
       display: 'flex',
@@ -789,7 +936,7 @@ const NewsletterDashboard = () => {
       width: '280px',
       backgroundColor: '#111111',
       borderRight: '1px solid #262626',
-      padding: '24px',
+      padding: '1.5rem', // 24px
       display: 'flex',
       flexDirection: 'column',
       transition: 'transform 0.3s ease',
@@ -798,37 +945,37 @@ const NewsletterDashboard = () => {
       overflowY: 'auto',
     },
     sectionTitle: {
-      fontSize: '12px',
+      fontSize: '0.75rem', // 12px
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: '0.1em',
       color: '#737373',
-      marginBottom: '16px',
+      marginBottom: '1rem', // 16px
       fontFamily: 'Inter, system-ui, sans-serif'
     },
     sidebarList: {
       listStyle: 'none',
       padding: 0,
       margin: 0,
-      marginBottom: '32px'
+      marginBottom: '2rem' // 32px
     },
     sidebarItem: {
-      marginBottom: '4px'
+      marginBottom: '0.25rem' // 4px
     },
     sidebarButton: {
       width: '100%',
       display: 'flex',
       alignItems: 'center',
-      gap: '12px',
-      padding: '12px 16px',
+      gap: '0.75rem', // 12px
+      padding: '0.75rem 1rem', // 12px 16px
       borderRadius: '10px',
       border: 'none',
       cursor: 'pointer',
       fontWeight: '500',
       transition: 'all 0.3s ease',
-      fontSize: '14px',
+      fontSize: '0.875rem', // 14px
       fontFamily: 'Inter, system-ui, sans-serif',
-      ':hover': {
+      '&:hover': {
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         color: '#d4d4d4'
       }
@@ -838,7 +985,7 @@ const NewsletterDashboard = () => {
       color: 'white',
       transform: 'translateX(4px)',
       boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-      ':hover': {
+      '&:hover': {
         backgroundColor: '#3b82f6',
         color: 'white',
         transform: 'translateX(4px)'
@@ -848,79 +995,84 @@ const NewsletterDashboard = () => {
       backgroundColor: 'transparent',
       color: '#a3a3a3'
     },
+    // New style for the create button container in sidebar
+    createButtonSidebarContainer: {
+      paddingBottom: '1.5rem', // Space below the button
+      borderBottom: '1px solid #262626', // Separator
+      marginBottom: '1.5rem', // Space below the separator
+      display: 'flex',
+      justifyContent: 'center',
+    },
+    createButton: {
+      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+      color: 'white',
+      padding: '1.125rem 2.25rem', // 18px 36px
+      borderRadius: '12px',
+      fontSize: '1rem', // 16px
+      fontWeight: '600',
+      border: 'none',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+      marginTop: '1rem', // Space from top of sidebar content
+      width: '90%', // Make it take most of the sidebar width
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
+      '&:hover': {
+        transform: 'translateY(-3px)',
+        boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)'
+      }
+    },
     main: {
       flex: 1,
-      padding: '32px',
+      padding: '2rem', // 32px
       backgroundColor: '#0a0a0a',
-      paddingBottom: '64px',
+      paddingBottom: '4rem', // 64px
       overflowY: 'auto'
     },
     mainTitle: {
-      fontSize: '42px',
+      fontSize: '2.625rem', // 42px
       fontWeight: '800',
       color: '#ffffff',
-      marginBottom: '8px',
+      marginBottom: '0.5rem', // 8px
       fontFamily: 'Inter, system-ui, sans-serif',
       letterSpacing: '-0.025em'
     },
     mainSubtitle: {
       color: '#a3a3a3',
-      fontSize: '18px',
-      marginBottom: '32px',
+      fontSize: '1.125rem', // 18px
+      marginBottom: '2rem', // 32px
       fontFamily: 'Inter, system-ui, sans-serif',
       fontWeight: '400'
     },
-    createButton: {
-      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-      color: 'white',
-      padding: '18px 36px',
-      borderRadius: '12px',
-      fontSize: '16px',
-      fontWeight: '600',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      marginBottom: '32px',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
-      ':hover': {
-        transform: 'translateY(-3px)',
-        boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)'
-      }
-    },
-    createButtonContainer: {
-      backgroundColor: '#171717',
-      borderRadius: '16px',
-      padding: '32px',
-      marginBottom: '32px',
-      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
-      border: '1px solid #262626'
-    },
     tabsContainer: {
       display: 'flex',
-      gap: '6px',
-      marginBottom: '32px',
+      gap: '0.375rem', // 6px
+      marginBottom: '2rem', // 32px
       backgroundColor: '#171717',
-      borderRadius: '14px',
-      padding: '6px',
+      borderRadius: '0.875rem', // 14px
+      padding: '0.375rem', // 6px
       border: '1px solid #262626'
     },
     tab: {
       flex: 1,
-      padding: '14px 20px',
+      padding: '0.875rem 1.25rem', // 14px 20px
       borderRadius: '10px',
       fontWeight: '500',
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       fontFamily: 'Inter, system-ui, sans-serif',
-      fontSize: '14px'
+      fontSize: '0.875rem' // 14px
     },
     tabActive: {
       backgroundColor: '#3b82f6',
       color: 'white',
       boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-      ':hover': {
+      '&:hover': {
         backgroundColor: '#3b82f6', // Keep active color on hover
         color: 'white'
       }
@@ -928,7 +1080,7 @@ const NewsletterDashboard = () => {
     tabInactive: {
       backgroundColor: 'transparent',
       color: '#a3a3a3',
-      ':hover': {
+      '&:hover': {
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         color: '#d4d4d4'
       }
@@ -936,40 +1088,40 @@ const NewsletterDashboard = () => {
     grid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-      gap: '24px',
-      paddingBottom: '20px'
+      gap: '1.5rem', // 24px
+      paddingBottom: '1.25rem' // 20px
     },
     newsletterCard: {
       backgroundColor: '#171717',
-      borderRadius: '16px',
+      borderRadius: '1rem', // 16px
       overflow: 'hidden',
       boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
       border: '1px solid #262626',
       display: 'flex',
       flexDirection: 'column',
       transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-      ':hover': {
+      '&:hover': {
         transform: 'translateY(-8px)',
         boxShadow: '0 15px 40px rgba(0, 0, 0, 0.35)'
       }
     },
     cardImage: {
       width: '100%',
-      height: '180px',
+      height: '11.25rem', // 180px
       objectFit: 'cover',
       borderBottom: '1px solid #262626'
     },
     cardContent: {
-      padding: '20px',
+      padding: '1.25rem', // 20px
       display: 'flex',
       flexDirection: 'column',
       flexGrow: 1
     },
     cardTitle: {
-      fontSize: '18px',
+      fontSize: '1.125rem', // 18px
       fontWeight: '600',
       color: '#ffffff',
-      marginBottom: '8px',
+      marginBottom: '0.5rem', // 8px
       fontFamily: 'Inter, system-ui, sans-serif',
       lineHeight: '1.4em'
     },
@@ -977,43 +1129,66 @@ const NewsletterDashboard = () => {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '16px',
-      fontSize: '13px',
+      marginBottom: '1rem', // 16px
+      fontSize: '0.8125rem', // 13px
       color: '#a3a3a3',
       fontFamily: 'Inter, system-ui, sans-serif'
     },
-    cardStatus: {
-      padding: '4px 10px',
-      borderRadius: '20px',
-      fontSize: '11px',
-      fontWeight: '600',
-      textTransform: 'capitalize'
-    },
     cardActions: {
       display: 'flex',
-      flexWrap: 'wrap', // Allow buttons to wrap
-      gap: '8px',        // Spacing between buttons
+      flexWrap: 'wrap',
+      gap: '0.6rem', // Increased gap slightly for better separation
       marginTop: 'auto', // Push actions to the bottom
-      justifyContent: 'flex-start'
+      justifyContent: 'flex-start',
+    },
+    searchBarContainer: {
+      position: 'relative',
+      width: '100%',
+      marginBottom: '1.5rem', // space below search bar
+    },
+    searchInput: {
+      width: '100%',
+      padding: '0.875rem 1rem 0.875rem 3rem', // Add left padding for icon
+      borderRadius: '8px',
+      border: '1px solid #333',
+      backgroundColor: '#1e1e1e',
+      color: '#d1d5db',
+      fontSize: '1rem',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      outline: 'none',
+      transition: 'border-color 0.2s ease',
+      '&:focus': {
+        borderColor: '#3b82f6',
+      },
+      '&::placeholder': {
+        color: '#a3a3a3',
+      }
+    },
+    searchIcon: {
+      position: 'absolute',
+      left: '1rem',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#a3a3a3',
     },
     paginationContainer: {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: '8px',
-      marginTop: '32px',
-      marginBottom: '20px',
-      flexWrap: 'wrap' // Allow pagination buttons to wrap
+      gap: '0.5rem', // 8px
+      marginTop: '2rem', // 32px
+      marginBottom: '1.25rem', // 20px
+      flexWrap: 'wrap'
     },
     paginationButton: {
       backgroundColor: '#1f2937',
       color: '#d1d5db',
       border: '1px solid #374151',
-      padding: '10px 16px',
+      padding: '0.625rem 1rem', // 10px 16px
       borderRadius: '8px',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
-      fontSize: '14px',
+      fontSize: '0.875rem', // 14px
       fontWeight: '500',
       fontFamily: 'Inter, system-ui, sans-serif',
       '&:hover': {
@@ -1039,24 +1214,24 @@ const NewsletterDashboard = () => {
     },
     emptyState: {
       textAlign: 'center',
-      padding: '60px 20px',
+      padding: '3.75rem 1.25rem', // 60px 20px
       backgroundColor: '#171717',
-      borderRadius: '16px',
+      borderRadius: '1rem', // 16px
       border: '1px solid #262626',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '20px',
-      minHeight: '300px'
+      gap: '1.25rem', // 20px
+      minHeight: '18.75rem' // 300px
     },
     emptyStateText: {
-      fontSize: '20px',
+      fontSize: '1.25rem', // 20px
       color: '#a3a3a3',
       fontWeight: '500'
     },
     emptyStateSubText: {
-      fontSize: '16px',
+      fontSize: '1rem', // 16px
       color: '#737373',
       maxWidth: '500px',
       lineHeight: '1.6'
@@ -1073,20 +1248,20 @@ const NewsletterDashboard = () => {
       alignItems: 'center',
       zIndex: 1001,
       color: 'white',
-      fontSize: '24px'
+      fontSize: '1.5rem' // 24px
     },
     errorState: {
       textAlign: 'center',
-      padding: '60px 20px',
+      padding: '3.75rem 1.25rem', // 60px 20px
       backgroundColor: '#171717',
-      borderRadius: '16px',
+      borderRadius: '1rem', // 16px
       border: '1px solid #262626',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '20px',
-      minHeight: '300px',
+      gap: '1.25rem', // 20px
+      minHeight: '18.75rem', // 300px
       color: '#ef4444'
     },
     deleteModalOverlay: {
@@ -1103,7 +1278,7 @@ const NewsletterDashboard = () => {
     },
     deleteModalContent: {
       backgroundColor: '#1e1e1e',
-      padding: '30px',
+      padding: '1.875rem', // 30px
       borderRadius: '12px',
       boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
       textAlign: 'center',
@@ -1112,30 +1287,30 @@ const NewsletterDashboard = () => {
       border: '1px solid #333'
     },
     deleteModalTitle: {
-      fontSize: '24px',
+      fontSize: '1.5rem', // 24px
       fontWeight: '700',
       color: '#ef4444',
-      marginBottom: '15px'
+      marginBottom: '0.9375rem' // 15px
     },
     deleteModalMessage: {
-      fontSize: '16px',
+      fontSize: '1rem', // 16px
       color: '#a3a3a3',
-      marginBottom: '25px',
+      marginBottom: '1.5625rem', // 25px
       lineHeight: '1.6'
     },
     deleteModalButtons: {
       display: 'flex',
       justifyContent: 'center',
-      gap: '15px'
+      gap: '0.9375rem' // 15px
     },
     deleteModalConfirmBtn: {
       backgroundColor: '#ef4444',
       color: 'white',
-      padding: '12px 25px',
+      padding: '0.75rem 1.5625rem', // 12px 25px
       borderRadius: '8px',
       border: 'none',
       cursor: 'pointer',
-      fontSize: '16px',
+      fontSize: '1rem', // 16px
       fontWeight: '600',
       transition: 'background-color 0.3s ease',
       '&:hover': {
@@ -1145,17 +1320,95 @@ const NewsletterDashboard = () => {
     deleteModalCancelBtn: {
       backgroundColor: '#374151',
       color: 'white',
-      padding: '12px 25px',
+      padding: '0.75rem 1.5625rem', // 12px 25px
       borderRadius: '8px',
       border: 'none',
       cursor: 'pointer',
-      fontSize: '16px',
+      fontSize: '1rem', // 16px
       fontWeight: '600',
       transition: 'background-color 0.3s ease',
       '&:hover': {
         backgroundColor: '#4b5563'
       }
     },
+    // NEW Styles for the Create Options Modal
+    createOptionsModalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    },
+    createOptionsModalContent: {
+      backgroundColor: '#1e1e1e',
+      padding: '2rem',
+      borderRadius: '12px',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+      textAlign: 'center',
+      maxWidth: '500px',
+      width: '90%',
+      border: '1px solid #333',
+      position: 'relative',
+    },
+    createOptionsModalTitle: {
+      fontSize: '1.6rem',
+      fontWeight: '700',
+      color: '#ffffff',
+      marginBottom: '1.5rem',
+    },
+    createOptionsButtonContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem',
+    },
+    createOptionButton: {
+      background: '#374151',
+      color: 'white',
+      padding: '1rem 1.5rem',
+      borderRadius: '8px',
+      fontSize: '1.1rem',
+      fontWeight: '600',
+      border: 'none',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '10px',
+      '&:hover': {
+        backgroundColor: '#4b5563',
+        transform: 'translateY(-2px)',
+      },
+    },
+    createOptionButtonPrimary: {
+        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+        boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+        '&:hover': {
+            background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
+            transform: 'translateY(-2px)',
+        },
+    },
+    modalCloseButton: {
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        background: 'none',
+        border: 'none',
+        color: '#a3a3a3',
+        fontSize: '1.8rem',
+        cursor: 'pointer',
+        padding: '5px',
+        borderRadius: '50%',
+        '&:hover': {
+            backgroundColor: '#262626',
+            color: '#ffffff',
+        },
+    }
   };
 
   if (loading && !hasFetchedDataOnce.current) { // Only show full loading if no cached data
@@ -1171,9 +1424,24 @@ const NewsletterDashboard = () => {
       <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.logo}>SwiftScribe</div>
-          <button style={styles.mobileMenuBtn} onClick={toggleSidebar}>☰</button>
+          <button style={{ ...styles.mobileMenuBtn, display: isMobile ? 'block' : 'none' }} onClick={toggleSidebar}><Menu size={24} /></button>
           <div style={styles.headerRight}>
-            <div style={styles.avatar}>JD</div>
+            <div style={styles.accountIconContainer} ref={accountRef}>
+              <button
+                style={styles.accountIcon}
+                onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+              >
+                <UserRound size={28} />
+              </button>
+              {showAccountDropdown && (
+                <div style={styles.accountDropdown}>
+                  {userEmail && <span style={styles.dropdownEmail}>{userEmail}</span>}
+                  <button style={styles.dropdownButton} onClick={handleLogout}>
+                    <LogOut size={18} /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div style={styles.mainContainer}>
@@ -1195,16 +1463,31 @@ const NewsletterDashboard = () => {
 
 
   const currentNewsletters = getCurrentNewsletters();
-  const totalItemsInActiveSection = newsletters[activeSection]?.length || 0;
+  const totalItemsInActiveSection = newsletters[activeSection]?.length || 0; // This will count filtered items if search term is active
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.logo}>SwiftScribe</div>
-        <button className="mobile-menu-btn" style={{ ...styles.mobileMenuBtn, display: isMobile ? 'block' : 'none' }} onClick={toggleSidebar}>☰</button>
+        <button className="mobile-menu-btn" style={{ ...styles.mobileMenuBtn, display: isMobile ? 'block' : 'none' }} onClick={toggleSidebar}><Menu size={24} /></button>
         <div style={styles.headerRight}>
-          <div style={styles.avatar}>JD</div>
+          <div style={styles.accountIconContainer} ref={accountRef}>
+            <button
+              style={styles.accountIcon}
+              onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+            >
+              <UserRound size={28} />
+            </button>
+            {showAccountDropdown && (
+              <div style={styles.accountDropdown}>
+                {userEmail && <span style={styles.dropdownEmail}>{userEmail}</span>}
+                <button style={styles.dropdownButton} onClick={handleLogout}>
+                  <LogOut size={18} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1219,6 +1502,13 @@ const NewsletterDashboard = () => {
           height: isMobile ? 'calc(100vh - 80px)' : '100%',
           boxShadow: isMobile && sidebarOpen ? '5px 0 15px rgba(0, 0, 0, 0.5)' : 'none',
         }}>
+          {/* Create Newsletter Button - Moved to Sidebar */}
+          <div style={styles.createButtonSidebarContainer}>
+            <button onClick={createNewsletter} style={styles.createButton} className="create-button">
+              <PlusCircle size={20} /> Create New Newsletter
+            </button>
+          </div>
+
           <h3 style={styles.sectionTitle}>Dashboard</h3>
           <ul style={styles.sidebarList}>
             <li style={styles.sidebarItem}>
@@ -1229,7 +1519,7 @@ const NewsletterDashboard = () => {
                   ...(activeSection === 'drafts' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
                 }}
               >
-                Drafts ({newsletters.drafts.length})
+                <FileText size={18} /> Drafts ({newsletters.drafts.length})
               </button>
             </li>
             <li style={styles.sidebarItem}>
@@ -1240,7 +1530,7 @@ const NewsletterDashboard = () => {
                   ...(activeSection === 'published' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
                 }}
               >
-                Published ({newsletters.published.length})
+                <LayoutList size={18} /> Published ({newsletters.published.length})
               </button>
             </li>
             <li style={styles.sidebarItem}>
@@ -1251,7 +1541,7 @@ const NewsletterDashboard = () => {
                   ...(activeSection === 'archived' ? styles.sidebarButtonActive : styles.sidebarButtonInactive)
                 }}
               >
-                Archived ({newsletters.archived.length})
+                <Archive size={18} /> Archived ({newsletters.archived.length})
               </button>
             </li>
           </ul>
@@ -1262,10 +1552,23 @@ const NewsletterDashboard = () => {
           <h1 style={styles.mainTitle}>{getSectionTitle()}</h1>
           <p style={styles.mainSubtitle}>Manage your newsletters effortlessly.</p>
 
-          <div style={styles.createButtonContainer}>
-            <button onClick={createNewsletter} style={styles.createButton}>
-              + Create New Newsletter
-            </button>
+          {/* Search Bar - Remains in Main Content, separated from create button */}
+          <div style={styles.searchBarContainer}>
+            <Search size={20} style={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder="Search newsletters by title..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                // Reset to first page when search term changes
+                setPagination(prev => ({
+                  ...prev,
+                  [activeSection]: { ...prev[activeSection], currentPage: 1 }
+                }));
+              }}
+              style={styles.searchInput}
+            />
           </div>
 
           <div style={styles.tabsContainer}>
@@ -1283,54 +1586,72 @@ const NewsletterDashboard = () => {
             ))}
           </div>
 
-          {loading && hasFetchedDataOnce.current === false && ( // Show loading only if no data at all
-             <div style={styles.loadingOverlay}>
-                <p>Loading newsletters...</p>
-             </div>
+          {loading && hasFetchedDataOnce.current === false && (
+            <div style={styles.loadingOverlay}>
+              <p>Loading newsletters...</p>
+            </div>
           )}
 
-          {!loading && currentNewsletters.length === 0 ? (
+          {!loading && currentNewsletters.length === 0 && searchTerm === '' ? (
             <div style={styles.emptyState}>
               <p style={styles.emptyStateText}>No {activeSection} newsletters found.</p>
-              <p style={styles.emptyStateSubText}>Start by creating a new newsletter to see it appear here.</p>
-              {activeSection === 'drafts' && (
-                <button onClick={createNewsletter} style={styles.createButton}>
-                  Create Your First Newsletter
-                </button>
-              )}
+              <p style={styles.emptyStateSubText}>Create a new newsletter using the button in the sidebar to see it appear here.</p>
+              {/* Removed inline create button here as it's now in the sidebar */}
+            </div>
+          ) : !loading && currentNewsletters.length === 0 && searchTerm !== '' ? (
+            <div style={styles.emptyState}>
+              <p style={styles.emptyStateText}>No newsletters found for "{searchTerm}".</p>
+              <p style={styles.emptyStateSubText}>Try a different search term or clear the search to see all newsletters.</p>
+              <button onClick={() => setSearchTerm('')} style={styles.createButton}>
+                Clear Search
+              </button>
             </div>
           ) : (
             <>
               <div style={styles.grid}>
-                {currentNewsletters.map((newsletter) => (
-                  <div key={newsletter.id} style={styles.newsletterCard}>
-                    <img
-                      src={newsletter.previewImage || 'https://via.placeholder.com/400x250?text=No+Image'}
-                      alt={newsletter.title}
-                      style={styles.cardImage}
-                    />
-                    <div style={styles.cardContent}>
-                      <h2 style={styles.cardTitle}>{newsletter.title}</h2>
-                      <div style={styles.cardMeta}>
-                        <span>Last Edited: {newsletter.lastEdited}</span>
-                        <span style={{ ...styles.cardStatus, ...getStatusBadgeStyle(newsletter.status) }}>
-                          {newsletter.status}
-                        </span>
-                      </div>
-                      <div style={styles.cardActions}>
-                        {getActionButtons(newsletter.status).map((action) => (
-                          <button
-                            key={action}
-                            onClick={() => handleActionClick(action, newsletter.id, newsletter.project_id)}
-                            style={getActionButtonStyle(action)}
-                          >
-                            {action}
-                          </button>
-                        ))}
+                {currentNewsletters.map((newsletter) => {
+                  const { mainActions, versionAction } = getActionButtons(newsletter.status);
+                  return (
+                    <div key={newsletter.id} style={styles.newsletterCard}>
+                      <img
+                        src={newsletter.previewImage || 'https://via.placeholder.com/400x250?text=No+Image'}
+                        alt={newsletter.title}
+                        style={styles.cardImage}
+                      />
+                      <div style={styles.cardContent}>
+                        <h2 style={styles.cardTitle}>{newsletter.title}</h2>
+                        <div style={styles.cardMeta}>
+                          <span>Last Edited: {newsletter.lastEdited}</span>
+                          <span style={{ ...styles.cardStatus, ...getStatusBadgeStyle(newsletter.status) }}>
+                            {newsletter.status}
+                          </span>
+                        </div>
+                        <div style={styles.cardActions}>
+                          {/* Main action buttons */}
+                          {mainActions.map((action) => (
+                            <button
+                              key={action.name}
+                              onClick={() => handleActionClick(action.name, newsletter.id, newsletter.project_id)}
+                              style={getActionButtonStyle(action.name)}
+                            >
+                              {action.icon} {action.name}
+                            </button>
+                          ))}
+                          {/* Versions button */}
+                          {versionAction && (
+                            <button
+                              key={versionAction.name}
+                              onClick={() => handleActionClick(versionAction.name, newsletter.id, newsletter.project_id)}
+                              style={getActionButtonStyle(versionAction.name)}
+                            >
+                              {versionAction.icon} {versionAction.name}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {renderPagination()}
             </>
@@ -1349,6 +1670,41 @@ const NewsletterDashboard = () => {
             <div style={styles.deleteModalButtons}>
               <button onClick={confirmDelete} style={styles.deleteModalConfirmBtn}>Delete</button>
               <button onClick={cancelDelete} style={styles.deleteModalCancelBtn}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Create New Newsletter Options Modal */}
+      {showCreateOptionsModal && (
+        <div style={styles.createOptionsModalOverlay}>
+          <div style={styles.createOptionsModalContent} className="create-options-modal-content">
+            <button
+                onClick={() => setShowCreateOptionsModal(false)}
+                style={styles.modalCloseButton}
+            >
+                &times;
+            </button>
+            <h2 style={styles.createOptionsModalTitle}>Create New Newsletter</h2>
+            <div style={styles.createOptionsButtonContainer}>
+              <button
+                onClick={handleCreateBlank}
+                style={{...styles.createOptionButton, ...styles.createOptionButtonPrimary}}
+              >
+                <FileText size={20} /> Create Blank Newsletter
+              </button>
+              <button
+                onClick={handleCreateFromUpload}
+                style={styles.createOptionButton}
+              >
+                <PlusCircle size={20} /> Create from Uploaded Template
+              </button>
+              <button
+                onClick={handleChooseTemplate}
+                style={styles.createOptionButton}
+              >
+                <LayoutList size={20} /> Choose from Predefined Templates
+              </button>
             </div>
           </div>
         </div>
