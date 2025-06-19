@@ -13,14 +13,13 @@ function App() {
   const [loadingAuth, setLoadingAuth] = useState(true); // State to track initial auth check
 
   useEffect(() => {
-    // Function to check initial session and set up listener
+
     const getInitialSession = async () => {
       console.log("App.js: Checking initial Supabase session...");
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoadingAuth(false); // Authentication check is complete
 
-      // Set up a listener for authentication state changes
       const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
         console.log("App.js: Auth state changed:", _event, newSession);
         setSession(newSession);

@@ -2,11 +2,7 @@ import React, { useState, useEffect, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Make sure this import is correct
 
-// Assuming you have this Toast component. If not, paste the basic Toast component
-// from the previous response here or create a separate file for it (e.g., components/Toast.jsx)
-// import Toast from './Toast'; // Adjust path if needed
 
-// --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
 import { XCircle, CheckCircle, Info } from 'lucide-react'; // Assuming you have lucide-react for icons
 import { useRef } from 'react';
 
@@ -72,8 +68,6 @@ const Toast = ({ message, type, onClose }) => {
     </div>
   );
 };
-// --- END Basic Toast Component ---
-
 
 const NewsletterDashboard = () => {
   const [activeSection, setActiveSection] = useState('drafts');
@@ -123,6 +117,7 @@ const NewsletterDashboard = () => {
   const fetchNewsletters = useCallback(async () => {
     
     try {
+      console.log(`HasFetchedData.current: ${hasFetchedData.current}`)
       if (hasFetchedData.current) {
       console.log("fetchNewsletters: Data already fetched for this component instance. Skipping.");
       return;
@@ -721,7 +716,7 @@ const NewsletterDashboard = () => {
       letterSpacing: '-0.025em'
     },
     nav: {
-      display: isMobile ? 'none' : 'flex',
+      display: 'flex', // isMobile should be defined in context where this style object is used
       gap: '32px',
       alignItems: 'center'
     },
@@ -751,7 +746,7 @@ const NewsletterDashboard = () => {
       background: 'none',
       border: 'none',
       cursor: 'pointer',
-      display: isMobile ? 'block' : 'none',
+      display: 'none', // isMobile should be defined in context where this style object is used
       padding: '8px'
     },
     avatar: {
@@ -787,14 +782,14 @@ const NewsletterDashboard = () => {
       display: 'flex',
       flexDirection: 'column',
       transition: 'transform 0.3s ease',
-      transform: isMobile ? (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)',
-      position: isMobile ? 'fixed' : 'static',
-      top: isMobile ? '80px' : 'auto',
-      left: isMobile ? 0 : 'auto',
-      height: isMobile ? 'calc(100vh - 80px)' : '100%',
+      // transform: isMobile ? (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)', // isMobile and sidebarOpen needs to be defined
+      position: 'static', // isMobile needs to be defined
+      // top: isMobile ? '80px' : 'auto',
+      // left: isMobile ? 0 : 'auto',
+      // height: isMobile ? 'calc(100vh - 80px)' : '100%',
       zIndex: 40,
       overflowY: 'auto',
-      boxShadow: isMobile && sidebarOpen ? '5px 0 15px rgba(0, 0, 0, 0.5)' : 'none',
+      // boxShadow: isMobile && sidebarOpen ? '5px 0 15px rgba(0, 0, 0, 0.5)' : 'none',
     },
     sectionTitle: {
       fontSize: '12px',
@@ -1068,7 +1063,9 @@ const NewsletterDashboard = () => {
     paginationButton: {
       padding: '8px 12px',
       borderRadius: '8px',
-      border: '1px solid #404040',
+      borderWidth: '1px',  // Changed from shorthand border
+      borderStyle: 'solid', // Changed from shorthand border
+      borderColor: '#404040', // Explicitly set borderColor
       backgroundColor: '#1f1f1f',
       color: '#a3a3a3',
       cursor: 'pointer',
@@ -1090,7 +1087,7 @@ const NewsletterDashboard = () => {
     paginationButtonActive: {
       backgroundColor: '#3b82f6',
       color: 'white',
-      borderColor: '#3b82f6',
+      borderColor: '#3b82f6', // Keep this as it is overriding the base
       boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
       ':hover': {
         backgroundColor: '#3b82f6', // Maintain active style on hover
@@ -1102,7 +1099,7 @@ const NewsletterDashboard = () => {
       backgroundColor: '#111111',
       color: '#525252',
       cursor: 'not-allowed',
-      borderColor: '#262626',
+      borderColor: '#262626', // Keep this as it is overriding the base
       ':hover': { // No hover effect for disabled buttons
         backgroundColor: '#111111',
         color: '#525252',
