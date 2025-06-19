@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'; // Added useCallback
 import { Upload, Send, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient.js'; // <<< IMPORTANT: Import your Supabase client
+import { supabase } from '../supabaseClient.js'; 
 
 const NewsletterGenerator = () => {
   const [formData, setFormData] = useState({
@@ -309,7 +309,7 @@ const NewsletterGenerator = () => {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: window.innerWidth >= 768 ? '1fr 1fr' : '1fr',
-                  gap: '1.5rem'
+                  gap: '4rem'
                 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <label style={{
@@ -379,7 +379,8 @@ const NewsletterGenerator = () => {
                         fontSize: '1rem',
                         outline: 'none',
                         transition: 'all 0.3s ease',
-                        backdropFilter: 'blur(4px)'
+                        backdropFilter: 'blur(4px)',
+                        marginRight:'10rem',
                       }}
                       onFocus={(e) => {
                         e.target.style.borderColor = '#3b82f6';
@@ -424,7 +425,8 @@ const NewsletterGenerator = () => {
                       transition: 'all 0.3s ease',
                       backdropFilter: 'blur(4px)',
                       resize: 'none',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      marginRight:'30 rem'
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = '#3b82f6';

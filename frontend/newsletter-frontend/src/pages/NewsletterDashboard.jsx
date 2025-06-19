@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Make sure this import is correct
-
-// Lucide-react icons
-// IMPORTANT: Ensure you have lucide-react installed: npm install lucide-react or yarn add lucide-react
 import { XCircle, CheckCircle, Info, Menu, UserRound, LogOut, FileText, LayoutList, Archive, PlusCircle, PenTool, Eye, Copy, Trash2, RotateCcw, GitBranch, Search } from 'lucide-react';
 
-// --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
 const Toast = ({ message, type, onClose }) => {
   if (!message) return null;
 
@@ -69,7 +65,6 @@ const Toast = ({ message, type, onClose }) => {
     </div>
   );
 };
-// --- END Basic Toast Component ---
 
 
 const NewsletterDashboard = () => {
@@ -83,8 +78,8 @@ const NewsletterDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userEmail, setUserEmail] = useState(''); // State for user email
-  const [searchTerm, setSearchTerm] = useState(''); // New state for search term
+  const [userEmail, setUserEmail] = useState(''); 
+  const [searchTerm, setSearchTerm] = useState(''); 
 
   const [pagination, setPagination] = useState({
     drafts: { currentPage: 1, itemsPerPage: 6 },
@@ -100,20 +95,17 @@ const NewsletterDashboard = () => {
   // State for toast notification
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success'); // 'success', 'error', 'info' for styling
+  const [toastType, setToastType] = useState('success'); 
 
-  const [showAccountDropdown, setShowAccountDropdown] = useState(false); // State for account dropdown
-  const accountRef = useRef(null); // Ref for account icon/dropdown
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false); 
+  const accountRef = useRef(null); 
 
-  // NEW: State for the "Create New Newsletter" options modal
   const [showCreateOptionsModal, setShowCreateOptionsModal] = useState(false);
 
   const navigate = useNavigate();
 
-  // Ref to track if data has been fetched for this component instance
   const hasFetchedDataOnce = useRef(false);
 
-  // Reusable toast display function (added for consistency)
   const displayToast = useCallback((message, type) => {
     setToastMessage(message);
     setToastType(type);
@@ -127,7 +119,6 @@ const NewsletterDashboard = () => {
 
   // Memoized fetchNewsletters using useCallback
   const fetchNewsletters = useCallback(async (forceRefetch = false) => {
-    // Attempt to load from session storage first, unless forceRefetch is true
     if (!forceRefetch && sessionStorage.getItem('newslettersData')) {
       try {
         const cachedData = JSON.parse(sessionStorage.getItem('newslettersData'));
@@ -138,7 +129,6 @@ const NewsletterDashboard = () => {
         return;
       } catch (e) {
         console.error("Error parsing cached newsletters from session storage, re-fetching:", e);
-        // Fall through to actual fetch if parsing fails
       }
     }
 
@@ -151,7 +141,7 @@ const NewsletterDashboard = () => {
     setLoading(true);
 
     try {
-      // --- AUTHENTICATION CHANGE: Get session from Supabase ---
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
@@ -170,6 +160,9 @@ const NewsletterDashboard = () => {
 
       // Set user email
       setUserEmail(session.user?.email || '');
+      console.log("Supabase session:", session);
+      console.log("User email from session:", session.user?.email);
+      console.log("User email state (userEmail):", userEmail);
 
       const authToken = session.access_token;
 
@@ -521,27 +514,17 @@ const NewsletterDashboard = () => {
     sessionStorage.removeItem('newslettersData');
     hasFetchedDataOnce.current = false;
     setShowCreateOptionsModal(false); // Close modal
-    navigate('/generator'); // Navigate to blank template creation
+    navigate('/editor/0'); // Navigate to blank template creation
   };
 
   const handleCreateFromUpload = () => {
-    // Logic for uploading a template (e.g., navigate to a dedicated upload page)
+    // Logic for Upload and design with AI 
     sessionStorage.removeItem('newslettersData');
     hasFetchedDataOnce.current = false;
     setShowCreateOptionsModal(false); // Close modal
-    navigate('/upload-template'); // Example route for template upload
+    navigate('/generator'); 
     displayToast('Redirecting to template upload page...', 'info');
   };
-
-  const handleChooseTemplate = () => {
-    // Logic for choosing from predefined templates (e.g., navigate to a template gallery)
-    sessionStorage.removeItem('newslettersData');
-    hasFetchedDataOnce.current = false;
-    setShowCreateOptionsModal(false); // Close modal
-    navigate('/templates'); // Example route for predefined templates
-    displayToast('Redirecting to template gallery...', 'info');
-  };
-
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -1463,7 +1446,6 @@ const NewsletterDashboard = () => {
 
 
   const currentNewsletters = getCurrentNewsletters();
-  const totalItemsInActiveSection = newsletters[activeSection]?.length || 0; // This will count filtered items if search term is active
 
   return (
     <div style={styles.container}>
@@ -1502,7 +1484,6 @@ const NewsletterDashboard = () => {
           height: isMobile ? 'calc(100vh - 80px)' : '100%',
           boxShadow: isMobile && sidebarOpen ? '5px 0 15px rgba(0, 0, 0, 0.5)' : 'none',
         }}>
-          {/* Create Newsletter Button - Moved to Sidebar */}
           <div style={styles.createButtonSidebarContainer}>
             <button onClick={createNewsletter} style={styles.createButton} className="create-button">
               <PlusCircle size={20} /> Create New Newsletter
@@ -1552,7 +1533,6 @@ const NewsletterDashboard = () => {
           <h1 style={styles.mainTitle}>{getSectionTitle()}</h1>
           <p style={styles.mainSubtitle}>Manage your newsletters effortlessly.</p>
 
-          {/* Search Bar - Remains in Main Content, separated from create button */}
           <div style={styles.searchBarContainer}>
             <Search size={20} style={styles.searchIcon} />
             <input
@@ -1688,29 +1668,22 @@ const NewsletterDashboard = () => {
             <h2 style={styles.createOptionsModalTitle}>Create New Newsletter</h2>
             <div style={styles.createOptionsButtonContainer}>
               <button
-                onClick={handleCreateBlank}
+                onClick={handleCreateFromUpload}
                 style={{...styles.createOptionButton, ...styles.createOptionButtonPrimary}}
               >
-                <FileText size={20} /> Create Blank Newsletter
+                <FileText size={20} /> Create content and design with AI
               </button>
               <button
-                onClick={handleCreateFromUpload}
+                onClick={handleCreateBlank}
                 style={styles.createOptionButton}
               >
-                <PlusCircle size={20} /> Create from Uploaded Template
-              </button>
-              <button
-                onClick={handleChooseTemplate}
-                style={styles.createOptionButton}
-              >
-                <LayoutList size={20} /> Choose from Predefined Templates
+                <PlusCircle size={20} /> Create blank template
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast Notification */}
       <Toast
         message={toastMessage}
         type={toastType}

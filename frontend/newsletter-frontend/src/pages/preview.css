@@ -48,7 +48,6 @@ html, body, #root {
   align-items: center;
   max-width: 1200px; /* Limit width for larger screens */
   margin: 0 auto; /* Center content */
-  position:sticky;
 }
 
 .preview-header-title {

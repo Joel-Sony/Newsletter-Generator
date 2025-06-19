@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import StudioEditor from '@grapesjs/studio-sdk/react';
 import '@grapesjs/studio-sdk/style';
 import { canvasAbsoluteMode } from '@grapesjs/studio-sdk-plugins';
-import './editor.css';
-import { supabase } from '../supabaseClient.js'; 
+import { supabase } from '../supabaseClient.js';
+import './editor.css'
 
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -104,13 +104,13 @@ const Modal = ({ isOpen, onClose, children, title }) => {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        
+
         @keyframes slideIn {
-          from { 
+          from {
             opacity: 0;
             transform: translateY(-20px) scale(0.95);
           }
-          to { 
+          to {
             opacity: 1;
             transform: translateY(0) scale(1);
           }
@@ -334,8 +334,7 @@ function Editor() {
         document.body.removeChild(toast);
       }, 300);
     }, 3000);
-  }, []); // showToast itself doesn't depend on state/props outside.
-
+  }, []);
 
   const getAuthToken = useCallback(async () => {
     try {
@@ -349,7 +348,7 @@ function Editor() {
       if (session) {
         return session.access_token;
       }
-      
+
       console.log("No active Supabase session found in getAuthToken, redirecting to login.");
       showToast('Authentication required. Please log in.', true);
       navigate('/login', { replace: true });
@@ -360,62 +359,72 @@ function Editor() {
       navigate('/login', { replace: true });
       return null;
     }
-  }, [navigate, showToast]); // Added showToast as dependency for useCallback
+  }, [navigate, showToast]);
 
   const loadProjectContent = useCallback(async (editorInstance) => {
     if (!editorInstance) return;
 
     setLoading(true);
-    if (id) { // 'id' from URL is the specific version ID (primary key)
+    if (id) {
       setShowProjectLoadingOverlay(true);
     }
 
     try {
       if (id) {
+        if(id === '0'){
+          console.log("Inside blank")
+          editorInstance.setComponents(
+            `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blank Newsletter</title>
+</head>
+<body>
+<h1>Start building your newsletter here</h1>
+</body>
+</html>`
+          )
+          return;
+        }
+
         console.log("Attempting to load project version:", id);
 
         let loadedFromCache = false;
         let conceptualIdFromCache = null;
 
-        // Step 1: Try to load from localStorage first (for the specific `id` from URL)
-        // Since `projectId` state might be null on initial load, we need a way to get the conceptual ID.
-        // We'll assume the *latest* version for a conceptual project is stored.
-        // This is a more complex scenario if you're trying to fetch a *specific historic ID* from cache.
-        // For simplicity and typical "last edited" use, we'll try to find any cached entry that matches the URL `id`.
-
-        // Iterate through localStorage to find a match, as we don't have the conceptualProjectId upfront
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith('project_latest_')) { // Assuming your keys are prefixed like this
+            if (key && key.startsWith('project_latest_')) {
                 try {
                     const storedData = JSON.parse(localStorage.getItem(key));
-                    if (storedData && storedData.id === id) { 
+                    if (storedData && storedData.id === id) {
                         console.log("Project loaded from localStorage (matching version ID):", id);
-                        setProjectId(storedData.project_id); // Set conceptual ID
+                        setProjectId(storedData.project_id);
                         setProjectName(storedData.project_name || 'Untitled Newsletter');
                         setProjectStatus(storedData.status || 'DRAFT');
-                        editorInstance.loadProjectData(storedData.json_path); // Correct GrapesJS method
+                        editorInstance.loadProjectData(storedData.json_path);
                         showToast('Project loaded from local cache.');
                         loadedFromCache = true;
-                        conceptualIdFromCache = storedData.project_id; // Capture conceptual ID for later
-                        break; 
+                        conceptualIdFromCache = storedData.project_id;
+                        break;
                     }
                 } catch (parseError) {
                     console.warn(`Failed to parse localStorage item ${key}:`, parseError);
-                    localStorage.removeItem(key); // Remove corrupted data
+                    localStorage.removeItem(key);
                 }
             }
         }
 
         if (!loadedFromCache) {
-            // Step 2: If not loaded from cache, fetch from the server
             console.log("Cache miss or mismatch. Fetching project from database:", id);
             const authToken = await getAuthToken();
             if (!authToken) {
                 return;
             }
 
-            const res = await fetch(`/api/newsletters/${id}`, { // Fetch by the specific version ID
+            const res = await fetch(`/api/newsletters/${id}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${authToken}` },
             });
@@ -430,33 +439,29 @@ function Editor() {
             }
 
             const data = await res.json();
-            // data will contain { id: versionPk, project_id: conceptualId, project_name: ..., status: ..., json_path: ... }
 
             setProjectId(data.project_id);
             setProjectName(data.project_name);
             setProjectStatus(data.status);
-            editorInstance.loadProjectData(data.json_path); // Correct GrapesJS method
+            editorInstance.loadProjectData(data.json_path);
 
             showToast("Project loaded from server.");
 
-            // Step 3: Cache the *latest* version of this *conceptual project* (using `data.project_id` as key)
             localStorage.setItem(`project_latest_${data.project_id}`, JSON.stringify({
-                id: data.id, // Primary key of this specific version
-                project_id: data.project_id, // The conceptual grouping ID
+                id: data.id,
+                project_id: data.project_id,
                 project_name: data.project_name,
                 status: data.status,
-                json_path: data.json_path, // GrapesJS project data
+                json_path: data.json_path,
             }));
             console.log(`Cached latest version of conceptual project ${data.project_id}. Version ID: ${data.id}`);
         }
       } else {
-          // Path for new projects without an ID in the URL
           console.log("Loading new project template");
           const res = await fetch('/api/generated_output.html');
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const html = await res.text();
           editorInstance.setComponents(html);
-          // projectId remains null until the first save.
         }
       } catch (err) {
         console.error("Failed to load initial HTML content or project:", err);
@@ -500,7 +505,7 @@ function Editor() {
       try {
         html = editor.getHtml() || '';
         css = editor.getCss() || '';
-        grapesProjectData = editor.getProjectData() || {}; // Renamed for clarity
+        grapesProjectData = editor.getProjectData() || {};
       } catch (editorError) {
         console.error('Error extracting editor data:', editorError);
         throw new Error('Failed to extract editor content');
@@ -526,8 +531,8 @@ function Editor() {
         body: JSON.stringify({
           project_name: currentProjectName,
           status: projectStatus,
-          project_data: grapesProjectData, // Backend expects `json_path`
-          project_id: projectId, // Use the conceptualProjectId state (assuming it's named `projectId`)
+          project_data: grapesProjectData,
+          project_id: projectId,
           project_fullHtml: fullHtml,
         }),
         signal: controller.signal
@@ -547,22 +552,19 @@ function Editor() {
 
       const data = await response.json();
 
-      
-      setProjectId(data.project_id); 
 
-      //nCache the LATEST version of this conceptual project in localStorage.
+      setProjectId(data.project_id);
 
       localStorage.setItem(`project_latest_${data.project_id}`, JSON.stringify({
-        id: data.id, // The new version's primary key
-        project_id: data.project_id, // The conceptual grouping ID
+        id: data.id,
+        project_id: data.project_id,
         project_name: data.project_name,
         status: data.status,
-        json_path: grapesProjectData, // Store the GrapesJS project data
-        version: data.version // Include if your backend provides it
+        json_path: grapesProjectData,
+        version: data.version
       }));
       console.log(`Project version ${data.id} (conceptual project ${data.project_id}) saved and cached.`);
 
-      // 3. Update the URL to reflect the new version's primary key
       navigate(`/editor/${data.id}`, { replace: true });
       showToast(`Project "${currentProjectName}" saved successfully!`);
 
@@ -593,6 +595,7 @@ function Editor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSaveProject]);
 
+  // Keep the selection change listener, it's useful for general tracking
   useEffect(() => {
     if (!editor) return;
 
@@ -606,6 +609,7 @@ function Editor() {
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         if (range && range.toString().trim()) {
+          // Update the cached selection only if there's actual text selected
           window._cachedTextSelection = {
             text: range.toString(),
             range: range.cloneRange(),
@@ -614,7 +618,13 @@ function Editor() {
             startOffset: range.startOffset,
             endOffset: range.endOffset
           };
+        } else {
+          // Clear cached selection if nothing is selected
+          window._cachedTextSelection = null;
         }
+      } else {
+        // Clear cached selection if no range exists
+        window._cachedTextSelection = null;
       }
     };
 
@@ -623,74 +633,45 @@ function Editor() {
   }, [editor]);
 
 
-  const getTextSelection = useCallback(() => { // Wrap with useCallback
-    if (window._cachedTextSelection) {
-      return window._cachedTextSelection;
-    }
+  // Removed getTextSelection as it will be called directly in the context menu logic.
+  // The state variables selectedText and selectionInfo will now be set directly by openModal.
 
-    if (!editor) return null;
-
-    const iframe = editor.Canvas.getFrameEl();
-    if (!iframe) return null;
-
-    const doc = iframe.contentDocument;
-    const selection = doc.getSelection();
-
-    if (selection?.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (range?.toString().trim()) {
-        return {
-          text: range.toString(),
-          range: range.cloneRange(),
-          startContainer: range.startContainer,
-          endContainer: range.endContainer,
-          startOffset: range.startOffset,
-          endOffset: range.endOffset
-        };
-      }
-    }
-
-    return null;
-  }, [editor]); // editor is a dependency
-
-  const openModal = useCallback((component) => { // Wrap with useCallback
-    const selection = getTextSelection();
-
-    if (!selection?.text?.trim()) {
+  const openModal = useCallback((component, selectionData) => { // Accept selectionData as argument
+    if (!selectionData?.text?.trim()) {
       showToast('Please select text before transforming', true);
       return;
     }
 
     setSelectedComponent(component);
-    setSelectedText(selection.text);
-    setSelectionInfo(selection);
+    setSelectedText(selectionData.text);
+    setSelectionInfo(selectionData);
     setTone('');
     setCustomPrompt('');
     setModalOpen(true);
-  }, [getTextSelection, showToast]); // Added getTextSelection, showToast to dependencies
+  }, [showToast]);
 
-  const closeModal = useCallback(() => { // Wrap with useCallback
+  const closeModal = useCallback(() => {
     setModalOpen(false);
     setSelectedComponent(null);
     setSelectedText('');
     setSelectionInfo(null);
-    window._cachedTextSelection = null;
-  }, []); // No dependencies
+    window._cachedTextSelection = null; // Ensure cached selection is cleared on modal close
+  }, []);
 
-  const openImageModal = useCallback((component) => { // Wrap with useCallback
+  const openImageModal = useCallback((component) => {
     setSelectedImageComponent(component);
     setImagePrompt('');
     setImageModalOpen(true);
-  }, []); // No dependencies
+  }, []);
 
-  const closeImageModal = useCallback(() => { // Wrap with useCallback
+  const closeImageModal = useCallback(() => {
     setImageModalOpen(false);
     setSelectedImageComponent(null);
-  }, []); // No dependencies
+  }, []);
 
 
 
-  const replaceSelectedText = useCallback((newText) => { // Wrap with useCallback
+  const replaceSelectedText = useCallback((newText) => {
     try {
       if (!selectionInfo || !selectedComponent || !editor) return;
 
@@ -711,23 +692,61 @@ function Editor() {
       range.insertNode(textNode);
 
       // Update component content
-      const updatedContent = componentEl.innerHTML;
-      selectedComponent.components(updatedContent);
+      // GrapesJS component.components(content) is usually for adding/setting child components.
+      // For updating the text content of a text component, you might need to use setContent or innerHTML directly.
+      // However, if your selectedComponent is the 'text' type in GrapesJS, it might directly respond to innerHTML changes
+      // or require a specific GrapesJS API for text nodes.
+      // Let's try updating innerHTML first, and if that fails, then the direct component update.
+      // If `selectedComponent.get('content')` or `selectedComponent.set('content', ...)` is available for text, that's better.
+      // For now, let's assume direct DOM manipulation reflected by GrapesJS or `components(innerHTML)` works.
+      selectedComponent.components(componentEl.innerHTML); // This might be problematic for plain text, reconsider.
 
-      // Clear selection
+      // A more robust way might be to update the component's content property directly if it's a text component
+      // This part depends on how GrapesJS handles text component updates.
+      // If `selectedComponent` is a GrapesJS component model,
+      // you might need to use `selectedComponent.set('content', newText)` or `selectedComponent.add('content', newText, { at: selectionInfo.startOffset })`
+      // For now, let's stick to what's provided, which is `selectedComponent.components(updatedContent)`.
+      // If the above doesn't trigger GrapesJS updates correctly, you'd need to consult GrapesJS docs
+      // on how to programmatically update text node content within a component.
+      // A common way for simple text components is `component.set('content', newText)` if 'content' is the attribute holding the text.
+      // For a 'text' type component, `component.set('content', newText)` or `component.set('text', newText)` could be options.
+      // For now, the existing `selectedComponent.components(updatedContent)` which takes the component's *current* innerHTML after DOM manipulation
+      // is the closest.
+
+      // Clear selection after update
       doc.getSelection().removeAllRanges();
-      window._cachedTextSelection = null;
+      window._cachedTextSelection = null; // Important to clear the cache
 
     } catch (error) {
-      console.error('Error replacing text:', error);
-      const originalText = selectedComponent.view?.el?.innerText || '';
-      const newContent = originalText.replace(selectedText, newText);
-      selectedComponent.components(newContent);
-    }
-  }, [selectionInfo, selectedComponent, editor, selectedText]); // Dependencies
+      console.error('Error replacing text via Range API, falling back:', error);
+      // Fallback: This part needs careful handling. If `selectedComponent.view?.el?.innerText`
+      // is used, it reflects the *current* DOM state.
+      // The issue is if the component has nested elements.
+      // A better fallback is to ensure the `selectedComponent` itself is updated via GrapesJS API.
+      // Since `replaceSelectedText` is called *after* AI transformation,
+      // and we are dealing with a GrapesJS component, we should ideally use GrapesJS API to update it.
 
-  const handleTransform = useCallback(async () => { // Wrap with useCallback
-    if (!selectedComponent || !selectionInfo) return;
+      // Let's refine the fallback:
+      // If direct DOM manipulation fails or is not correctly picked up by GrapesJS:
+      if (selectedComponent && selectedComponent.is('text')) { // Check if it's a GrapesJS text component
+        const currentContent = selectedComponent.get('content') || selectedComponent.toHTML(); // Get current GrapesJS content
+        const updatedContent = currentContent.replace(selectedText, newText);
+        selectedComponent.set('content', updatedContent); // Use GrapesJS API to update content
+      } else {
+        // As a last resort, if not a specific GrapesJS text component type or 'content' attribute isn't directly applicable
+        // This is the least desirable as it relies on innerText and might break complex structures
+        const originalContent = selectedComponent.getEl().innerHTML; // Get HTML from actual element
+        const updatedContent = originalContent.replace(selectedText, newText);
+        selectedComponent.components(updatedContent); // This might still be the best available generic GrapesJS update if `set('content')` isn't universal.
+      }
+    }
+  }, [selectionInfo, selectedComponent, editor, selectedText]);
+
+  const handleTransform = useCallback(async () => {
+    if (!selectedComponent || !selectionInfo) {
+      showToast('No text selected for transformation.', true);
+      return;
+    }
 
     if (!selectedText.trim()) {
       showToast('No text selected for transformation.', true);
@@ -747,15 +766,14 @@ function Editor() {
     try {
       setLoadingAI(true);
 
-      // Assuming /api/transformText also requires authentication
-      const authToken = await getAuthToken(); // <<< AWAIT getAuthToken >>>
-      if (!authToken) return; // getAuthToken handles redirection
+      const authToken = await getAuthToken();
+      if (!authToken) return;
 
       const response = await fetch('/api/transformText', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}` // <<< Add Authorization header >>>
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
           text: selectedText,
@@ -786,10 +804,10 @@ function Editor() {
     } finally {
       setLoadingAI(false);
     }
-  }, [selectedComponent, selectionInfo, selectedText, tone, customPrompt, getAuthToken, replaceSelectedText, closeModal, showToast, navigate]); // Added getAuthToken, replaceSelectedText, closeModal, showToast, navigate to dependencies
+  }, [selectedComponent, selectionInfo, selectedText, tone, customPrompt, getAuthToken, replaceSelectedText, closeModal, showToast, navigate]);
 
-  
-  const handleImageGeneration = useCallback(async () => { // Wrap with useCallback
+
+  const handleImageGeneration = useCallback(async () => {
     if (!selectedImageComponent) {
       showToast('No image component selected', true);
       return;
@@ -802,15 +820,14 @@ function Editor() {
     try {
       setLoadingAI(true);
 
-      // Assuming /api/generateImage also requires authentication
-      const authToken = await getAuthToken(); // <<< AWAIT getAuthToken >>>
-      if (!authToken) return; // getAuthToken handles redirection
+      const authToken = await getAuthToken();
+      if (!authToken) return;
 
       const response = await fetch('/api/generateImage', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}` // <<< Add Authorization header >>>
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({ prompt: imagePrompt }),
       });
@@ -841,15 +858,13 @@ function Editor() {
     } finally {
       setLoadingAI(false);
     }
-  }, [selectedImageComponent, imagePrompt, getAuthToken, closeImageModal, showToast, navigate]); // Dependencies
+  }, [selectedImageComponent, imagePrompt, getAuthToken, closeImageModal, showToast, navigate]);
 
-  const handleProjectNameChange = useCallback((e) => { // Wrap with useCallback
+  const handleProjectNameChange = useCallback((e) => {
     const newName = e.target.innerText.trim();
     if (newName) setProjectName(newName);
   }, []);
 
-
-  // Error boundary - if there's an error, show it
   if (error) {
     return (
       <div style={{
@@ -892,7 +907,7 @@ function Editor() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Button
             variant="secondary"
-            onClick={() => navigate('/home')} // Navigates to home
+            onClick={() => navigate('/home')}
             style={{
               fontSize: '18px',
               fontWeight: '600',
@@ -977,7 +992,7 @@ function Editor() {
       </div>
 
       {/* Editor Container */}
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flexGrow: 1, position: 'relative' }}>
         {showProjectLoadingOverlay && (
           <div style={{
             position: 'absolute',
@@ -1043,7 +1058,20 @@ function Editor() {
                       id: `ai-${actionType}-${component.getId()}`,
                       label,
                       icon: actionType === 'text' ? 'text' : 'image',
-                      onClick: () => handler(component),
+                      onClick: () => {
+                        // Crucial change here: Capture selection *before* opening modal
+                        // For text transformation, retrieve the cached selection immediately
+                        if (actionType === 'text') {
+                          const selection = window._cachedTextSelection;
+                          if (selection && selection.text.trim()) {
+                            handler(component, selection); // Pass selection data directly
+                          } else {
+                            showToast('Please select text before transforming', true);
+                          }
+                        } else {
+                          handler(component); // Image modal doesn't need text selection
+                        }
+                      },
                     },
                   ];
                 };
