@@ -96,12 +96,12 @@ def generate_newsletter():
             topic = request.form.get("topic")
             user_prompt = request.form.get("user_prompt")
             
-            asyncio.run(no_template_generation(
+            no_template_generation(
                 user_prompt,
                 OUTPUT_PATH,
                 tone,
                 topic
-            ))
+            )   
      
             return jsonify({
                 "success": True,
@@ -350,11 +350,13 @@ def upload_project():
             # Return success response
             response_data = {
                 "success": True,
+                "id":insert_response.data[0]['id'],                  #contains primary key column, id of new row
                 "message": "Project saved successfully",
                 "project_id": project_id,
                 "version": version,
                 "status": status,
-                "json_path": public_url
+                "json_path": public_url,
+                "project_name":project_name
             }
             
             return jsonify(response_data), 200

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js'; // Make sure this import is correct
 
@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient.js'; // Make sure this import is cor
 
 // --- Basic Toast Component (If you don't have one, put this in a separate file like components/Toast.jsx) ---
 import { XCircle, CheckCircle, Info } from 'lucide-react'; // Assuming you have lucide-react for icons
+import { useRef } from 'react';
 
 const Toast = ({ message, type, onClose }) => {
   if (!message) return null;
@@ -104,6 +105,8 @@ const NewsletterDashboard = () => {
 
   const navigate = useNavigate();
 
+  const hasFetchedData = useRef(false);
+
   // Reusable toast display function (added for consistency)
   const displayToast = useCallback((message, type) => {
     setToastMessage(message);
@@ -118,8 +121,14 @@ const NewsletterDashboard = () => {
 
   // Memoized fetchNewsletters using useCallback
   const fetchNewsletters = useCallback(async () => {
-    console.log("Fetching newsletters...");
+    
     try {
+      if (hasFetchedData.current) {
+      console.log("fetchNewsletters: Data already fetched for this component instance. Skipping.");
+      return;
+      }
+
+      console.log("Fetching newsletters...");
       setLoading(true);
 
       // --- AUTHENTICATION CHANGE: Get session from Supabase ---
@@ -408,13 +417,13 @@ const NewsletterDashboard = () => {
       }
       const authToken = session.access_token; // Use the fresh token
 
-      const newsletterTitle = getNewsletterTitleById(newsletterId); // Get title for toast message
+      const newsletterTitle = getNewsletterTitleById(newsletterId);
 
-      // Optional: Add a confirmation prompt for restore if desired
-      // const confirmed = window.confirm(`Are you sure you want to restore "${newsletterTitle}"?`);
-      // if (!confirmed) {
-      //   return; // User cancelled
-      // }
+    
+      const confirmed = window.confirm(`Are you sure you want to restore "${newsletterTitle}"?`);
+      if (!confirmed) {
+        return; // User cancelled
+      }
 
       console.log(`Attempting to restore newsletter with ID: ${newsletterId}`);
       const response = await fetch(`/api/restore/${newsletterId}`, {
@@ -941,10 +950,10 @@ const NewsletterDashboard = () => {
       gap: '24px',
       marginBottom: '32px',
       // Responsive adjustments for grid
-      '@media (max-width: 1024px)': {
+      '@media (maxWidth: 1024px)': {
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
       },
-      '@media (max-width: 768px)': {
+      '@media (maxWidth: 768px)': {
         gridTemplateColumns: '1fr', // Single column on small screens
       },
     },
@@ -1043,7 +1052,7 @@ const NewsletterDashboard = () => {
       marginTop: 'auto', // Push actions to the bottom of the card
       justifyContent: 'flex-start', // Align buttons to the start
       // Adjust behavior for smaller screens/more buttons
-      '@media (max-width: 400px)': { // Example breakpoint for very small screens
+      '@media (maxWidth: 400px)': { // Example breakpoint for very small screens
         flexDirection: 'column', // Stack buttons vertically
         gap: '8px',
         alignItems: 'stretch', // Make buttons full width

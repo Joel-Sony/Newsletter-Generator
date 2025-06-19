@@ -366,62 +366,116 @@ function Editor() {
     if (!editorInstance) return;
 
     setLoading(true);
-    if (id) {
+    if (id) { // 'id' from URL is the specific version ID (primary key)
       setShowProjectLoadingOverlay(true);
     }
 
     try {
       if (id) {
-        console.log("Loading existing project:", id);
-        const authToken = await getAuthToken(); // <<< AWAIT getAuthToken >>>
-        if (!authToken) {
-          return;
+        console.log("Attempting to load project version:", id);
+
+        let loadedFromCache = false;
+        let conceptualIdFromCache = null;
+
+        // Step 1: Try to load from localStorage first (for the specific `id` from URL)
+        // Since `projectId` state might be null on initial load, we need a way to get the conceptual ID.
+        // We'll assume the *latest* version for a conceptual project is stored.
+        // This is a more complex scenario if you're trying to fetch a *specific historic ID* from cache.
+        // For simplicity and typical "last edited" use, we'll try to find any cached entry that matches the URL `id`.
+
+        // Iterate through localStorage to find a match, as we don't have the conceptualProjectId upfront
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('project_latest_')) { // Assuming your keys are prefixed like this
+                try {
+                    const storedData = JSON.parse(localStorage.getItem(key));
+                    if (storedData && storedData.id === id) { 
+                        console.log("Project loaded from localStorage (matching version ID):", id);
+                        setProjectId(storedData.project_id); // Set conceptual ID
+                        setProjectName(storedData.project_name || 'Untitled Newsletter');
+                        setProjectStatus(storedData.status || 'DRAFT');
+                        editorInstance.loadProjectData(storedData.json_path); // Correct GrapesJS method
+                        showToast('Project loaded from local cache.');
+                        loadedFromCache = true;
+                        conceptualIdFromCache = storedData.project_id; // Capture conceptual ID for later
+                        break; 
+                    }
+                } catch (parseError) {
+                    console.warn(`Failed to parse localStorage item ${key}:`, parseError);
+                    localStorage.removeItem(key); // Remove corrupted data
+                }
+            }
         }
 
-        const res = await fetch(`/api/newsletters/${id}`, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${authToken}` },
-        });
+        if (!loadedFromCache) {
+            // Step 2: If not loaded from cache, fetch from the server
+            console.log("Cache miss or mismatch. Fetching project from database:", id);
+            const authToken = await getAuthToken();
+            if (!authToken) {
+                return;
+            }
 
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            showToast('Session expired or unauthorized. Please log in again.', true);
-            navigate('/login', { replace: true });
-            return;
-          }
-          throw new Error(`Network response was not ok: ${res.status}`);
+            const res = await fetch(`/api/newsletters/${id}`, { // Fetch by the specific version ID
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+            });
+
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    showToast('Session expired or unauthorized. Please log in again.', true);
+                    navigate('/login', { replace: true });
+                    return;
+                }
+                throw new Error(`Network response was not ok: ${res.status}`);
+            }
+
+            const data = await res.json();
+            // data will contain { id: versionPk, project_id: conceptualId, project_name: ..., status: ..., json_path: ... }
+
+            setProjectId(data.project_id);
+            setProjectName(data.project_name);
+            setProjectStatus(data.status);
+            editorInstance.loadProjectData(data.json_path); // Correct GrapesJS method
+
+            showToast("Project loaded from server.");
+
+            // Step 3: Cache the *latest* version of this *conceptual project* (using `data.project_id` as key)
+            localStorage.setItem(`project_latest_${data.project_id}`, JSON.stringify({
+                id: data.id, // Primary key of this specific version
+                project_id: data.project_id, // The conceptual grouping ID
+                project_name: data.project_name,
+                status: data.status,
+                json_path: data.json_path, // GrapesJS project data
+            }));
+            console.log(`Cached latest version of conceptual project ${data.project_id}. Version ID: ${data.id}`);
         }
-
-        const data = await res.json();
-        setProjectId(data.project_id);
-        setProjectName(data.project_name);
-        setProjectStatus(data.status);
-        editorInstance.loadProjectData(data.json_path);
       } else {
-        console.log("Loading new project template");
-        // For new projects, fetching the default HTML template does not require auth.
-        // If saving immediately afterwards, handleSaveProject will get the token.
-        const res = await fetch('/api/generated_output.html');
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const html = await res.text();
-        editorInstance.setComponents(html);
+          // Path for new projects without an ID in the URL
+          console.log("Loading new project template");
+          const res = await fetch('/api/generated_output.html');
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          const html = await res.text();
+          editorInstance.setComponents(html);
+          // projectId remains null until the first save.
+        }
+      } catch (err) {
+        console.error("Failed to load initial HTML content or project:", err);
+        setError(err.message);
+        showToast(`Failed to load project: ${err.message}`, true);
+        const fallbackContent = `
+          <div style="padding: 50px; text-align: center;">
+            <h1>Welcome to the Editor</h1>
+            <p>Could not load initial template. Starting with default content.</p>
+            <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
+          </div>
+        `;
+        editorInstance.setComponents(fallbackContent);
+      } finally {
+        setLoading(false);
+        setShowProjectLoadingOverlay(false);
       }
-    } catch (err) {
-      console.error("Failed to load initial HTML content or project:", err);
-      setError(err.message);
-      const fallbackContent = `
-        <div style="padding: 50px; text-align: center;">
-          <h1>Welcome to the Editor</h1>
-          <p>Could not load initial template. Starting with default content.</p>
-          <img src="https://picsum.photos/seed/default/300/200" alt="Placeholder"/>
-        </div>
-      `;
-      editorInstance.setComponents(fallbackContent);
-    } finally {
-      setLoading(false);
-      setShowProjectLoadingOverlay(false);
-    }
-  }, [id, getAuthToken, navigate, showToast]); // Added getAuthToken, navigate, showToast to dependencies
+  }, [id, getAuthToken, navigate, showToast]);
+
 
   const handleSaveProject = useCallback(async () => {
     if (!editor) {
@@ -434,35 +488,34 @@ function Editor() {
       setProjectName('Untitled Newsletter');
     }
 
-    const authToken = await getAuthToken(); // <<< AWAIT getAuthToken >>>
+    const authToken = await getAuthToken();
     if (!authToken) {
-      // getAuthToken already handles redirection and toast, so just return
       return;
     }
 
     try {
       setSavingProject(true);
 
-      let html, css, projectData;
+      let html, css, grapesProjectData;
       try {
         html = editor.getHtml() || '';
         css = editor.getCss() || '';
-        projectData = editor.getProjectData() || {};
+        grapesProjectData = editor.getProjectData() || {}; // Renamed for clarity
       } catch (editorError) {
         console.error('Error extracting editor data:', editorError);
         throw new Error('Failed to extract editor content');
       }
 
       const fullHtml = `<!DOCTYPE html>
-  <html>
-    <head>
-      <style>${css}</style>
-    </head>
-    <body>${html}</body>
-  </html>`;
+<html>
+  <head>
+    <style>${css}</style>
+  </head>
+  <body>${html}</body>
+</html>`;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch('/api/upload-project', {
         method: 'POST',
@@ -473,8 +526,8 @@ function Editor() {
         body: JSON.stringify({
           project_name: currentProjectName,
           status: projectStatus,
-          project_data: projectData,
-          project_id: projectId,
+          project_data: grapesProjectData, // Backend expects `json_path`
+          project_id: projectId, // Use the conceptualProjectId state (assuming it's named `projectId`)
           project_fullHtml: fullHtml,
         }),
         signal: controller.signal
@@ -494,11 +547,23 @@ function Editor() {
 
       const data = await response.json();
 
-      if (data.project_id && !projectId) {
-        setProjectId(data.project_id);
-        navigate(`/editor/${data.project_id}`, { replace: true });
-      }
+      
+      setProjectId(data.project_id); 
 
+      //nCache the LATEST version of this conceptual project in localStorage.
+
+      localStorage.setItem(`project_latest_${data.project_id}`, JSON.stringify({
+        id: data.id, // The new version's primary key
+        project_id: data.project_id, // The conceptual grouping ID
+        project_name: data.project_name,
+        status: data.status,
+        json_path: grapesProjectData, // Store the GrapesJS project data
+        version: data.version // Include if your backend provides it
+      }));
+      console.log(`Project version ${data.id} (conceptual project ${data.project_id}) saved and cached.`);
+
+      // 3. Update the URL to reflect the new version's primary key
+      navigate(`/editor/${data.id}`, { replace: true });
       showToast(`Project "${currentProjectName}" saved successfully!`);
 
     } catch (error) {
@@ -513,7 +578,8 @@ function Editor() {
     } finally {
       setSavingProject(false);
     }
-  }, [editor, projectName, projectStatus, projectId, navigate, getAuthToken, showToast]); // Added getAuthToken, showToast to dependencies
+  }, [editor, projectName, projectStatus, projectId, navigate, getAuthToken, showToast]);
+
 
   useEffect(() => {
     const handleKeyDown = (e) => {

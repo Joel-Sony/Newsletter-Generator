@@ -1,4 +1,27 @@
 
+/* Ensure full height layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+}
+
+/* Let the main container grow */
+.preview-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8fafc; /* or your preferred bg */
+  overflow: auto;
+}
+
+/* Let the content area scroll if needed */
+.preview-content {
+  flex-grow: 1;
+  padding: 2rem;
+  overflow: auto;
+}
 
 .preview-container {
   display: flex;
@@ -25,6 +48,7 @@
   align-items: center;
   max-width: 1200px; /* Limit width for larger screens */
   margin: 0 auto; /* Center content */
+  position:sticky;
 }
 
 .preview-header-title {
