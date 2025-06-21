@@ -697,16 +697,15 @@ function Editor() {
     } catch (error) {
       console.error('Error replacing text via Range API, falling back:', error);
 
-      if (selectedComponent && selectedComponent.is('text')) { // Check if it's a GrapesJS text component
-        const currentContent = selectedComponent.get('content') || selectedComponent.toHTML(); // Get current GrapesJS content
+      if (selectedComponent && selectedComponent.is('text')) { 
+        const currentContent = selectedComponent.get('content') || selectedComponent.toHTML(); 
         const updatedContent = currentContent.replace(selectedText, newText);
         selectedComponent.set('content', updatedContent); // Use GrapesJS API to update content
       } else {
-        // As a last resort, if not a specific GrapesJS text component type or 'content' attribute isn't directly applicable
-        // This is the least desirable as it relies on innerText and might break complex structures
+
         const originalContent = selectedComponent.getEl().innerHTML; // Get HTML from actual element
         const updatedContent = originalContent.replace(selectedText, newText);
-        selectedComponent.components(updatedContent); // This might still be the best available generic GrapesJS update if `set('content')` isn't universal.
+        selectedComponent.components(updatedContent); 
       }
     }
   }, [selectionInfo, selectedComponent, editor, selectedText]);
@@ -778,7 +777,7 @@ function Editor() {
 let total = 0;
 for (let key in localStorage) {
   if (localStorage.hasOwnProperty(key)) {
-    total += ((localStorage[key].length + key.length) * 2); // each char = 2 bytes
+    total += ((localStorage[key].length + key.length) * 2); 
   }
 }
 console.log(`LocalStorage size: ${(total / 1024).toFixed(2)} KB`);

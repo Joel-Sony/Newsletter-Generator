@@ -345,7 +345,6 @@ const NewsletterDashboard = () => {
 
   const handleDuplicate = useCallback(async (newsletterId) => {
     try {
-      // --- AUTHENTICATION CHANGE: Get session from Supabase ---
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("Error getting session for duplicate:", sessionError);

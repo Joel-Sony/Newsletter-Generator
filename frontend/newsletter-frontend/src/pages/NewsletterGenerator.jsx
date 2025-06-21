@@ -15,12 +15,9 @@ const NewsletterGenerator = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
-  // --- Reusable Toast Function (Consider moving this to a central utility) ---
-  const showToast = useCallback((message, type) => { // 'success', 'error', 'info'
-    // This is a basic implementation of a toast. For a robust solution,
-    // consider creating a dedicated React Toast component.
-    setSuccessMessage(''); // Clear previous success message
-    setError('');         // Clear previous error message
+  const showToast = useCallback((message, type) => { 
+    setSuccessMessage(''); 
+    setError('');         
 
     if (type === 'success' || type === 'info') {
       setSuccessMessage(message);
@@ -35,7 +32,7 @@ const NewsletterGenerator = () => {
   }, []);
 
 
-  // --- Auth Token Retrieval Logic (Reused from other components) ---
+
   const getAuthToken = useCallback(async () => {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -79,16 +76,14 @@ const NewsletterGenerator = () => {
     setError('');
     setSuccessMessage('');
 
-    // --- AUTH FIX: Get token using Supabase SDK ---
     const authToken = await getAuthToken();
     if (!authToken) {
-      // getAuthToken already handles navigation/toast
       setIsLoading(false); // Stop loading if no token
       return;
     }
 
     try {
-      // Create FormData for multipart/form-data
+
       const data = new FormData();
 
       // Add form fields
@@ -96,22 +91,19 @@ const NewsletterGenerator = () => {
       data.append('tone', formData.tone || 'Professional');
       data.append('user_prompt', formData.user_prompt);
 
-      // Add PDF file if selected
       if (selectedFile) {
         data.append('pdf_file', selectedFile);
       }
 
-      // Make API call to Flask backend
       const response = await fetch('/api/generate', {
         method: 'POST',
-        // --- AUTH FIX: Add Authorization header ---
+  
         headers: {
           'Authorization': `Bearer ${authToken}`
         },
         body: data,
       });
 
-      // --- AUTH FIX: Handle 401/403 responses ---
       if (response.status === 401 || response.status === 403) {
           console.error("Backend authentication failed during generation:", response.status, response.statusText);
           showToast('Session expired or unauthorized. Please log in again.', 'error');
@@ -123,7 +115,7 @@ const NewsletterGenerator = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        showToast(result.message, 'success'); // Use showToast for success
+        showToast(result.message, 'success'); 
         
         // Reset form after successful submission
         setFormData({ topic: '', tone: '', user_prompt: '' });
@@ -131,10 +123,10 @@ const NewsletterGenerator = () => {
         
         // Navigate to editor if redirect_to is provided
         if (result.redirect_to) {
-          // --- REACT ROUTER FIX: Use navigate from react-router-dom ---
+
           setTimeout(() => {
-            navigate(result.redirect_to); // Use navigate instead of window.location.href
-          }, 1500); // Delay navigation to allow message to be seen
+            navigate(result.redirect_to);
+          }, 1500); /
         }
         
       } else {
@@ -150,9 +142,6 @@ const NewsletterGenerator = () => {
     }
   };
 
-  // Keyframes for animations
-  // NOTE: These keyframes should ideally be in a separate CSS file or handled by a CSS-in-JS library.
-  // Including them directly in a <style> tag like this will work but is not typical for React inline styles.
   const pulseKeyframes = `
     @keyframes pulse {
       0%, 100% { opacity: 1; }

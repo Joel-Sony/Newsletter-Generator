@@ -90,9 +90,8 @@ const NewsletterVersionsPage = () => {
       }
 
       const data = await response.json();
-      // Assuming 'data.success' is part of your backend's successful response for consistency
-      // If your backend just returns the data array on success, remove this check.
-      if (data.success === false) { // Check for explicit failure flag from backend
+
+      if (data.success === false) { 
          throw new Error(data.error || 'Failed to fetch newsletter versions.');
       }
 
@@ -113,7 +112,7 @@ const NewsletterVersionsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, getAuthToken, navigate, displayToast]); // Add getAuthToken, navigate, displayToast to dependencies
+  }, [projectId, getAuthToken, navigate, displayToast]); 
 
   // Fetch data on component mount and projectId change
   useEffect(() => {
@@ -155,10 +154,9 @@ const NewsletterVersionsPage = () => {
 
   const confirmDelete = async () => {
     try {
-      // --- AUTH FIX: Get token using Supabase SDK ---
       const authToken = await getAuthToken();
       if (!authToken) {
-        // getAuthToken already handles navigation/toast
+
         return;
       }
 
@@ -202,9 +200,7 @@ const NewsletterVersionsPage = () => {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setNewsletterToDelete(null);
-  };
-
-  // --- Styling and Rendering ---
+  }
 
   const getStatusBadgeStyle = (status) => {
     switch (status) {
@@ -229,9 +225,7 @@ const NewsletterVersionsPage = () => {
       whiteSpace: 'nowrap',
     };
 
-    // Note: Inline styles don't support pseudo-classes like :hover directly.
-    // For hover effects, you would typically use onMouseEnter/onMouseLeave in JSX
-    // or use a CSS-in-JS library, or a separate CSS file.
+
     switch (action) {
       case 'Edit': return { ...baseStyle, backgroundColor: '#3b82f6', color: '#ffffff' };
       case 'Preview':
@@ -468,15 +462,9 @@ const NewsletterVersionsPage = () => {
         gap: '8px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     },
-    // Keyframe Animations (place these in a global CSS file or use a CSS-in-JS solution that supports them)
-    // You have these defined as string literals in styles object, which won't work for actual CSS.
-    // They need to be actual CSS rules. For inline styles, you'll manage opacity/transform directly.
-    // If you add a separate CSS file for these animations and hover effects, that's ideal.
-    // For now, I'll remove them from the `styles` object literal as they are invalid there.
+
   };
 
-  // Helper for applying hover styles (inline styles don't support :hover directly)
-  // These functions need to be consistent with the getActionButtonStyle base styles.
   const applyHoverStyle = (e, action) => {
     const style = getActionButtonStyle(action);
     const hoverBg = {
@@ -706,8 +694,7 @@ const NewsletterVersionsPage = () => {
         </div>
       )}
 
-      {/* Toast Notification */}
-      {/* Ensure animation keyframes are in a global CSS file or via a CSS-in-JS solution */}
+
       <div style={{
         ...styles.toastContainer,
         ...(showToast ? styles.toastContainerVisible : {}),
@@ -719,8 +706,6 @@ const NewsletterVersionsPage = () => {
         {toastMessage}
       </div>
 
-      {/* Keyframe styles need to be in a global CSS file or handled by a proper CSS-in-JS library */}
-      {/* These will NOT work as inline styles */}
       <style jsx="true">{`
         @keyframes fadeIn {
           from { opacity: 0; }
