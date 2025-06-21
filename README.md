@@ -13,7 +13,8 @@ Purpose: This application empowers users to effortlessly create professional new
 - Backend: Flask (Python)
 - Database: Supabase (PostgreSQL)
 - AI Services: OpenAI SDK, Gemini 2.5 Flash (via Google Studio API)
-- PDF Parsing/Templating: ConvertAPI (for PDF to HTML conversion), BeautifulSoup (for HTML parsing)
+- PDF Parsing/Templating: ConvertAPI (for PDF to HTML conversion)
+- BeautifulSoup (for HTML parsing)
 
 
 
