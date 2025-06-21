@@ -4,19 +4,16 @@ This document provides a comprehensive overview of the Newsletter Generator web 
 
 ## Project Overview
 
-App Name: Newsletter Generator App (or your chosen name)
-Purpose: This application empowers users to effortlessly create professional newsletters. It leverages AI to generate engaging content, which can either be inserted into a dynamically created HTML template or integrated into a user-provided PDF template. The app also includes a robust versioning system to track changes and manage newsletter iterations.
-Tech Stack:
+App Name: Newsletter Generator  
+Purpose: This application empowers users to effortlessly create professional newsletters. It leverages AI to generate engaging content, which can either be inserted into a dynamically created HTML template or integrated into a user-provided PDF template. The app also includes a robust versioning system to track changes and manage newsletter iterations.  
 
-Frontend: React
+### Tech Stack:
 
-Backend: Flask (Python)
-
-Database: Supabase (PostgreSQL)
-
-AI Services: OpenAI SDK, Gemini 2.5 Flash (via Google Studio API)
-
-PDF Parsing/Templating: ConvertAPI (for PDF to HTML conversion), BeautifulSoup (for HTML parsing)
+- Frontend: React
+- Backend: Flask (Python)
+- Database: Supabase (PostgreSQL)
+- AI Services: OpenAI SDK, Gemini 2.5 Flash (via Google Studio API)
+- PDF Parsing/Templating: ConvertAPI (for PDF to HTML conversion), BeautifulSoup (for HTML parsing)
 
 
 
