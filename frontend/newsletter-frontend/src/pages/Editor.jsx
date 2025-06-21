@@ -689,44 +689,14 @@ function Editor() {
       range.deleteContents();
       const textNode = doc.createTextNode(newText);
       range.insertNode(textNode);
+      selectedComponent.components(componentEl.innerHTML); 
 
-      // Update component content
-      // GrapesJS component.components(content) is usually for adding/setting child components.
-      // For updating the text content of a text component, you might need to use setContent or innerHTML directly.
-      // However, if your selectedComponent is the 'text' type in GrapesJS, it might directly respond to innerHTML changes
-      // or require a specific GrapesJS API for text nodes.
-      // Let's try updating innerHTML first, and if that fails, then the direct component update.
-      // If `selectedComponent.get('content')` or `selectedComponent.set('content', ...)` is available for text, that's better.
-      // For now, let's assume direct DOM manipulation reflected by GrapesJS or `components(innerHTML)` works.
-      selectedComponent.components(componentEl.innerHTML); // This might be problematic for plain text, reconsider.
-
-      // A more robust way might be to update the component's content property directly if it's a text component
-      // This part depends on how GrapesJS handles text component updates.
-      // If `selectedComponent` is a GrapesJS component model,
-      // you might need to use `selectedComponent.set('content', newText)` or `selectedComponent.add('content', newText, { at: selectionInfo.startOffset })`
-      // For now, let's stick to what's provided, which is `selectedComponent.components(updatedContent)`.
-      // If the above doesn't trigger GrapesJS updates correctly, you'd need to consult GrapesJS docs
-      // on how to programmatically update text node content within a component.
-      // A common way for simple text components is `component.set('content', newText)` if 'content' is the attribute holding the text.
-      // For a 'text' type component, `component.set('content', newText)` or `component.set('text', newText)` could be options.
-      // For now, the existing `selectedComponent.components(updatedContent)` which takes the component's *current* innerHTML after DOM manipulation
-      // is the closest.
-
-      // Clear selection after update
       doc.getSelection().removeAllRanges();
       window._cachedTextSelection = null; // Important to clear the cache
 
     } catch (error) {
       console.error('Error replacing text via Range API, falling back:', error);
-      // Fallback: This part needs careful handling. If `selectedComponent.view?.el?.innerText`
-      // is used, it reflects the *current* DOM state.
-      // The issue is if the component has nested elements.
-      // A better fallback is to ensure the `selectedComponent` itself is updated via GrapesJS API.
-      // Since `replaceSelectedText` is called *after* AI transformation,
-      // and we are dealing with a GrapesJS component, we should ideally use GrapesJS API to update it.
 
-      // Let's refine the fallback:
-      // If direct DOM manipulation fails or is not correctly picked up by GrapesJS:
       if (selectedComponent && selectedComponent.is('text')) { // Check if it's a GrapesJS text component
         const currentContent = selectedComponent.get('content') || selectedComponent.toHTML(); // Get current GrapesJS content
         const updatedContent = currentContent.replace(selectedText, newText);
@@ -805,6 +775,13 @@ function Editor() {
     }
   }, [selectedComponent, selectionInfo, selectedText, tone, customPrompt, getAuthToken, replaceSelectedText, closeModal, showToast, navigate]);
 
+let total = 0;
+for (let key in localStorage) {
+  if (localStorage.hasOwnProperty(key)) {
+    total += ((localStorage[key].length + key.length) * 2); // each char = 2 bytes
+  }
+}
+console.log(`LocalStorage size: ${(total / 1024).toFixed(2)} KB`);
 
   const handleImageGeneration = useCallback(async () => {
     if (!selectedImageComponent) {

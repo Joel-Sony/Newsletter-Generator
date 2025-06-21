@@ -64,7 +64,12 @@ Mobile-responsive design
 GrapesJS editor compatibility (no floating/overlapping elements)
 Div-based layout structure (no tables)
 Placeholder images from via.placeholder.com
-Generate a complete HTML file with inline CSS for a responsive newsletter template, ensuring all main layout sections (header, hero, content blocks, quote section, footer) are structured as block-level elements that stack naturally within the vertical document flow. Crucially, avoid using position: absolute on these primary layout divs to prevent content reflow or collapse when individual elements are potentially manipulated by external tools like a drag-and-drop editor; instead, utilize display: flex or display: grid for internal arrangement within sections, and incorporate media queries for responsive adjustments (e.g., flex-direction: column on smaller screens), making sure the overall design maintains its integrity and flowing nature
+Generate a complete HTML file with inline CSS for a responsive newsletter template, ensuring all main layout sections 
+(header, hero, content blocks, quote section, footer) are structured as block-level elements that stack naturally within the vertical document flow. 
+Crucially, avoid using position: absolute on these primary layout divs to prevent content reflow or collapse when individual elements are potentially m
+anipulated by external tools like a drag-and-drop editor; instead, utilize display: flex or display: grid for internal arrangement within sections, and 
+incorporate media queries for responsive adjustments (e.g., flex-direction: column on smaller screens), making sure the overall design maintains its
+ integrity and flowing nature
 Single <style> tag with embedded CSS
 No <html>, <head>, or <body> wrapper tags
 No placeholder text (Lorem Ipsum) - use meaningful content or leave empty

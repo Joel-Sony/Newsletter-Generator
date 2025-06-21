@@ -162,34 +162,6 @@ def generate_image_api():
         return jsonify({"error": "Internal server error during image generation"}), 500
 
 
-@main_bp.route("/api/convertToPdf", methods=["POST"])
-def convert_to_pdf():
-    """Converts an HTML file to PDF."""
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-    
-    filename = secure_filename(file.filename)
-    # Using hardcoded "UPLOAD_FOLDER", ensure this is configured properly in your app
-    file_path = os.path.join(current_app.config.get("UPLOAD_FOLDER", "UPLOAD_FOLDER"), filename)
-    os.makedirs(os.path.dirname(file_path), exist_ok=True) # Ensure directory exists
-    file.save(file_path)
-    
-    try:
-        # Using hardcoded "CONVERTED_PDFS_FOLDER", ensure this is configured properly
-        pdf_path = convert_html_to_pdf(file_path, output_dir=current_app.config.get("CONVERTED_PDFS_FOLDER", "CONVERTED_PDFS_FOLDER"))
-        return jsonify({
-            "message": "File converted successfully",
-            "pdf_path": pdf_path
-        }), 200
-    except Exception as e:
-        current_app.logger.error(f"Error in convert_to_pdf: {e}", exc_info=True)
-        return jsonify({"error": "Internal server error during PDF conversion"}), 500
-
-
 # =============================================================================
 # SAVING and DELETION SECTION
 # =============================================================================

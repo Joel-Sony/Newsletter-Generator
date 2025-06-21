@@ -6,10 +6,10 @@ import os
 import requests
 import json
 from app.config import (
-    OPENROUTER_API_KEY,
     CONVERT_API_SECRET,
     OUTPUT_PATH,
     INPUT_PATH,
+    GOOGLE_STUDIO_API_KEY
 )
 import re
 
@@ -123,12 +123,12 @@ Return ONLY JSON format:
 
 Make each section unique - no repetition."""
 
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENROUTER_API_KEY, timeout=60)
+    client = OpenAI(base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key=GOOGLE_STUDIO_API_KEY, timeout=60)
     
     try:
         response = client.chat.completions.create(
             extra_headers={"HTTP-Referer": "http://localhost:5173/generator"},
-            model="deepseek/deepseek-chat-v3-0324:free",
+            model="gemini-2.5-flash",
             messages=[{"role": "user", "content": prompt}]
         )
         
