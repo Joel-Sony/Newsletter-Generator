@@ -108,17 +108,4 @@ npm run dev
 ```
 
 This starts the app at http://localhost:5173
-## Requirements
 
-beautifulsoup4==4.13.4  
-Flask==3.1.1  
-flask_cors==6.0.0  
-gotrue==2.12.0  
-openai==1.90.0  
-Pillow==11.2.1  
-playwright==1.52.0  
-python-dotenv==1.1.0  
-Requests==2.32.4  
-supabase==2.15.3  
-Werkzeug==3.1.3  
-  
